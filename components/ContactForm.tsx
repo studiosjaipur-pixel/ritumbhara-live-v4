@@ -84,8 +84,7 @@ return React.createElement(
     React.createElement("label", { className: "block text-sm font-medium text-[#1A1A1A] mb-1.5" }, "Message"),
     React.createElement("textarea", {
       value: message,
-      onChange: function (e) { setMessage(e.target.value); },
-      className: inputClass,
+      onChange: function (e: React.ChangeEvent<HTMLTextAreaElement>) { setMessage(e.target.value); },      className: inputClass,
       rows: 5,
       placeholder: "How can we help?",
     })
