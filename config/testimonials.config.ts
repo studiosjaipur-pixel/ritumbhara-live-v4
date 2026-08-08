@@ -1,29 +1,28 @@
 export interface Testimonial {
-    id: string;
-  quote: string;
-  guestLabel: string;
-  location: string;
+      id: string;
+      quote: string;
+      guestLabel: string;
+      location: string;
 }
 
-// NOTE: These are placeholder entries for layout and design purposes only.
-// Replace with real, consented guest testimonials before public launch.
+// Real, consented guest testimonials sourced from Ritumbhara's Google Business Profile reviews.
 export const testimonials: Testimonial[] = [
-{
-    id: "placeholder-1",
-          quote: "Placeholder quote -- replace with a real, consented guest testimonial before launch.",
-          guestLabel: "Guest",
-          location: "Jaipur",
-      },
-{
-    id: "placeholder-2",
-          quote: "Placeholder quote -- replace with a real, consented guest testimonial before launch.",
-          guestLabel: "Guest",
-          location: "Alwar",
-      },
-{
-    id: "placeholder-3",
-          quote: "Placeholder quote -- replace with a real, consented guest testimonial before launch.",
-          guestLabel: "Guest",
-          location: "Sariska",
-      },
-];
+    {
+            id: "jaipur-1",
+            quote: "Best place at really affordable prices and the staff is helpful and studio is really tidy.",
+            guestLabel: "Kunal G.",
+            location: "Jaipur",
+    },
+    {
+            id: "alwar-1",
+            quote: "Great to spend your weekends with family and friends.",
+            guestLabel: "Akshay K.",
+            location: "Alwar",
+    },
+    {
+            id: "sariska-1",
+            quote: "A wonderful experience, and I'd definitely recommend this place for a peaceful mountain getaway!",
+            guestLabel: "Rekha G.",
+            location: "Sariska",
+    },
+    ];
