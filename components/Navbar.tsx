@@ -30,7 +30,7 @@ const navLinks = [
     { href: "/experiences", label: "Experiences" },
     { href: "/about", label: "Our Story" },
     { href: "/contact", label: "Contact" },
-    { href: "https://ritumbhara-partner-onboard-shivams-projects-c5a54b3a.vercel.app", label: "Partner With Us" },
+    { href: "https://ritumbhara-onboarding-live-shivams-projects-c5a54b3a.vercel.app", label: "Partner With Us" },
     ];
 
 const isSolid = scrolled || mobileOpen;
