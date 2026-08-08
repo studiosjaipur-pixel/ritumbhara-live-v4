@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asset Owner Onboarding — Ritumbhara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Italiana&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --crimson:#BF2542;
+    --crimson-dark:#8f1c33;
+    --ink:#241F1C;
+    --ink-soft:#5b544e;
+    --ivory:#FBF7F1;
+    --sand:#F1E9DC;
+    --sand-line:#e3d7c3;
+    --gold:#B08D3E;
+    --white:#ffffff;
+    --danger:#B3261E;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ivory);color:var(--ink);font-family:'Poppins',sans-serif;}
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px 80px;}
+  .masthead{padding:56px 24px 40px;text-align:center;border-bottom:1px solid var(--sand-line);}
+  .masthead .brand{font-family:'Italiana',serif;font-size:15px;letter-spacing:.32em;text-transform:uppercase;color:var(--crimson);margin:0 0 18px;}
+  .masthead h1{font-family:'Italiana',serif;font-size:40px;font-weight:400;margin:0 0 12px;line-height:1.15;}
+  .masthead p{font-size:14.5px;color:var(--ink-soft);max-width:520px;margin:0 auto;line-height:1.7;}
+
+  .layout{display:grid;grid-template-columns:220px 1fr;gap:48px;margin-top:48px;align-items:start;}
+  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
+
+  .rail{position:sticky;top:24px;}
+  .rail-item{display:flex;gap:12px;align-items:flex-start;padding:14px 0;border-left:1px solid var(--sand-line);padding-left:20px;position:relative;}
+  .rail-item:before{content:'';position:absolute;left:-6.5px;top:20px;width:12px;height:12px;border-radius:50%;background:var(--white);border:1px solid var(--sand-line);}
+  .rail-item.active:before{background:var(--crimson);border-color:var(--crimson);}
+  .rail-item.done:before{background:var(--gold);border-color:var(--gold);}
+  .tag{width:30px;height:30px;flex:0 0 30px;border-radius:50%;border:1px solid var(--ink);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink-soft);}
+  .rail-item.active .tag{border-color:var(--crimson);color:var(--crimson);font-weight:500;}
+  .rail-item.done .tag{border-color:var(--gold);color:var(--gold);}
+  .rail-label{font-size:13.5px;padding-top:5px;color:var(--ink-soft);}
+  .rail-item.active .rail-label{color:var(--ink);font-weight:500;}
+
+  .card{background:var(--white);border:1px solid var(--sand-line);border-radius:2px;padding:40px 44px;}
+  .step-eyebrow{font-family:'Italiana',serif;font-size:13px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);margin:0 0 6px;}
+  .step-title{font-family:'Italiana',serif;font-size:26px;font-weight:400;margin:0 0 8px;}
+  .step-sub{font-size:13.5px;color:var(--ink-soft);margin:0 0 32px;line-height:1.6;}
+
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
+  .field-row.single{grid-template-columns:1fr;}
+  @media(max-width:600px){.field-row{grid-template-columns:1fr;}}
+
+  .field label{display:block;font-size:12.5px;color:var(--ink-soft);margin-bottom:7px;letter-spacing:.02em;}
+  .field label .req{color:var(--crimson);}
+  .field input, .field select, .field textarea{
+    width:100%;font-family:'Poppins',sans-serif;font-size:14.5px;color:var(--ink);
+    background:var(--ivory);border:1px solid var(--sand-line);border-radius:2px;
+    padding:11px 13px;outline:none;transition:border-color .15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--crimson);}
+  .field textarea{resize:vertical;min-height:80px;}
+  .hint{font-size:11.5px;color:#8a8378;margin-top:5px;}
+  .err{font-size:11.5px;color:var(--danger);margin-top:5px;display:none;}
+  .field.invalid input, .field.invalid select, .field.invalid textarea{border-color:var(--danger);}
+  .field.invalid .err{display:block;}
+
+  .doc-list{display:flex;flex-direction:column;gap:14px;margin-bottom:8px;}
+  .doc-item{padding:16px 18px;background:var(--ivory);border:1px solid var(--sand-line);border-radius:2px;}
+  .doc-item .di-title{font-size:14px;font-weight:500;margin:0 0 3px;}
+  .doc-item .di-sub{font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin-bottom:10px;}
+  .doc-item input[type=file]{
+    width:100%;font-family:'Poppins',sans-serif;font-size:13px;color:var(--ink-soft);
+    background:var(--white);border:1px dashed var(--sand-line);border-radius:2px;padding:10px 12px;
+  }
+  .doc-item .file-list{margin-top:8px;font-size:12px;color:var(--gold);line-height:1.7;}
+  .upload-note{font-size:11.5px;color:#8a8378;margin:-2px 0 14px;}
+
+  .agree-box{background:var(--sand);border:1px solid var(--sand-line);padding:22px 24px;border-radius:2px;margin-bottom:22px;}
+  .agree-box h4{font-family:'Italiana',serif;font-weight:400;font-size:17px;margin:0 0 10px;}
+  .agree-box ul{margin:0;padding-left:18px;font-size:13px;color:var(--ink-soft);line-height:1.9;}
+  .agree-box ul li b{color:var(--ink);font-weight:500;}
+
+  .consent{display:flex;gap:12px;align-items:flex-start;padding:16px 0;border-top:1px solid var(--sand-line);}
+  .consent input{margin-top:3px;accent-color:var(--crimson);}
+  .consent label{font-size:13px;color:var(--ink-soft);line-height:1.6;}
+
+  .nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:36px;padding-top:24px;border-top:1px solid var(--sand-line);}
+  button{font-family:'Poppins',sans-serif;font-size:13.5px;letter-spacing:.03em;cursor:pointer;border-radius:2px;padding:13px 26px;}
+  .btn-primary{background:var(--crimson);color:#fff;border:1px solid var(--crimson);}
+  .btn-primary:hover{background:var(--crimson-dark);}
+  .btn-primary:disabled{opacity:.6;cursor:wait;}
+  .btn-ghost{background:transparent;color:var(--ink-soft);border:1px solid var(--sand-line);}
+  .btn-ghost:hover{border-color:var(--ink-soft);color:var(--ink);}
+
+  .review-block{margin-bottom:26px;}
+  .review-block h4{font-family:'Italiana',serif;font-weight:400;font-size:16px;margin:0 0 12px;color:var(--crimson);}
+  .review-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;}
+  .review-grid .rk{font-size:11.5px;color:#8a8378;}
+  .review-grid .rv{font-size:13.5px;margin-bottom:10px;}
+  @media(max-width:600px){.review-grid{grid-template-columns:1fr;}}
+
+  .success{text-align:center;padding:40px 10px 10px;}
+  .success .stamp{width:64px;height:64px;border-radius:50%;border:1.5px solid var(--gold);color:var(--gold);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-family:'Italiana',serif;font-size:26px;}
+  .success h2{font-family:'Italiana',serif;font-weight:400;font-size:26px;margin:0 0 10px;}
+  .success p{font-size:14px;color:var(--ink-soft);max-width:420px;margin:0 auto 26px;line-height:1.7;}
+  .success .actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+
+  .ref{font-size:11.5px;color:#8a8378;text-align:center;margin-top:10px;}
+
+  .site-footer{border-top:1px solid var(--sand-line);padding:28px 24px 40px;text-align:center;margin-top:16px;}
+  .site-footer p{font-size:11.5px;color:#8a8378;margin:0;letter-spacing:.01em;}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <p class="brand">Ritumbhara &mdash; FOCO Partnership</p>
+  <h1>Asset owner onboarding</h1>
+  <p>A few details about you and your property so we can prepare your partnership agreement and onboarding plan. This takes about 8 minutes.</p>
+</div>
+
+<div class="wrap">
+  <div class="layout">
+    <div class="rail" id="rail"></div>
+    <div class="card" id="card"></div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <p>&copy; <span id="footerYear"></span> Ritumbhara, a brand of LilacMosaic Technologies Private Limited. All rights reserved.</p>
+</footer>
+
+<script>
+const SUBMIT_URL = "https://script.google.com/macros/s/AKfycbyU_UAwyUYqfbbrEVED_hbP2uzovPpZKpDBNLbvAbgAa2x4W3MyyBT3HPUlIu1FZ-msLg/exec";
+
+const steps = ['Owner details','Property details','Payout details','Documents','Agreement','Review'];
+let current = 0;
+let submitting = false;
+const data = {
+  ownerName:'', ownerPhone:'', ownerEmail:'', ownerAddress:'', ownerPan:'',
+  propName:'', propCity:'', propCityOther:'', propAddress:'', propType:'', propRooms:'', propAmenities:'', propStatus:'',
+  bankName:'', bankAccName:'', bankAccNo:'', bankIfsc:'', bankUpi:'',
+  consent:false
+};
+
+const docTypes = [
+  {key:'title', label:'Title deed / ownership proof', sub:'Sale deed, patta, or equivalent proof of ownership.'},
+  {key:'id', label:'Owner ID proof', sub:'PAN and Aadhaar (or passport) of the property owner.'},
+  {key:'photos', label:'Property photographs', sub:'Recent exterior and interior photos of the property.'},
+  {key:'noc', label:'No-objection certificate', sub:'Society / local authority NOC, if applicable.'},
+  {key:'tax', label:'Property tax receipt', sub:'Latest paid property tax receipt.'}
+];
+const docFiles = {}; // key -> array of {name, mimeType, data}
+
+function renderRail(){
+  const rail = document.getElementById('rail');
+  rail.innerHTML = steps.map((s,i)=>{
+    const cls = i===current ? 'active' : (i<current ? 'done' : '');
+    const mark = i<current ? '&#10003;' : (i+1);
+    return `<div class="rail-item ${cls}"><div class="tag">${mark}</div><div class="rail-label">${s}</div></div>`;
+  }).join('');
+}
+
+function field(id,label,opts={}){
+  const req = opts.required ? '<span class="req"> *</span>' : '';
+  const val = data[id] || '';
+  if(opts.type==='select'){
+    const options = opts.options.map(o=>`<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('');
+    return `<div class="field" id="f_${id}"><label>${label}${req}</label>
+      <select data-field="${id}"><option value="">Select</option>${options}</select>
+      <div class="err">This field is required.</div></div>`;
+  }
+  if(opts.type==='textarea'){
+    return `<div class="field" id="f_${id}"><label>${label}${req}</label>
+      <textarea data-field="${id}" placeholder="${opts.placeholder||''}">${val}</textarea>
+      <div class="err">This field is required.</div></div>`;
+  }
+  return `<div class="field" id="f_${id}"><label>${label}${req}</label>
+    <input data-field="${id}" type="${opts.type||'text'}" placeholder="${opts.placeholder||''}" value="${val}">
+    ${opts.hint?`<div class="hint">${opts.hint}</div>`:''}
+    <div class="err">This field is required.</div></div>`;
+}
+
+function stepBody(i){
+  if(i===0) return `
+    <p class="step-eyebrow">Step 01</p>
+    <h2 class="step-title">Owner details</h2>
+    <p class="step-sub">Who we'll be signing the partnership agreement with.</p>
+    <div class="field-row">
+      ${field('ownerName','Full name',{required:true,placeholder:'As per PAN card'})}
+      ${field('ownerPhone','Phone number',{required:true,type:'tel',placeholder:'+91'})}
+    </div>
+    <div class="field-row">
+      ${field('ownerEmail','Email address',{required:true,type:'email',placeholder:'you@example.com'})}
+      ${field('ownerPan','PAN number',{required:true,placeholder:'ABCDE1234F'})}
+    </div>
+    <div class="field-row single">
+      ${field('ownerAddress','Residential address',{required:true,type:'textarea'})}
+    </div>`;
+
+  if(i===1) return `
+    <p class="step-eyebrow">Step 02</p>
+    <h2 class="step-title">Property details</h2>
+    <p class="step-sub">Tell us about the property you'd like to bring into the Ritumbhara portfolio.</p>
+    <div class="field-row">
+      ${field('propName','Property name',{required:true,placeholder:'e.g. The Jeerota Retreat'})}
+      ${field('propCity','City / region',{required:true,type:'select',options:['Jaipur','Alwar','Sariska / Jeerota','Agra','Other']})}
+    </div>
+    ${data.propCity==='Other' ? `<div class="field-row single">${field('propCityOther','Please specify the city',{required:true,placeholder:'Enter city name'})}</div>` : ''}
+    <div class="field-row single">
+      ${field('propAddress','Full property address',{required:true,type:'textarea'})}
+    </div>
+    <div class="field-row">
+      ${field('propType','Property type',{required:true,type:'select',options:['Villa','Farmhouse','Homestay','Boutique hotel','Serviced apartment','Other']})}
+      ${field('propRooms','Number of bedrooms',{required:true,type:'number',placeholder:'e.g. 4'})}
+    </div>
+    <div class="field-row">
+      ${field('propStatus','Current status',{required:true,type:'select',options:['Vacant / ready to operate','Currently self-managed','Currently listed elsewhere','Under construction']})}
+      ${field('propAmenities','Key amenities',{placeholder:'Pool, lawn, parking, AC...'})}
+    </div>`;
+
+  if(i===2) return `
+    <p class="step-eyebrow">Step 03</p>
+    <h2 class="step-title">Payout details</h2>
+    <p class="step-sub">Where your share of the monthly profit should be paid out, per the 60% owner / 40% Ritumbhara profit-share structure.</p>
+    <div class="field-row">
+      ${field('bankAccName','Account holder name',{required:true})}
+      ${field('bankName','Bank name',{required:true})}
+    </div>
+    <div class="field-row">
+      ${field('bankAccNo','Account number',{required:true})}
+      ${field('bankIfsc','IFSC code',{required:true,placeholder:'e.g. HDFC0001234'})}
+    </div>
+    <div class="field-row single">
+      ${field('bankUpi','UPI ID (optional, for incidental payouts)',{placeholder:'name@bank'})}
+    </div>`;
+
+  if(i===3) return `
+    <p class="step-eyebrow">Step 04</p>
+    <h2 class="step-title">Documents</h2>
+    <p class="step-sub">Upload what you have now — you can send anything missing later. Accepted: images and PDFs.</p>
+    <p class="upload-note">Each file should be under 10MB.</p>
+    <div class="doc-list">
+      ${docTypes.map(d=>docItem(d)).join('')}
+    </div>`;
+
+  if(i===4) return `
+    <p class="step-eyebrow">Step 05</p>
+    <h2 class="step-title">Partnership agreement</h2>
+    <p class="step-sub">The FOCO terms that will govern our partnership.</p>
+    <div class="agree-box">
+      <h4>Ritumbhara Standard — FOCO terms</h4>
+      <ul>
+        <li><b>Model:</b> Franchise-Owned, Company-Operated. Ritumbhara manages day-to-day operations, guest experience, and distribution.</li>
+        <li><b>Term:</b> 5-year partnership agreement.</li>
+        <li><b>Standards:</b> Property is maintained and operated to the Ritumbhara Standard across all ten commitments.</li>
+      </ul>
+    </div>
+    <div class="consent">
+      <input type="checkbox" id="consentBox" ${data.consent?'checked':''}>
+      <label for="consentBox">I understand these are indicative terms. A detailed partner prospectus and formal agreement will follow before anything is binding, and I consent to Ritumbhara contacting me to proceed.</label>
+    </div>`;
+
+  if(i===5) return renderReview();
+}
+
+function docItem(d){
+  const files = docFiles[d.key] || [];
+  const fileNames = files.length
+    ? `<div class="file-list">${files.map(f=>'&#10003; ' + f.name).join('<br>')}</div>`
+    : '';
+  return `<div class="doc-item">
+    <div class="di-title">${d.label}</div>
+    <div class="di-sub">${d.sub}</div>
+    <input type="file" accept="image/*,application/pdf" multiple data-doc="${d.key}">
+    ${fileNames}
+  </div>`;
+}
+
+function renderReview(){
+  const rows = (pairs)=>pairs.map(([k,v])=>`<div class="rk">${k}</div><div class="rv">${v||'&mdash;'}</div>`).join('');
+  const docLabels = {};
+  docTypes.forEach(d=>docLabels[d.key]=d.label);
+  const docSummary = Object.keys(docFiles).filter(k=>docFiles[k]&&docFiles[k].length)
+    .map(k=>`${docLabels[k]} (${docFiles[k].length})`).join(', ') || 'None uploaded yet';
+  return `
+    <p class="step-eyebrow">Step 06</p>
+    <h2 class="step-title">Review and submit</h2>
+    <p class="step-sub">Please check the details below before submitting.</p>
+    <div class="review-block"><h4>Owner</h4><div class="review-grid">
+      ${rows([['Name',data.ownerName],['Phone',data.ownerPhone],['Email',data.ownerEmail],['PAN',data.ownerPan],['Address',data.ownerAddress]])}
+    </div></div>
+    <div class="review-block"><h4>Property</h4><div class="review-grid">
+      ${rows([['Name',data.propName],['City',data.propCity==='Other'?data.propCityOther:data.propCity],['Type',data.propType],['Bedrooms',data.propRooms],['Status',data.propStatus],['Amenities',data.propAmenities],['Address',data.propAddress]])}
+    </div></div>
+    <div class="review-block"><h4>Payout</h4><div class="review-grid">
+      ${rows([['Account holder',data.bankAccName],['Bank',data.bankName],['Account no.',data.bankAccNo],['IFSC',data.bankIfsc],['UPI',data.bankUpi]])}
+    </div></div>
+    <div class="review-block"><h4>Documents</h4><div class="review-grid">${rows([['Uploaded',docSummary]])}</div></div>`;
+}
+
+function bindInputs(){
+  document.querySelectorAll('[data-field]').forEach(el=>{
+    el.addEventListener('input', ()=>{ data[el.dataset.field]=el.value; clearError(el.dataset.field); });
+    el.addEventListener('change', ()=>{
+      data[el.dataset.field]=el.value; clearError(el.dataset.field);
+      if(el.dataset.field==='propCity') renderCard();
+    });
+  });
+  document.querySelectorAll('[data-doc]').forEach(el=>{
+    el.addEventListener('change', async (e)=>{
+      const key = el.dataset.doc;
+      const files = Array.from(e.target.files || []);
+      const label = (docTypes.find(d=>d.key===key)||{}).label || key;
+      const encoded = [];
+      for(const f of files){
+        if(f.size > 10*1024*1024) continue; // skip >10MB
+        const b64 = await fileToBase64(f);
+        encoded.push({name: label + ' - ' + f.name, mimeType: f.type || 'application/octet-stream', data: b64});
+      }
+      docFiles[key] = encoded;
+      renderCard();
+    });
+  });
+  const cb = document.getElementById('consentBox');
+  if(cb) cb.addEventListener('change', ()=>{ data.consent = cb.checked; });
+}
+
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const result = reader.result; // data:mime;base64,XXXX
+      const b64 = String(result).split(',')[1] || '';
+      resolve(b64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function clearError(id){
+  const wrap = document.getElementById('f_'+id);
+  if(wrap) wrap.classList.remove('invalid');
+}
+
+const requiredByStep = {
+  0:['ownerName','ownerPhone','ownerEmail','ownerPan','ownerAddress'],
+  1:['propName','propCity','propAddress','propType','propRooms','propStatus'],
+  2:['bankAccName','bankName','bankAccNo','bankIfsc'],
+  3:[],
+  4:[]
+};
+
+function validateStep(i){
+  let ok = true;
+  (requiredByStep[i]||[]).forEach(id=>{
+    if(!data[id] || String(data[id]).trim()===''){
+      const wrap = document.getElementById('f_'+id);
+      if(wrap) wrap.classList.add('invalid');
+      ok = false;
+    }
+  });
+  if(i===4 && !data.consent){ ok = false; alert('Please confirm you understand the indicative terms to continue.'); }
+  if(i===1 && data.propCity==='Other' && !String(data.propCityOther||'').trim()){
+    const wrap = document.getElementById('f_propCityOther');
+    if(wrap) wrap.classList.add('invalid');
+    ok = false;
+  }
+  return ok;
+}
+
+function renderCard(){
+  const card = document.getElementById('card');
+  card.innerHTML = stepBody(current) + `
+    <div class="nav-row">
+      <button class="btn-ghost" id="backBtn" ${current===0?'style="visibility:hidden"':''}>Back</button>
+      ${current < steps.length-1
+        ? `<button class="btn-primary" id="nextBtn">Continue</button>`
+        : `<button class="btn-primary" id="submitBtn">Submit application</button>`}
+    </div>`;
+  bindInputs();
+  document.getElementById('backBtn')?.addEventListener('click', ()=>{ current--; renderAll(); });
+  document.getElementById('nextBtn')?.addEventListener('click', ()=>{
+    if(validateStep(current)){ current++; renderAll(); }
+  });
+  document.getElementById('submitBtn')?.addEventListener('click', submitForm);
+}
+
+function renderAll(){ renderRail(); renderCard(); window.scrollTo({top:0,behavior:'smooth'}); }
+
+function collectFilesArray(){
+  const all = [];
+  Object.keys(docFiles).forEach(k=>{
+    (docFiles[k]||[]).forEach(f=>all.push(f));
+  });
+  return all;
+}
+
+async function submitForm(){
+  if(submitting) return;
+  submitting = true;
+  const btn = document.getElementById('submitBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Submitting…'; }
+
+  const ref = 'RTB-' + Date.now().toString().slice(-8);
+  const payload = {
+    reference: ref,
+    ownerName: data.ownerName, phone: data.ownerPhone, email: data.ownerEmail, pan: data.ownerPan, ownerAddress: data.ownerAddress,
+    propertyName: data.propName, city: (data.propCity==='Other'?data.propCityOther:data.propCity), propertyType: data.propType, bedrooms: data.propRooms,
+    status: data.propStatus, amenities: data.propAmenities, propertyAddress: data.propAddress,
+    accountHolder: data.bankAccName, bank: data.bankName, accountNumber: data.bankAccNo, ifsc: data.bankIfsc, upi: data.bankUpi,
+    documents: Object.keys(docFiles).filter(k=>docFiles[k]&&docFiles[k].length).join(', '),
+    files: collectFilesArray()
+  };
+
+  try{
+    await fetch(SUBMIT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+  }catch(err){
+    // no-cors gives no readable response either way; never block the success screen
+  }
+
+  showSuccess(ref);
+}
+
+function showSuccess(ref){
+  const card = document.getElementById('card');
+  document.getElementById('rail').innerHTML = steps.map((s)=>`<div class="rail-item done"><div class="tag">&#10003;</div><div class="rail-label">${s}</div></div>`).join('');
+  card.innerHTML = `
+    <div class="success">
+      <div class="stamp">R</div>
+      <h2>Application received</h2>
+      <p>Thank you, ${(data.ownerName||'partner').split(' ')[0]}. Our partnerships team will review your property and reach out within 2&ndash;3 business days to schedule a site visit.</p>
+      <div class="actions">
+        <button class="btn-ghost" id="emailBtn">Email a copy to yourself</button>
+      </div>
+      <p class="ref">Reference: ${ref}</p>
+    </div>`;
+  document.getElementById('emailBtn').addEventListener('click', ()=>{
+    const subject = encodeURIComponent('Your Ritumbhara application — ' + ref);
+    const body = encodeURIComponent('Your onboarding application (' + ref + ') has been submitted. Our partnerships team will be in touch within 2-3 business days.');
+    window.location.href = `mailto:${data.ownerEmail || ''}?subject=${subject}&body=${body}`;
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+renderAll();
+document.getElementById('footerYear').textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>
