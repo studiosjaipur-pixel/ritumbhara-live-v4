@@ -5,6 +5,7 @@ import { properties } from "@/config/properties.config";
 import PropertyCard from "@/components/PropertyCard";
 import IndiaMap from "@/components/IndiaMap";
 import Testimonials from "@/components/Testimonials";
+import CheckAvailabilityWidget from "@/components/CheckAvailabilityWidget";
 
 const faqs = [
   { question: "How do I book a stay with Ritumbhara?", answer: "Each property page has a Book Now link that takes you directly to that property's secure booking page on Hotel Spider, our booking engine partner. Ritumbhara does not process reservations or payments on this website." },
@@ -31,14 +32,18 @@ export default function Home() {
 
 return React.createElement("main", null,
                            React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(faqSchema) } }),
-                           React.createElement("section", { className: "relative h-screen min-h-[640px] flex items-center overflow-hidden bg-[#97183C]" },
-                                               React.createElement("div", { className: "max-w-7xl mx-auto px-6 lg:px-10 relative z-10" },
+                           React.createElement("section", { className: "relative min-h-[720px] lg:min-h-[760px] flex items-center overflow-hidden bg-[#97183C] pt-32 pb-16" },
+                                               React.createElement("div", { className: "max-w-7xl mx-auto px-6 lg:px-10 relative z-10 w-full" },
                                                                    React.createElement("p", { className: "uppercase tracking-[0.2em] text-xs text-[#C8A96A] font-semibold mb-3" }, "India, Thoughtfully Hosted"),
-                                                                   React.createElement("h1", { className: "text-5xl lg:text-7xl font-semibold text-white mb-6 max-w-3xl" }, "Every Destination. One Standard of Hospitality."),
-                                                                   React.createElement("p", { className: "text-white/80 text-lg max-w-2xl mb-10" }, "Hotels, villas, serviced apartments and boutique stays across India, each one managed to the same exacting standard."),
-                                                                   React.createElement("div", { className: "flex items-center gap-6" },
-                                                                                       React.createElement(Link, { href: "/destinations", className: "bg-white text-[#97183C] font-medium px-8 py-3.5 rounded-sm" }, "Explore Destinations"),
-                                                                                       React.createElement(Link, { href: "/about", className: "text-white underline underline-offset-4" }, "Our Story")
+                                                                   React.createElement("h1", { className: "text-5xl lg:text-7xl font-semibold text-white mb-6 max-w-3xl" }, "A Home-Away-From-Home, Managed So You Don't Have To Worry."),
+                                                                   React.createElement("p", { className: "text-white/80 text-lg max-w-2xl mb-4" }, "Hotels, villas, serviced apartments and boutique stays across India, each one managed to the same exacting standard."),
+                                                                   React.createElement("div", { className: "flex items-center gap-2 mb-8" },
+                                                                                       React.createElement("span", { className: "text-xs font-semibold text-white bg-white/10 border border-white/20 rounded-md px-3 py-1.5" }, "\u2605 Airbnb Superhost \u00B7 Book direct, no OTA fees")
+                                                                                       ),
+                                                                   React.createElement(CheckAvailabilityWidget, { variant: "hero" }),
+                                                                   React.createElement("div", { className: "flex items-center gap-6 mt-6" },
+                                                                                       React.createElement(Link, { href: "/destinations", className: "text-white underline underline-offset-4 text-sm" }, "Or browse all destinations \u2192"),
+                                                                                       React.createElement(Link, { href: "/about", className: "text-white/70 underline underline-offset-4 text-sm" }, "Our Story")
                                                                                        )
                                                                    )
                                                ),
@@ -54,6 +59,25 @@ return React.createElement("main", null,
                                                                                        })
                                                                                        ),
                                                                    React.createElement(IndiaMap, null)
+                                                                   )
+                                               ),
+                           React.createElement("section", { className: "bg-[#1A1A1A] py-16" },
+                                               React.createElement("div", { className: "max-w-7xl mx-auto px-6 lg:px-10 grid sm:grid-cols-3 gap-10 text-center" },
+                                                                   React.createElement("div", null,
+                                                                                       React.createElement("p", { className: "text-[#C8A96A] text-2xl mb-2" }, "\u2605"),
+                                                                                       React.createElement("h3", { className: "text-white font-semibold mb-2" }, "Airbnb Superhost"),
+                                                                                       React.createElement("p", { className: "text-white/60 text-sm" }, "Consistently rated for cleanliness, communication and hospitality across our portfolio.")
+                                                                                       ),
+                                                                   React.createElement("div", null,
+                                                                                       React.createElement("p", { className: "text-[#C8A96A] text-2xl mb-2" }, "\u20B9"),
+                                                                                       React.createElement("h3", { className: "text-white font-semibold mb-2" }, "No OTA Booking Fees"),
+                                                                                       React.createElement("p", { className: "text-white/60 text-sm" }, "Book direct with Ritumbhara and skip the third-party commission markups.")
+                                                                                       ),
+                                                                   React.createElement("div", null,
+                                                                                       React.createElement("p", { className: "text-[#C8A96A] text-2xl mb-2" }, "\u260E"),
+                                                                                       React.createElement("h3", { className: "text-white font-semibold mb-2" }, "Real Human Support"),
+                                                                                       React.createElement("p", { className: "text-white/60 text-sm" }, "Reach us directly by phone or WhatsApp \u2014 no call centers, no chatbots.")
+                                                                                       )
                                                                    )
                                                ),
                            React.createElement("section", { id: "properties", className: "scroll-mt-28 bg-[#F5F1EA] py-24 lg:py-32" },

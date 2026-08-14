@@ -2,7 +2,9 @@ import React from "react";
 import Link from "next/link";
 import { destinations } from "@/config/destinations.config";
 import { properties } from "@/config/properties.config";
+import { testimonials } from "@/config/testimonials.config";
 import PropertyCard from "@/components/PropertyCard";
+import CheckAvailabilityWidget from "@/components/CheckAvailabilityWidget";
 import { notFound } from "next/navigation";
 
 export function generateStaticParams() {
@@ -36,6 +38,7 @@ export default function DestinationPage({ params }: { params: { slug: string } }
   const destination = destinations.find(function (d) { return d.slug === params.slug; });
   if (!destination) return notFound();
   const destinationProperties = properties.filter(function (p) { return p.destinationSlug === destination.slug; });
+  const matchingTestimonial = testimonials.find(function (t) { return t.location.toLowerCase() === destination.name.toLowerCase(); });
 
   const placeSchema = {
     "@context": "https://schema.org",
@@ -69,13 +72,42 @@ export default function DestinationPage({ params }: { params: { slug: string } }
         " to be notified when we launch."
       )
     ),
+    destination.status === "operational" && React.createElement("div", { className: "mb-16" },
+      React.createElement(CheckAvailabilityWidget, { variant: "inline" })
+    ),
     destinationProperties.length > 0 && React.createElement("div", null,
       React.createElement("h2", { className: "text-2xl font-semibold text-[#1A1A1A] mb-8" }, "Stays in " + destination.name),
-      React.createElement("div", { className: "grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16" },
+      React.createElement("div", { className: "grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10" },
         destinationProperties.map(function (p) {
           return React.createElement(PropertyCard, { key: p.slug, property: p });
         })
+      ),
+      React.createElement("div", { className: "overflow-x-auto mb-16" },
+        React.createElement("table", { className: "w-full text-sm border border-[#EDE7DD] rounded-md" },
+          React.createElement("thead", null,
+            React.createElement("tr", { className: "bg-[#F5F1EA] text-left" },
+              React.createElement("th", { className: "p-3 font-semibold text-[#1A1A1A]" }, "Property"),
+              React.createElement("th", { className: "p-3 font-semibold text-[#1A1A1A]" }, "Type"),
+              React.createElement("th", { className: "p-3 font-semibold text-[#1A1A1A]" }, "Amenities Listed")
+            )
+          ),
+          React.createElement("tbody", null,
+            destinationProperties.map(function (p) {
+              return React.createElement("tr", { key: p.slug, className: "border-t border-[#EDE7DD]" },
+                React.createElement("td", { className: "p-3" },
+                  React.createElement(Link, { href: "/properties/" + p.slug, className: "text-[#97183C] font-medium hover:underline" }, p.name)
+                ),
+                React.createElement("td", { className: "p-3 text-[#4A4A4A]" }, p.propertyType),
+                React.createElement("td", { className: "p-3 text-[#4A4A4A]" }, p.amenities.length > 0 ? p.amenities.length + " listed" : "Available on request")
+              );
+            })
+          )
+        )
       )
+    ),
+    matchingTestimonial && React.createElement("div", { className: "border border-[#EDE7DD] bg-white rounded-md p-6 mb-16 max-w-2xl" },
+      React.createElement("blockquote", { className: "text-[#1A1A1A] text-base leading-relaxed mb-3" }, "\u201C" + matchingTestimonial.quote + "\u201D"),
+      React.createElement("p", { className: "text-sm text-[#8A8A8A] font-medium" }, matchingTestimonial.guestLabel + " \u2014 " + matchingTestimonial.location)
     ),
     destination.thingsToDo.length > 0 && React.createElement("div", null,
       React.createElement("h2", { className: "text-2xl font-semibold text-[#1A1A1A] mb-8" }, "Things To Do"),

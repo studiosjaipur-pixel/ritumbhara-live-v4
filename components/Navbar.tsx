@@ -30,7 +30,6 @@ const navLinks = [
     { href: "/experiences", label: "Experiences" },
     { href: "/about", label: "Our Story" },
     { href: "/contact", label: "Contact" },
-    { href: "/partner-onboarding.html", label: "Partner With Us" },
     ];
 
 const isSolid = scrolled || mobileOpen;
