@@ -6,6 +6,7 @@ import PropertyCard from "@/components/PropertyCard";
 import IndiaMap from "@/components/IndiaMap";
 import Testimonials from "@/components/Testimonials";
 import CheckAvailabilityWidget from "@/components/CheckAvailabilityWidget";
+import LeadCaptureForm from "@/components/LeadCaptureForm";
 
 const faqs = [
   { question: "How do I book a stay with Ritumbhara?", answer: "Each property page has a Book Now link that takes you directly to that property's secure booking page on Hotel Spider, our booking engine partner. Ritumbhara does not process reservations or payments on this website." },
@@ -95,6 +96,12 @@ return React.createElement("main", null,
                                                React.createElement("p", { className: "text-[#4A4A4A] max-w-2xl mx-auto" }, "Guest experience, cleanliness, hospitality, interior design, technology, housekeeping, service, local experiences, safety and communication, applied consistently across every property we manage.")
                                                ),
                            React.createElement(Testimonials, null),
+                           React.createElement("section", { className: "max-w-7xl mx-auto px-6 lg:px-10 py-16 flex justify-center" },
+                                               React.createElement(LeadCaptureForm, {
+                                                 title: "Not ready to book yet?",
+                                                 subtitle: "Leave your email and we'll let you know about new destinations, availability, and offers.",
+                                               })
+                                               ),
                            React.createElement("section", { id: "faq", className: "scroll-mt-28 max-w-4xl mx-auto px-6 lg:px-10 py-24 lg:py-32" },
                                                React.createElement("h2", { className: "text-3xl font-semibold text-[#1A1A1A] mb-12 text-center" }, "Frequently Asked Questions"),
                                                React.createElement("div", { className: "space-y-8" },

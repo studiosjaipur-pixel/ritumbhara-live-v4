@@ -5,6 +5,7 @@ import { properties } from "@/config/properties.config";
 import { testimonials } from "@/config/testimonials.config";
 import PropertyCard from "@/components/PropertyCard";
 import CheckAvailabilityWidget from "@/components/CheckAvailabilityWidget";
+import LeadCaptureForm from "@/components/LeadCaptureForm";
 import { notFound } from "next/navigation";
 
 export function generateStaticParams() {
@@ -64,13 +65,20 @@ export default function DestinationPage({ params }: { params: { slug: string } }
     React.createElement("p", { className: "uppercase tracking-[0.2em] text-xs text-[#C8A96A] font-semibold mb-3" }, "Destination"),
     React.createElement("h1", { className: "text-5xl font-semibold text-[#1A1A1A] mb-6" }, destination.name),
     React.createElement("p", { className: "text-lg text-[#4A4A4A] max-w-2xl mb-14" }, destination.shortStory),
-    destination.status === "coming-soon" && React.createElement("div", { className: "border border-[#EDE7DD] bg-[#F5F1EA] rounded-md p-6 mb-16 max-w-xl" },
+    destination.status === "coming-soon" && React.createElement("div", { className: "border border-[#EDE7DD] bg-[#F5F1EA] rounded-md p-6 mb-10 max-w-xl" },
       React.createElement("p", { className: "text-sm font-semibold text-[#97183C] mb-2" }, "Coming Soon"),
       React.createElement("p", { className: "text-sm text-[#4A4A4A]" },
         "We're preparing managed stays in " + destination.name + ". ",
         React.createElement(Link, { href: "/contact", className: "underline font-medium text-[#97183C]" }, "Get in touch"),
         " to be notified when we launch."
       )
+    ),
+    destination.status === "coming-soon" && React.createElement("div", { className: "mb-16" },
+      React.createElement(LeadCaptureForm, {
+        title: "Be the first to know",
+        subtitle: "We'll email you the moment " + destination.name + " opens for booking.",
+        defaultDestination: destination.slug,
+      })
     ),
     destination.status === "operational" && React.createElement("div", { className: "mb-16" },
       React.createElement(CheckAvailabilityWidget, { variant: "inline" })
