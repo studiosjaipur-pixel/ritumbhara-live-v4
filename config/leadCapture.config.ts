@@ -1,4 +1,3 @@
-// Set this to the Apps Script Web App URL after deploying LEAD_CAPTURE_APPS_SCRIPT.gs
-// (see /docs or the deployment notes shared alongside this change).
-// Leave empty to keep the form disabled/hidden until the endpoint is live.
-export const LEAD_CAPTURE_ENDPOINT = "";
+// Backend: n8n webhook -> stores in the "Website Leads" n8n data table
+// (workflow: Ritumbhara Website Lead Capture, project: Shivam Lohiya personal).
+export const LEAD_CAPTURE_ENDPOINT = "https://ritumbhara.app.n8n.cloud/webhook/ritumbhara-lead-capture";
