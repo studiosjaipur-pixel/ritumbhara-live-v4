@@ -2,6 +2,7 @@ import React from "react";
 import Image from "next/image";
 import { properties } from "@/config/properties.config";
 import { destinations } from "@/config/destinations.config";
+import { testimonials } from "@/config/testimonials.config";
 import { notFound } from "next/navigation";
 
 export function generateStaticParams() {
@@ -35,6 +36,7 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
   const property = properties.find(function (p) { return p.slug === params.slug; });
   if (!property) return notFound();
   const destination = destinations.find(function (d) { return d.slug === property.destinationSlug; });
+  const matchingTestimonial = destination ? testimonials.find(function (t) { return t.location.toLowerCase() === destination.name.toLowerCase(); }) : undefined;
 
   const lodgingSchema = {
     "@context": "https://schema.org",
@@ -82,6 +84,10 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
               )
             )
           : React.createElement("p", { className: "text-sm text-[#4A4A4A] italic" }, "Full amenity details for this property are available on request \u2014 contact us using the details alongside.")
+      ),
+      matchingTestimonial && React.createElement("div", { className: "border border-[#EDE7DD] bg-[#F5F1EA] rounded-md p-6 mt-10" },
+        React.createElement("blockquote", { className: "text-[#1A1A1A] text-base leading-relaxed mb-3" }, "\u201C" + matchingTestimonial.quote + "\u201D"),
+        React.createElement("p", { className: "text-sm text-[#8A8A8A] font-medium" }, matchingTestimonial.guestLabel + " \u2014 a guest in " + matchingTestimonial.location)
       ),
       React.createElement("aside", { className: "border border-[#EDE7DD] rounded-md p-7 h-fit lg:sticky lg:top-32" },
         React.createElement("div", { className: "flex items-center gap-2 mb-5 text-xs font-semibold text-[#97183C] bg-[#F5F1EA] rounded-md px-3 py-2 w-fit" },
