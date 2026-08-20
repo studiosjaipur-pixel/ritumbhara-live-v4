@@ -64,15 +64,34 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
     ].filter(Boolean),
   };
 
-  return React.createElement("main", { className: "max-w-7xl mx-auto px-6 lg:px-10 pt-32 pb-28 lg:pb-24" },
+  return React.createElement(React.Fragment, null,
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(lodgingSchema) } }),
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(breadcrumbSchema) } }),
-    React.createElement("div", { className: "relative h-[420px] w-full rounded-md overflow-hidden mb-10" },
-      React.createElement(Image, { src: property.heroImage, alt: property.name, fill: true, sizes: "100vw", priority: true, className: "object-cover" })
+    React.createElement("div", { className: "relative h-[58vh] min-h-[380px] w-full overflow-hidden" },
+      React.createElement(Image, { src: property.heroImage, alt: property.name, fill: true, sizes: "100vw", priority: true, className: "object-cover" }),
+      React.createElement("div", { className: "absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/30" }),
+      React.createElement("div", { className: "absolute top-24 left-0 right-0 px-6 lg:px-10" },
+        React.createElement("nav", { className: "max-w-7xl mx-auto text-xs text-white/80 flex items-center gap-2" },
+          React.createElement("a", { href: "/", className: "hover:text-white" }, "Home"),
+          React.createElement("span", null, "/"),
+          destination && React.createElement(React.Fragment, null,
+            React.createElement("a", { href: "/destinations/" + destination.slug, className: "hover:text-white" }, destination.name),
+            React.createElement("span", null, "/")
+          ),
+          React.createElement("span", { className: "text-white" }, property.name)
+        )
+      ),
+      React.createElement("div", { className: "absolute bottom-0 left-0 right-0 px-6 lg:px-10 pb-8" },
+        React.createElement("div", { className: "max-w-7xl mx-auto" },
+          React.createElement("span", { className: "inline-block text-xs font-semibold uppercase tracking-wide bg-white/95 text-[#1A1A1A] px-3 py-1.5 rounded-full mb-3" }, property.propertyType),
+          React.createElement("h1", { className: "text-4xl lg:text-5xl font-semibold text-white drop-shadow-sm" }, property.name),
+          destination && React.createElement("p", { className: "text-white/85 text-sm mt-2" }, destination.name + ", " + destination.state)
+        )
+      )
     ),
+    React.createElement("main", { className: "max-w-7xl mx-auto px-6 lg:px-10 pt-12 pb-28 lg:pb-24" },
     React.createElement("div", { className: "grid lg:grid-cols-3 gap-16" },
       React.createElement("div", { className: "lg:col-span-2" },
-        React.createElement("h1", { className: "text-4xl font-semibold mb-6" }, property.name),
         React.createElement("p", { className: "text-lg text-[#4A4A4A] mb-10" }, property.description),
         property.amenities.length > 0
           ? React.createElement(React.Fragment, null,
@@ -103,6 +122,7 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
     React.createElement("div", { className: "fixed bottom-0 inset-x-0 z-40 lg:hidden bg-white border-t border-[#EDE7DD] p-3 flex gap-2 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]" },
       React.createElement("a", { href: "https://wa.me/919503002629?text=" + encodeURIComponent("Hi, I'd like to check availability for " + property.name), target: "_blank", rel: "noopener", className: "flex-1 text-center border border-[#97183C] text-[#97183C] font-medium py-3 rounded-md text-sm" }, "WhatsApp"),
       React.createElement("a", { href: property.hotelSpiderBookingUrl, target: "_blank", rel: "noopener", className: "flex-1 text-center bg-[#97183C] text-white font-medium py-3 rounded-md text-sm" }, "Check Availability")
+    )
     )
   );
 }

@@ -85,7 +85,7 @@ export default function DestinationPage({ params }: { params: { slug: string } }
     ),
     destinationProperties.length > 0 && React.createElement("div", null,
       React.createElement("h2", { className: "text-2xl font-semibold text-[#1A1A1A] mb-8" }, "Stays in " + destination.name),
-      React.createElement("div", { className: "grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10" },
+      React.createElement("div", { className: "grid sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-10" },
         destinationProperties.map(function (p) {
           return React.createElement(PropertyCard, { key: p.slug, property: p });
         })

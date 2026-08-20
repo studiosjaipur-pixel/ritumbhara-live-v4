@@ -83,8 +83,9 @@ return React.createElement("main", null,
                                                ),
                            React.createElement("section", { id: "properties", className: "scroll-mt-28 bg-[#F5F1EA] py-24 lg:py-32" },
                                                React.createElement("div", { className: "max-w-7xl mx-auto px-6 lg:px-10" },
-                                                                   React.createElement("h2", { className: "text-3xl font-semibold text-[#1A1A1A] mb-10" }, "Featured Properties"),
-                                                                   React.createElement("div", { className: "grid sm:grid-cols-2 lg:grid-cols-3 gap-6" },
+                                                                   React.createElement("h2", { className: "text-3xl font-semibold text-[#1A1A1A] mb-2" }, "Featured Properties"),
+                                                                   React.createElement("p", { className: "text-[#4A4A4A] mb-10" }, "A handful of stays from across our portfolio \u2014 each managed to the same standard."),
+                                                                   React.createElement("div", { className: "grid sm:grid-cols-2 lg:grid-cols-3 gap-8" },
                                                                                        featured.map(function (p) {
                                                                                          return React.createElement(PropertyCard, { key: p.slug, property: p });
                                                                                        })
