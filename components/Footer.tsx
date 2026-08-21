@@ -20,6 +20,7 @@ export default function Footer() {
         React.createElement(Link, { href: "/about", className: "block text-sm text-white/60 hover:text-white mb-2" }, "Our Story"),
         React.createElement(Link, { href: "/#standard", className: "block text-sm text-white/60 hover:text-white mb-2" }, "The Ritumbhara Standard"),
         React.createElement(Link, { href: "/experiences", className: "block text-sm text-white/60 hover:text-white mb-2" }, "Experiences"),
+          React.createElement(Link, { href: "/journal", className: "block text-sm text-white/60 hover:text-white mb-2" }, "Journal"),
         React.createElement(Link, { href: "/contact", className: "block text-sm text-white/60 hover:text-white mb-2" }, "Contact"),
         React.createElement("a", { href: "/partner-onboarding.html", className: "block text-sm text-white/60 hover:text-white mb-2" }, "Partner With Us")
       ),
