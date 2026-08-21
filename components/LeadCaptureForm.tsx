@@ -25,7 +25,7 @@ export default function LeadCaptureForm({ title, subtitle, defaultDestination }:
       const destination = destinations.find(function (d) { return d.slug === destinationSlug; });
       const res = await fetch(LEAD_CAPTURE_ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "text/plain" },
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify({
           name: name,
           email: email,
