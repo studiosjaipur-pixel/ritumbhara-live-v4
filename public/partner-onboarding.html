@@ -65,6 +65,14 @@
   .field.invalid input, .field.invalid select, .field.invalid textarea{border-color:var(--danger);}
   .field.invalid .err{display:block;}
 
+  .model-options{display:flex;flex-direction:column;gap:12px;}
+  .model-option{display:flex;gap:12px;align-items:flex-start;padding:16px 18px;background:var(--ivory);border:1px solid var(--sand-line);border-radius:2px;cursor:pointer;transition:border-color .15s;}
+  .model-option:hover{border-color:var(--gold);}
+  .model-option input[type=radio]{margin-top:3px;accent-color:var(--crimson);flex:0 0 auto;}
+  .model-option.checked{border-color:var(--crimson);}
+  .model-option .mo-title{font-size:14px;font-weight:500;margin:0 0 4px;}
+  .model-option .mo-desc{font-size:12.5px;color:var(--ink-soft);line-height:1.6;}
+
   .doc-list{display:flex;flex-direction:column;gap:14px;margin-bottom:8px;}
   .doc-item{padding:16px 18px;background:var(--ivory);border:1px solid var(--sand-line);border-radius:2px;}
   .doc-item .di-title{font-size:14px;font-weight:500;margin:0 0 3px;}
@@ -138,11 +146,17 @@ const steps = ['Owner details','Property details','Payout details','Documents','
 let current = 0;
 let submitting = false;
 const data = {
+  partnershipModel:'',
   ownerName:'', ownerPhone:'', ownerEmail:'', ownerAddress:'', ownerPan:'',
   propName:'', propCity:'', propCityOther:'', propAddress:'', propType:'', propRooms:'', propAmenities:'', propStatus:'',
   bankName:'', bankAccName:'', bankAccNo:'', bankIfsc:'', bankUpi:'',
   consent:false
 };
+
+const partnershipModels = [
+  {value:'FOCO', title:'FOCO — Franchise-Owned, Company-Operated', desc:'You own the property. Ritumbhara manages day-to-day operations, guest experience, and distribution.'},
+  {value:'FOFO', title:'FOFO — Franchise-Owned, Franchise-Operated', desc:'You own and operate the property yourself, under the Ritumbhara brand, SOPs, and design standards, with access to our booking distribution and marketing.'}
+];
 
 const docTypes = [
   {key:'title', label:'Title deed / ownership proof', sub:'Sale deed, patta, or equivalent proof of ownership.'},
@@ -182,11 +196,31 @@ function field(id,label,opts={}){
     <div class="err">This field is required.</div></div>`;
 }
 
+function modelField(){
+  const options = partnershipModels.map(m=>{
+    const checked = data.partnershipModel===m.value ? 'checked' : '';
+    const cls = data.partnershipModel===m.value ? 'model-option checked' : 'model-option';
+    return `<label class="${cls}">
+      <input type="radio" name="partnershipModel" value="${m.value}" data-field="partnershipModel" ${checked}>
+      <div class="mo-title">${m.title}</div>
+    </label>`;
+  }).join('');
+  return `<div class="field" id="f_partnershipModel">
+    <label>Preferred partnership model<span class="req"> *</span></label>
+    <div class="model-options">${options}</div>
+    <div class="hint">Full details of each model are explained in the Partnership Agreement step.</div>
+    <div class="err">Please select a partnership model.</div>
+  </div>`;
+}
+
 function stepBody(i){
   if(i===0) return `
     <p class="step-eyebrow">Step 01</p>
     <h2 class="step-title">Owner details</h2>
     <p class="step-sub">Who we'll be signing the partnership agreement with.</p>
+    <div class="field-row single">
+      ${modelField()}
+    </div>
     <div class="field-row">
       ${field('ownerName','Full name',{required:true,placeholder:'As per PAN card'})}
       ${field('ownerPhone','Phone number',{required:true,type:'tel',placeholder:'+91'})}
@@ -220,10 +254,15 @@ function stepBody(i){
       ${field('propAmenities','Key amenities',{placeholder:'Pool, lawn, parking, AC...'})}
     </div>`;
 
-  if(i===2) return `
+  if(i===2){
+    const isFofo = String(data.partnershipModel||'').startsWith('FOFO');
+    const payoutSub = isFofo
+      ? 'Bank details for your property entity — used for franchise fee invoicing and any applicable settlements with Ritumbhara.'
+      : "Where your share of the monthly profit should be paid out, per the 60% owner / 40% Ritumbhara profit-share structure.";
+    return `
     <p class="step-eyebrow">Step 03</p>
     <h2 class="step-title">Payout details</h2>
-    <p class="step-sub">Where your share of the monthly profit should be paid out, per the 60% owner / 40% Ritumbhara profit-share structure.</p>
+    <p class="step-sub">${payoutSub}</p>
     <div class="field-row">
       ${field('bankAccName','Account holder name',{required:true})}
       ${field('bankName','Bank name',{required:true})}
@@ -235,6 +274,7 @@ function stepBody(i){
     <div class="field-row single">
       ${field('bankUpi','UPI ID (optional, for incidental payouts)',{placeholder:'name@bank'})}
     </div>`;
+  }
 
   if(i===3) return `
     <p class="step-eyebrow">Step 04</p>
@@ -245,22 +285,31 @@ function stepBody(i){
       ${docTypes.map(d=>docItem(d)).join('')}
     </div>`;
 
-  if(i===4) return `
+  if(i===4){
+    const isFofo = String(data.partnershipModel||'').startsWith('FOFO');
+    const termsHeading = isFofo ? 'Ritumbhara Standard — FOFO terms' : 'Ritumbhara Standard — FOCO terms';
+    const termsSub = isFofo ? 'The FOFO terms that will govern our partnership.' : 'The FOCO terms that will govern our partnership.';
+    const termsList = isFofo ? `
+        <li><b>Model:</b> Franchise-Owned, Franchise-Operated — you own and operate the property yourself, under the Ritumbhara brand, SOPs, and design standards, with access to our booking distribution and marketing.</li>
+        <li><b>Standards:</b> Property is operated to the Ritumbhara Standard, with periodic quality audits.</li>
+        <li><b>Detailed terms:</b> Term length, fees, and other commercials will be shared with you in the comprehensive partnership agreement.</li>` : `
+        <li><b>Model:</b> Franchise-Owned, Company-Operated — you own the property; Ritumbhara manages day-to-day operations, guest experience, and distribution.</li>
+        <li><b>Standards:</b> Property is maintained and operated to the Ritumbhara Standard.</li>
+        <li><b>Detailed terms:</b> Term length, profit-share, and other commercials will be shared with you in the comprehensive partnership agreement.</li>`;
+    return `
     <p class="step-eyebrow">Step 05</p>
     <h2 class="step-title">Partnership agreement</h2>
-    <p class="step-sub">The FOCO terms that will govern our partnership.</p>
+    <p class="step-sub">${termsSub}</p>
     <div class="agree-box">
-      <h4>Ritumbhara Standard — FOCO terms</h4>
-      <ul>
-        <li><b>Model:</b> Franchise-Owned, Company-Operated. Ritumbhara manages day-to-day operations, guest experience, and distribution.</li>
-        <li><b>Term:</b> 5-year partnership agreement.</li>
-        <li><b>Standards:</b> Property is maintained and operated to the Ritumbhara Standard across all ten commitments.</li>
+      <h4>${termsHeading}</h4>
+      <ul>${termsList}
       </ul>
     </div>
     <div class="consent">
       <input type="checkbox" id="consentBox" ${data.consent?'checked':''}>
       <label for="consentBox">I understand these are indicative terms. A detailed partner prospectus and formal agreement will follow before anything is binding, and I consent to Ritumbhara contacting me to proceed.</label>
     </div>`;
+  }
 
   if(i===5) return renderReview();
 }
@@ -289,7 +338,7 @@ function renderReview(){
     <h2 class="step-title">Review and submit</h2>
     <p class="step-sub">Please check the details below before submitting.</p>
     <div class="review-block"><h4>Owner</h4><div class="review-grid">
-      ${rows([['Name',data.ownerName],['Phone',data.ownerPhone],['Email',data.ownerEmail],['PAN',data.ownerPan],['Address',data.ownerAddress]])}
+      ${rows([['Partnership model',(partnershipModels.find(m=>m.value===data.partnershipModel)||{}).title || data.partnershipModel],['Name',data.ownerName],['Phone',data.ownerPhone],['Email',data.ownerEmail],['PAN',data.ownerPan],['Address',data.ownerAddress]])}
     </div></div>
     <div class="review-block"><h4>Property</h4><div class="review-grid">
       ${rows([['Name',data.propName],['City',data.propCity==='Other'?data.propCityOther:data.propCity],['Type',data.propType],['Bedrooms',data.propRooms],['Status',data.propStatus],['Amenities',data.propAmenities],['Address',data.propAddress]])}
@@ -305,7 +354,7 @@ function bindInputs(){
     el.addEventListener('input', ()=>{ data[el.dataset.field]=el.value; clearError(el.dataset.field); });
     el.addEventListener('change', ()=>{
       data[el.dataset.field]=el.value; clearError(el.dataset.field);
-      if(el.dataset.field==='propCity') renderCard();
+      if(el.dataset.field==='propCity' || el.dataset.field==='partnershipModel') renderCard();
     });
   });
   document.querySelectorAll('[data-doc]').forEach(el=>{
@@ -346,7 +395,7 @@ function clearError(id){
 }
 
 const requiredByStep = {
-  0:['ownerName','ownerPhone','ownerEmail','ownerPan','ownerAddress'],
+  0:['partnershipModel','ownerName','ownerPhone','ownerEmail','ownerPan','ownerAddress'],
   1:['propName','propCity','propAddress','propType','propRooms','propStatus'],
   2:['bankAccName','bankName','bankAccNo','bankIfsc'],
   3:[],
@@ -407,6 +456,7 @@ async function submitForm(){
   const ref = 'RTB-' + Date.now().toString().slice(-8);
   const payload = {
     reference: ref,
+    partnershipModel: data.partnershipModel,
     ownerName: data.ownerName, phone: data.ownerPhone, email: data.ownerEmail, pan: data.ownerPan, ownerAddress: data.ownerAddress,
     propertyName: data.propName, city: (data.propCity==='Other'?data.propCityOther:data.propCity), propertyType: data.propType, bedrooms: data.propRooms,
     status: data.propStatus, amenities: data.propAmenities, propertyAddress: data.propAddress,
