@@ -208,7 +208,6 @@ function modelField(){
   return `<div class="field" id="f_partnershipModel">
     <label>Preferred partnership model<span class="req"> *</span></label>
     <div class="model-options">${options}</div>
-    <div class="hint">Full details of each model are explained in the Partnership Agreement step.</div>
     <div class="err">Please select a partnership model.</div>
   </div>`;
 }
@@ -218,9 +217,6 @@ function stepBody(i){
     <p class="step-eyebrow">Step 01</p>
     <h2 class="step-title">Owner details</h2>
     <p class="step-sub">Who we'll be signing the partnership agreement with.</p>
-    <div class="field-row single">
-      ${modelField()}
-    </div>
     <div class="field-row">
       ${field('ownerName','Full name',{required:true,placeholder:'As per PAN card'})}
       ${field('ownerPhone','Phone number',{required:true,type:'tel',placeholder:'+91'})}
@@ -255,10 +251,7 @@ function stepBody(i){
     </div>`;
 
   if(i===2){
-    const isFofo = String(data.partnershipModel||'').startsWith('FOFO');
-    const payoutSub = isFofo
-      ? 'Bank details for your property entity — used for franchise fee invoicing and any applicable settlements with Ritumbhara.'
-      : "Where your share of the monthly profit should be paid out, per the 60% owner / 40% Ritumbhara profit-share structure.";
+    const payoutSub = 'Where your payouts or settlements will be made, per the profit-share or franchise terms outlined in your comprehensive partnership agreement.';
     return `
     <p class="step-eyebrow">Step 03</p>
     <h2 class="step-title">Payout details</h2>
@@ -296,15 +289,20 @@ function stepBody(i){
         <li><b>Model:</b> Franchise-Owned, Company-Operated — you own the property; Ritumbhara manages day-to-day operations, guest experience, and distribution.</li>
         <li><b>Standards:</b> Property is maintained and operated to the Ritumbhara Standard.</li>
         <li><b>Detailed terms:</b> Term length, profit-share, and other commercials will be shared with you in the comprehensive partnership agreement.</li>`;
-    return `
-    <p class="step-eyebrow">Step 05</p>
-    <h2 class="step-title">Partnership agreement</h2>
-    <p class="step-sub">${termsSub}</p>
+    const agreeBox = data.partnershipModel ? `
     <div class="agree-box">
       <h4>${termsHeading}</h4>
       <ul>${termsList}
       </ul>
+    </div>` : '';
+    return `
+    <p class="step-eyebrow">Step 05</p>
+    <h2 class="step-title">Partnership agreement</h2>
+    <p class="step-sub">${data.partnershipModel ? termsSub : 'Choose your preferred partnership model to see the terms that will govern our partnership.'}</p>
+    <div class="field-row single">
+      ${modelField()}
     </div>
+    ${agreeBox}
     <div class="consent">
       <input type="checkbox" id="consentBox" ${data.consent?'checked':''}>
       <label for="consentBox">I understand these are indicative terms. A detailed partner prospectus and formal agreement will follow before anything is binding, and I consent to Ritumbhara contacting me to proceed.</label>
@@ -395,11 +393,11 @@ function clearError(id){
 }
 
 const requiredByStep = {
-  0:['partnershipModel','ownerName','ownerPhone','ownerEmail','ownerPan','ownerAddress'],
+  0:['ownerName','ownerPhone','ownerEmail','ownerPan','ownerAddress'],
   1:['propName','propCity','propAddress','propType','propRooms','propStatus'],
   2:['bankAccName','bankName','bankAccNo','bankIfsc'],
   3:[],
-  4:[]
+  4:['partnershipModel']
 };
 
 function validateStep(i){
