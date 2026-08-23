@@ -6,7 +6,7 @@ import { Property } from "@/config/properties.config";
 export default function PropertyCard({ property }: { property: Property }) {
   return React.createElement(Link, {
     href: "/properties/" + property.slug,
-    className: "property-card city-" + property.destinationSlug + " group block rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 active:scale-[0.98] active:translate-y-0 transition-all duration-300 ease-snap
+    className: "property-card city-" + property.destinationSlug + " group block rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 active:scale-[0.98] active:translate-y-0 transition-all duration-300 ease-snap",
   },
     React.createElement("div", { className: "relative aspect-[4/5] w-full overflow-hidden bg-[#EDE7DD]" },
       React.createElement(Image, {
