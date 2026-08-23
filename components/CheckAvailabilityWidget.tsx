@@ -78,7 +78,7 @@ export default function CheckAvailabilityWidget({ variant }: { variant?: "hero" 
       href: buildWhatsAppLink(),
       target: "_blank",
       rel: "noopener",
-      className: "block text-center bg-[#97183C] text-white font-medium py-3 rounded-md hover:bg-[#7E1433] transition-colors",
+      className: "block text-center bg-[#97183C] text-white font-medium py-3 rounded-md hover:bg-[#7E1433] active:scale-[0.98] transition-all duration-200 ease-snap",
     }, "Check Availability via WhatsApp"),
     React.createElement("p", { className: "text-xs text-center text-[#8A8A8A] mt-3" }, "We reply directly \u2014 no OTA fees, real-time human answers")
   );

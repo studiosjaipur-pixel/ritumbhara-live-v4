@@ -6,7 +6,7 @@ import { Property } from "@/config/properties.config";
 export default function PropertyCard({ property }: { property: Property }) {
   return React.createElement(Link, {
     href: "/properties/" + property.slug,
-    className: "property-card city-" + property.destinationSlug + " group block rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-xl transition-shadow duration-300",
+    className: "property-card city-" + property.destinationSlug + " group block rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 active:scale-[0.98] active:translate-y-0 transition-all duration-300 ease-snap",
   },
     React.createElement("div", { className: "relative aspect-[4/5] w-full overflow-hidden bg-[#EDE7DD]" },
       React.createElement(Image, {
@@ -14,7 +14,7 @@ export default function PropertyCard({ property }: { property: Property }) {
         alt: property.name,
         fill: true,
         sizes: "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
-        className: "object-cover transition-transform duration-500 group-hover:scale-105",
+        className: "object-cover transition-transform duration-500 ease-snap group-hover:scale-105",
       }),
       React.createElement("div", { className: "absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0" }),
       React.createElement("div", { className: "absolute top-3 left-3 flex gap-2" },
