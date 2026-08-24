@@ -44,7 +44,7 @@ return React.createElement("header", {
                                                                        return React.createElement(Link, { key: link.href, href: link.href }, link.label);
                                                                    })
                                                                    ),
-                                               React.createElement(Link, { href: "/destinations", className: "hidden lg:block border border-[#97183C] text-[#97183C] px-6 py-2.5 rounded-sm font-medium hover:bg-[#97183C] hover:text-white active:scale-[0.97] transition-all duration-200 ease-snap" }, "Explore Destinations"),
+                                               React.createElement(Link, { href: "/destinations", className: "hidden lg:block border border-[#97183C] text-[#97183C] px-6 py-2.5 rounded-sm font-medium hover-fine:bg-[#97183C] hover-fine:text-white active:scale-[0.97] active:duration-100 active:ease-out transition-[background-color,color,transform] duration-200 ease-snap" }, "Explore Destinations"),
                                                React.createElement("button", {
                                                    type: "button",
                                                    "aria-label": mobileOpen ? "Close menu" : "Open menu",

@@ -4,7 +4,7 @@ import { Experience } from "@/config/experiences.config";
 export default function ExperienceCard({ experience }: { experience: Experience }) {
   return React.createElement(
         "div",
-    { className: "overflow-hidden rounded-lg bg-white border border-neutral-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 ease-snap" },
+    { className: "overflow-hidden rounded-lg bg-white border border-neutral-200 hover-fine:-translate-y-1 transition-transform duration-300 ease-snap" },
         React.createElement("div", { className: "relative w-full h-64 bg-neutral-100" }),
         React.createElement(
           "div",

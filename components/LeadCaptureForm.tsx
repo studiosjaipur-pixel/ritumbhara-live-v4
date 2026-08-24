@@ -95,7 +95,7 @@ export default function LeadCaptureForm({ title, subtitle, defaultDestination }:
     React.createElement("button", {
       type: "submit",
       disabled: status === "submitting",
-      className: "w-full bg-[#97183C] text-white font-medium py-3 rounded-md hover:bg-[#7E1433] active:scale-[0.98] transition-all duration-200 ease-snap disabled:opacity-60 disabled:active:scale-100",
+      className: "w-full bg-[#97183C] text-white font-medium py-3 rounded-md hover-fine:bg-[#7E1433] active:scale-[0.98] active:duration-100 active:ease-out transition-[background-color,transform] duration-200 ease-snap disabled:opacity-60 disabled:active:scale-100",
     }, status === "submitting" ? "Sending..." : "Notify Me"),
     status === "error" && React.createElement("p", { className: "text-xs text-center text-red-600 mt-3" }, "Something went wrong \u2014 please try WhatsApp or email instead.")
   );

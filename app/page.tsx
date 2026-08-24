@@ -53,7 +53,7 @@ return React.createElement("main", null,
                                                React.createElement("div", { className: "grid lg:grid-cols-2 gap-10 items-start" },
                                                                    React.createElement("div", { className: "grid sm:grid-cols-2 gap-6" },
                                                                                        destinations.map(function (d) {
-                                                                                         return React.createElement(Link, { key: d.slug, href: "/destinations/" + d.slug, className: "border border-[#EDE7DD] rounded-md p-6 block hover:shadow-lg hover:-translate-y-1 active:scale-[0.98] active:translate-y-0 transition-all duration-300 ease-snap" },
+                                                                                         return React.createElement(Link, { key: d.slug, href: "/destinations/" + d.slug, className: "border border-[#EDE7DD] rounded-md p-6 block hover-fine:-translate-y-1 active:scale-[0.98] active:translate-y-0 active:duration-100 active:ease-out transition-transform duration-300 ease-snap" },
                                                                                                                     React.createElement("h3", { className: "font-semibold text-[#1A1A1A] mb-2" }, d.name),
                                                                                                                     React.createElement("p", { className: "text-sm text-[#4A4A4A]" }, d.shortStory)
                                                                                                                     );

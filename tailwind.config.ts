@@ -17,6 +17,11 @@ burgundy: "#97183C",
   },
 },
 },
-plugins: [],
+plugins: [
+  function ({ addVariant }: any) {
+    addVariant("hover-fine", "@media (hover: hover) and (pointer: fine) { &:hover }");
+    addVariant("group-hover-fine", "@media (hover: hover) and (pointer: fine) { :merge(.group):hover & }");
+  },
+],
   };
 export default config;
