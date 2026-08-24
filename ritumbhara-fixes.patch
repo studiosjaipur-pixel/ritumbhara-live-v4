@@ -1,0 +1,144 @@
+diff --git a/app/journal/[slug]/page.tsx b/app/journal/[slug]/page.tsx
+index ae9e034..f9c974e 100644
+--- a/app/journal/[slug]/page.tsx
++++ b/app/journal/[slug]/page.tsx
+@@ -1,5 +1,6 @@
+ import React from "react";
+ import Link from "next/link";
++import Image from "next/image";
+ import { journalPosts, JournalBlock } from "@/lib/journal-posts";
+ import { destinations } from "@/config/destinations.config";
+ import CheckAvailabilityWidget from "@/components/CheckAvailabilityWidget";
+@@ -110,11 +111,19 @@ export default function JournalPostPage({ params }: { params: { slug: string } }) {
+       formatDate(post.publishedAt) + " · " + post.readingMinutes + " min read"
+     ),
+     post.heroImage
+-      ? React.createElement("img", {
+-          src: post.heroImage,
+-          alt: post.title,
+-          className: "w-full h-72 object-cover rounded-md mb-10",
+-        })
++      ? React.createElement(
++          "div",
++          { className: "relative w-full h-72 rounded-md overflow-hidden mb-10" },
++          React.createElement(Image, {
++            src: post.heroImage,
++            alt: post.title,
++            fill: true,
++            sizes: "(max-width: 768px) 100vw, 768px",
++            priority: true,
++            quality: 70,
++            className: "object-cover",
++          })
++        )
+       : null,
+     React.createElement("div", null, post.body.map(renderBlock)),
+ 
+diff --git a/app/journal/page.tsx b/app/journal/page.tsx
+index 5b24c9a..d1731b7 100644
+--- a/app/journal/page.tsx
++++ b/app/journal/page.tsx
+@@ -1,5 +1,6 @@
+ import React from "react";
+ import Link from "next/link";
++import Image from "next/image";
+ import { journalPosts } from "@/lib/journal-posts";
+ 
+ export const metadata = {
+@@ -39,11 +40,18 @@ export default function JournalIndexPage() {
+             className: "border border-[#EDE7DD] rounded-md overflow-hidden block bg-white hover:shadow-lg transition-shadow flex flex-col",
+           },
+           post.heroImage
+-            ? React.createElement("img", {
+-                src: post.heroImage,
+-                alt: post.title,
+-                className: "w-full h-44 object-cover",
+-              })
++            ? React.createElement(
++                "div",
++                { className: "relative w-full h-44" },
++                React.createElement(Image, {
++                  src: post.heroImage,
++                  alt: post.title,
++                  fill: true,
++                  sizes: "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
++                  quality: 70,
++                  className: "object-cover",
++                })
++              )
+             : React.createElement("div", { className: "w-full h-44 bg-[#F5F1EA]" }),
+           React.createElement(
+             "div",
+diff --git a/app/properties/[slug]/page.tsx b/app/properties/[slug]/page.tsx
+index 6df74a7..11f7736 100644
+--- a/app/properties/[slug]/page.tsx
++++ b/app/properties/[slug]/page.tsx
+@@ -68,7 +68,7 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
+     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(lodgingSchema) } }),
+     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(breadcrumbSchema) } }),
+     React.createElement("div", { className: "relative h-[58vh] min-h-[380px] w-full overflow-hidden" },
+-      React.createElement(Image, { src: property.heroImage, alt: property.name, fill: true, sizes: "100vw", priority: true, className: "object-cover" }),
++      React.createElement(Image, { src: property.heroImage, alt: property.name, fill: true, sizes: "100vw", quality: 70, priority: true, className: "object-cover" }),
+       React.createElement("div", { className: "absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/30" }),
+       React.createElement("div", { className: "absolute top-24 left-0 right-0 px-6 lg:px-10" },
+         React.createElement("nav", { className: "max-w-7xl mx-auto text-xs text-white/80 flex items-center gap-2" },
+diff --git a/components/PropertyCard.tsx b/components/PropertyCard.tsx
+index fc83d81..6aff8bd 100644
+--- a/components/PropertyCard.tsx
++++ b/components/PropertyCard.tsx
+@@ -14,6 +14,7 @@ export default function PropertyCard({ property }: { property: Property }) {
+         alt: property.name,
+         fill: true,
+         sizes: "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
++        quality: 70,
+         className: "object-cover transition-transform duration-[250ms] ease-snap group-hover-fine:scale-105",
+       }),
+       React.createElement("div", { className: "absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0" }),
+diff --git a/config/destinations.config.ts b/config/destinations.config.ts
+index fa8462d..e8acb12 100644
+--- a/config/destinations.config.ts
++++ b/config/destinations.config.ts
+@@ -42,7 +42,8 @@ export const destinations: Destination[] = [
+     name: "Sariska",
+     state: "Rajasthan",
+     status: "operational",
+-    heroImage: "",
++    heroImage:
++      "https://multimedia.hotel-spider.com/03u69e20bdb541a7/03u6a2269dc57865/03u6a226bf5c08ad.jpg",
+     shortStory: "Forest-edge stays near Sariska Tiger Reserve, within Alwar district.",
+     propertyCount: 1,
+     thingsToDo: [
+diff --git a/lib/journal-posts.ts b/lib/journal-posts.ts
+index 37d0a89..7399c64 100644
+--- a/lib/journal-posts.ts
++++ b/lib/journal-posts.ts
+@@ -72,7 +72,8 @@ export const journalPosts: JournalPost[] = [
+     destinationTag: "Jaipur & Sariska",
+     publishedAt: "2026-08-20",
+     readingMinutes: 7,
+-    heroImage: "",
++    heroImage:
++      "https://multimedia.hotel-spider.com/03u69e20bdb541a7/03u6a2269dc57865/03u6a226bf5c08ad.jpg",
+     body: [
+       {
+         type: "paragraph",
+@@ -164,7 +165,8 @@ export const journalPosts: JournalPost[] = [
+     destinationTag: "Sariska",
+     publishedAt: "2026-08-20",
+     readingMinutes: 5,
+-    heroImage: "",
++    heroImage:
++      "https://multimedia.hotel-spider.com/03u69e20bdb541a7/03u6a2269dc57865/03u6a226bf5c08ad.jpg",
+     body: [
+       {
+         type: "paragraph",
+@@ -254,7 +256,8 @@ export const journalPosts: JournalPost[] = [
+     destinationTag: "Jaipur, Alwar & Sariska",
+     publishedAt: "2026-08-20",
+     readingMinutes: 7,
+-    heroImage: "",
++    heroImage:
++      "https://multimedia.hotel-spider.com/03u69e20bdb541a7/03u6a2269dc57865/03u6a226bf5c08ad.jpg",
+     body: [
+       {
+         type: "paragraph",

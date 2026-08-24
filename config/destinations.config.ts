@@ -42,7 +42,8 @@ export const destinations: Destination[] = [
     name: "Sariska",
     state: "Rajasthan",
     status: "operational",
-    heroImage: "",
+    heroImage:
+      "https://multimedia.hotel-spider.com/03u69e20bdb541a7/03u6a2269dc57865/03u6a226bf5c08ad.jpg",
     shortStory: "Forest-edge stays near Sariska Tiger Reserve, within Alwar district.",
     propertyCount: 1,
     thingsToDo: [

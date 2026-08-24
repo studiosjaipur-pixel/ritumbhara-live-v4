@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { journalPosts, JournalBlock } from "@/lib/journal-posts";
 import { destinations } from "@/config/destinations.config";
 import CheckAvailabilityWidget from "@/components/CheckAvailabilityWidget";
@@ -110,11 +111,19 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
       formatDate(post.publishedAt) + " · " + post.readingMinutes + " min read"
     ),
     post.heroImage
-      ? React.createElement("img", {
-          src: post.heroImage,
-          alt: post.title,
-          className: "w-full h-72 object-cover rounded-md mb-10",
-        })
+      ? React.createElement(
+          "div",
+          { className: "relative w-full h-72 rounded-md overflow-hidden mb-10" },
+          React.createElement(Image, {
+            src: post.heroImage,
+            alt: post.title,
+            fill: true,
+            sizes: "(max-width: 768px) 100vw, 768px",
+            priority: true,
+            quality: 70,
+            className: "object-cover",
+          })
+        )
       : null,
     React.createElement("div", null, post.body.map(renderBlock)),
 
