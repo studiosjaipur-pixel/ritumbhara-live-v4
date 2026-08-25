@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { journalPosts } from "@/lib/journal-posts";
 
 export const metadata = {
@@ -39,11 +40,18 @@ export default function JournalIndexPage() {
             className: "border border-[#EDE7DD] rounded-md overflow-hidden block bg-white hover:shadow-lg transition-shadow flex flex-col",
           },
           post.heroImage
-            ? React.createElement("img", {
-                src: post.heroImage,
-                alt: post.title,
-                className: "w-full h-44 object-cover",
-              })
+            ? React.createElement(
+                "div",
+                { className: "relative w-full h-44" },
+                React.createElement(Image, {
+                  src: post.heroImage,
+                  alt: post.title,
+                  fill: true,
+                  sizes: "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
+                  quality: 70,
+                  className: "object-cover",
+                })
+              )
             : React.createElement("div", { className: "w-full h-44 bg-[#F5F1EA]" }),
           React.createElement(
             "div",

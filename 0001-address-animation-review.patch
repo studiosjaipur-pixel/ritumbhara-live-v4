@@ -1,0 +1,148 @@
+From 68eb4bcf40a1bfebe231e143f2f25dbd42441ac8 Mon Sep 17 00:00:00 2001
+From: Claude <claude@anthropic.com>
+Date: Mon, 24 Aug 2026 13:00:01 +0000
+Subject: [PATCH] Address animation review: scope transitions, gate hover to
+ fine pointers, fix reduced-motion
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- tailwind.config.ts: add hover-fine/group-hover-fine variants gated to (hover: hover) and (pointer: fine), so mobile taps don't get stuck showing a hover state
+- app/globals.css: prefers-reduced-motion now targets animation + transform/box-shadow-driving transitions only — color/opacity feedback stays, movement drops (previously zeroed everything)
+- PropertyCard, ExperienceCard, homepage destination cards: drop animated box-shadow (paint cost, not GPU-composited), keep transform-only lift; press state now releases faster than it entered (asymmetric timing)
+- PropertyCard image zoom: 500ms -> 250ms to stay under the sub-300ms UI budget
+- CheckAvailabilityWidget, LeadCaptureForm, Navbar desktop CTA: replaced transition-all with the exact properties changing (background-color/color/transform), added asymmetric press timing
+---
+ app/globals.css                        | 5 ++---
+ app/page.tsx                           | 2 +-
+ components/CheckAvailabilityWidget.tsx | 2 +-
+ components/ExperienceCard.tsx          | 2 +-
+ components/LeadCaptureForm.tsx         | 2 +-
+ components/Navbar.tsx                  | 2 +-
+ components/PropertyCard.tsx            | 4 ++--
+ tailwind.config.ts                     | 7 ++++++-
+ 8 files changed, 15 insertions(+), 11 deletions(-)
+
+diff --git a/app/globals.css b/app/globals.css
+index 5984e31..2c5cdb5 100644
+--- a/app/globals.css
++++ b/app/globals.css
+@@ -11,9 +11,8 @@ body {
+   *,
+   *::before,
+   *::after {
+-    animation-duration: 0.01ms !important;
+-    animation-iteration-count: 1 !important;
+-    transition-duration: 0.01ms !important;
++    animation: none !important;
++    transition-property: color, background-color, border-color, opacity !important;
+     scroll-behavior: auto !important;
+   }
+ }
+diff --git a/app/page.tsx b/app/page.tsx
+index 25d0b21..23eea14 100644
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -53,7 +53,7 @@ return React.createElement("main", null,
+                                                React.createElement("div", { className: "grid lg:grid-cols-2 gap-10 items-start" },
+                                                                    React.createElement("div", { className: "grid sm:grid-cols-2 gap-6" },
+                                                                                        destinations.map(function (d) {
+-                                                                                         return React.createElement(Link, { key: d.slug, href: "/destinations/" + d.slug, className: "border border-[#EDE7DD] rounded-md p-6 block hover:shadow-lg hover:-translate-y-1 active:scale-[0.98] active:translate-y-0 transition-all duration-300 ease-snap" },
++                                                                                         return React.createElement(Link, { key: d.slug, href: "/destinations/" + d.slug, className: "border border-[#EDE7DD] rounded-md p-6 block hover-fine:-translate-y-1 active:scale-[0.98] active:translate-y-0 active:duration-100 active:ease-out transition-transform duration-300 ease-snap" },
+                                                                                                                     React.createElement("h3", { className: "font-semibold text-[#1A1A1A] mb-2" }, d.name),
+                                                                                                                     React.createElement("p", { className: "text-sm text-[#4A4A4A]" }, d.shortStory)
+                                                                                                                     );
+diff --git a/components/CheckAvailabilityWidget.tsx b/components/CheckAvailabilityWidget.tsx
+index 3beeba6..cbb7da4 100644
+--- a/components/CheckAvailabilityWidget.tsx
++++ b/components/CheckAvailabilityWidget.tsx
+@@ -78,7 +78,7 @@ export default function CheckAvailabilityWidget({ variant }: { variant?: "hero"
+       href: buildWhatsAppLink(),
+       target: "_blank",
+       rel: "noopener",
+-      className: "block text-center bg-[#97183C] text-white font-medium py-3 rounded-md hover:bg-[#7E1433] active:scale-[0.98] transition-all duration-200 ease-snap",
++      className: "block text-center bg-[#97183C] text-white font-medium py-3 rounded-md hover-fine:bg-[#7E1433] active:scale-[0.98] active:duration-100 active:ease-out transition-[background-color,transform] duration-200 ease-snap",
+     }, "Check Availability via WhatsApp"),
+     React.createElement("p", { className: "text-xs text-center text-[#8A8A8A] mt-3" }, "We reply directly \u2014 no OTA fees, real-time human answers")
+   );
+diff --git a/components/ExperienceCard.tsx b/components/ExperienceCard.tsx
+index 82fda02..a886128 100644
+--- a/components/ExperienceCard.tsx
++++ b/components/ExperienceCard.tsx
+@@ -4,7 +4,7 @@ import { Experience } from "@/config/experiences.config";
+ export default function ExperienceCard({ experience }: { experience: Experience }) {
+   return React.createElement(
+         "div",
+-    { className: "overflow-hidden rounded-lg bg-white border border-neutral-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 ease-snap" },
++    { className: "overflow-hidden rounded-lg bg-white border border-neutral-200 hover-fine:-translate-y-1 transition-transform duration-300 ease-snap" },
+         React.createElement("div", { className: "relative w-full h-64 bg-neutral-100" }),
+         React.createElement(
+           "div",
+diff --git a/components/LeadCaptureForm.tsx b/components/LeadCaptureForm.tsx
+index feef893..acac8bc 100644
+--- a/components/LeadCaptureForm.tsx
++++ b/components/LeadCaptureForm.tsx
+@@ -95,7 +95,7 @@ export default function LeadCaptureForm({ title, subtitle, defaultDestination }:
+     React.createElement("button", {
+       type: "submit",
+       disabled: status === "submitting",
+-      className: "w-full bg-[#97183C] text-white font-medium py-3 rounded-md hover:bg-[#7E1433] active:scale-[0.98] transition-all duration-200 ease-snap disabled:opacity-60 disabled:active:scale-100",
++      className: "w-full bg-[#97183C] text-white font-medium py-3 rounded-md hover-fine:bg-[#7E1433] active:scale-[0.98] active:duration-100 active:ease-out transition-[background-color,transform] duration-200 ease-snap disabled:opacity-60 disabled:active:scale-100",
+     }, status === "submitting" ? "Sending..." : "Notify Me"),
+     status === "error" && React.createElement("p", { className: "text-xs text-center text-red-600 mt-3" }, "Something went wrong \u2014 please try WhatsApp or email instead.")
+   );
+diff --git a/components/Navbar.tsx b/components/Navbar.tsx
+index 91e539f..c95c0f8 100644
+--- a/components/Navbar.tsx
++++ b/components/Navbar.tsx
+@@ -44,7 +44,7 @@ return React.createElement("header", {
+                                                                        return React.createElement(Link, { key: link.href, href: link.href }, link.label);
+                                                                    })
+                                                                    ),
+-                                               React.createElement(Link, { href: "/destinations", className: "hidden lg:block border border-[#97183C] text-[#97183C] px-6 py-2.5 rounded-sm font-medium hover:bg-[#97183C] hover:text-white active:scale-[0.97] transition-all duration-200 ease-snap" }, "Explore Destinations"),
++                                               React.createElement(Link, { href: "/destinations", className: "hidden lg:block border border-[#97183C] text-[#97183C] px-6 py-2.5 rounded-sm font-medium hover-fine:bg-[#97183C] hover-fine:text-white active:scale-[0.97] active:duration-100 active:ease-out transition-[background-color,color,transform] duration-200 ease-snap" }, "Explore Destinations"),
+                                                React.createElement("button", {
+                                                    type: "button",
+                                                    "aria-label": mobileOpen ? "Close menu" : "Open menu",
+diff --git a/components/PropertyCard.tsx b/components/PropertyCard.tsx
+index ee584f9..fc83d81 100644
+--- a/components/PropertyCard.tsx
++++ b/components/PropertyCard.tsx
+@@ -6,7 +6,7 @@ import { Property } from "@/config/properties.config";
+ export default function PropertyCard({ property }: { property: Property }) {
+   return React.createElement(Link, {
+     href: "/properties/" + property.slug,
+-    className: "property-card city-" + property.destinationSlug + " group block rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 active:scale-[0.98] active:translate-y-0 transition-all duration-300 ease-snap",
++    className: "property-card city-" + property.destinationSlug + " group block rounded-lg overflow-hidden bg-white shadow-sm hover-fine:-translate-y-1 active:scale-[0.98] active:translate-y-0 active:duration-100 active:ease-out transition-transform duration-300 ease-snap",
+   },
+     React.createElement("div", { className: "relative aspect-[4/5] w-full overflow-hidden bg-[#EDE7DD]" },
+       React.createElement(Image, {
+@@ -14,7 +14,7 @@ export default function PropertyCard({ property }: { property: Property }) {
+         alt: property.name,
+         fill: true,
+         sizes: "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
+-        className: "object-cover transition-transform duration-500 ease-snap group-hover:scale-105",
++        className: "object-cover transition-transform duration-[250ms] ease-snap group-hover-fine:scale-105",
+       }),
+       React.createElement("div", { className: "absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0" }),
+       React.createElement("div", { className: "absolute top-3 left-3 flex gap-2" },
+diff --git a/tailwind.config.ts b/tailwind.config.ts
+index d912e7e..5b416c4 100644
+--- a/tailwind.config.ts
++++ b/tailwind.config.ts
+@@ -17,6 +17,11 @@ burgundy: "#97183C",
+   },
+ },
+ },
+-plugins: [],
++plugins: [
++  function ({ addVariant }: any) {
++    addVariant("hover-fine", "@media (hover: hover) and (pointer: fine) { &:hover }");
++    addVariant("group-hover-fine", "@media (hover: hover) and (pointer: fine) { :merge(.group):hover & }");
++  },
++],
+   };
+ export default config;
+-- 
+2.43.0
+

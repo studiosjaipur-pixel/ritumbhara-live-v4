@@ -14,6 +14,7 @@ export default function PropertyCard({ property }: { property: Property }) {
         alt: property.name,
         fill: true,
         sizes: "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
+        quality: 70,
         className: "object-cover transition-transform duration-[250ms] ease-snap group-hover-fine:scale-105",
       }),
       React.createElement("div", { className: "absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0" }),

@@ -72,7 +72,8 @@ export const journalPosts: JournalPost[] = [
     destinationTag: "Jaipur & Sariska",
     publishedAt: "2026-08-20",
     readingMinutes: 7,
-    heroImage: "",
+    heroImage:
+      "https://multimedia.hotel-spider.com/03u69e20bdb541a7/03u6a2269dc57865/03u6a226bf5c08ad.jpg",
     body: [
       {
         type: "paragraph",
@@ -164,7 +165,8 @@ export const journalPosts: JournalPost[] = [
     destinationTag: "Sariska",
     publishedAt: "2026-08-20",
     readingMinutes: 5,
-    heroImage: "",
+    heroImage:
+      "https://multimedia.hotel-spider.com/03u69e20bdb541a7/03u6a2269dc57865/03u6a226bf5c08ad.jpg",
     body: [
       {
         type: "paragraph",
@@ -254,7 +256,8 @@ export const journalPosts: JournalPost[] = [
     destinationTag: "Jaipur, Alwar & Sariska",
     publishedAt: "2026-08-20",
     readingMinutes: 7,
-    heroImage: "",
+    heroImage:
+      "https://multimedia.hotel-spider.com/03u69e20bdb541a7/03u6a2269dc57865/03u6a226bf5c08ad.jpg",
     body: [
       {
         type: "paragraph",

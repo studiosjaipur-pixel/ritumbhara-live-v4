@@ -68,7 +68,7 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(lodgingSchema) } }),
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(breadcrumbSchema) } }),
     React.createElement("div", { className: "relative h-[58vh] min-h-[380px] w-full overflow-hidden" },
-      React.createElement(Image, { src: property.heroImage, alt: property.name, fill: true, sizes: "100vw", priority: true, className: "object-cover" }),
+      React.createElement(Image, { src: property.heroImage, alt: property.name, fill: true, sizes: "100vw", quality: 70, priority: true, className: "object-cover" }),
       React.createElement("div", { className: "absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/30" }),
       React.createElement("div", { className: "absolute top-24 left-0 right-0 px-6 lg:px-10" },
         React.createElement("nav", { className: "max-w-7xl mx-auto text-xs text-white/80 flex items-center gap-2" },
