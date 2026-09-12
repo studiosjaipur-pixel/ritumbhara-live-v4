@@ -72,8 +72,13 @@ export default function AdminPanel() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FBF9F6] text-[#2B2B2B] p-8 font-sans">
-      <div className="max-w-7xl mx-auto flex gap-8">
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        header, footer, #footer { display: none !important; }
+        body { padding-top: 0 !important; }
+      `}} />
+      <div className="min-h-screen bg-[#FBF9F6] text-[#2B2B2B] p-8 font-sans">
+        <div className="max-w-7xl mx-auto flex gap-8">
         {/* Sidebar */}
         <aside className="w-1/3 bg-white p-6 rounded-xl shadow-sm border border-[#EDE7DD]">
           <div className="flex justify-between items-center mb-6">
@@ -130,5 +135,6 @@ export default function AdminPanel() {
         </main>
       </div>
     </div>
+    </>
   );
 }
