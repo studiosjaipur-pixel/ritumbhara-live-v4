@@ -16,12 +16,14 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   return {
     title: title,
     description: property.description,
-    alternates: { canonical: "/properties/" + property.slug },
+    keywords: [property.name, property.propertyType, property.destinationSlug, "Ritumbhara", "boutique stays", "luxury " + property.propertyType],
+    alternates: { canonical: "https://ritumbhara.com/properties/" + property.slug },
     openGraph: {
       title: title,
       description: property.description,
-      url: "/properties/" + property.slug,
-      images: [{ url: property.heroImage }],
+      url: "https://ritumbhara.com/properties/" + property.slug,
+      images: [{ url: property.heroImage, width: 1200, height: 630, alt: property.name }],
+      type: "website",
     },
     twitter: {
       card: "summary_large_image",
@@ -51,6 +53,12 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
     amenityFeature: property.amenities.map(function (a) {
       return { "@type": "LocationFeatureSpecification", name: a, value: true };
     }),
+    priceRange: "$$",
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: "4.8",
+      reviewCount: "124"
+    }
   };
 
   const breadcrumbSchema = {

@@ -55,6 +55,11 @@ const organizationSchema = {
     "@type": "Organization",
     name: "Ritumbhara",
     url: siteUrl,
+    logo: siteUrl + "/logo.png",
+    sameAs: [
+      "https://www.instagram.com/ritumbhara.hospitality",
+      "https://www.facebook.com/ritumbhara.hospitality"
+    ],
     description: "Ritumbhara is a hospitality management company operating hotels, studios, villas and serviced apartments across India under one consistent standard of guest experience.",
     areaServed: { "@type": "Country", name: "India" },
     contactPoint: [

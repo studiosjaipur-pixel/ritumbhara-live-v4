@@ -1,4 +1,5 @@
 import React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { destinations } from "@/config/destinations.config";
 import { properties } from "@/config/properties.config";
@@ -26,6 +27,14 @@ const faqSchema = {
       acceptedAnswer: { "@type": "Answer", text: f.answer },
     };
   }),
+};
+
+export const metadata: Metadata = {
+  title: "Ritumbhara | Boutique Stays & Serviced Apartments in India",
+  description: "Discover Ritumbhara's curated collection of boutique stays, serviced apartments, and luxury villas across India. Experience thoughtful hospitality.",
+  alternates: {
+    canonical: "/",
+  }
 };
 
 export default function Home() {
