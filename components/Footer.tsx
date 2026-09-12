@@ -1,8 +1,13 @@
+"use client";
 import React from "react";
 import Link from "next/link";
 import { destinations } from "@/config/destinations.config";
+import { usePathname } from "next/navigation";
 
 export default function Footer() {
+  const pathname = usePathname();
+  if (pathname.startsWith('/admin_panel')) return null;
+
   return React.createElement("footer", { id: "footer", className: "bg-[#1A1A1A] text-white/80 pt-20 pb-8" },
     React.createElement("div", { className: "max-w-7xl mx-auto px-6 lg:px-10 grid grid-cols-2 lg:grid-cols-4 gap-12 mb-16" },
       React.createElement("div", null,

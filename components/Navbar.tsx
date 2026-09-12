@@ -2,8 +2,10 @@
 import { useState, useEffect } from "react";
 import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function Navbar() {
+    const pathname = usePathname();
     const [scrolled, setScrolled] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -33,6 +35,8 @@ const navLinks = [
     ];
 
 const isSolid = scrolled || mobileOpen;
+
+if (pathname.startsWith('/admin_panel')) return null;
 
 return React.createElement("header", {
     className: "fixed top-0 inset-x-0 z-50 transition-all duration-500 " + (isSolid ? "bg-white/95 backdrop-blur-md shadow-sm" : "bg-transparent"),
