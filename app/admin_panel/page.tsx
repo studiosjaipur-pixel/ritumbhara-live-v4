@@ -73,7 +73,7 @@ export default function AdminPanel() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#FBF9F6] text-[#2B2B2B] px-8 pb-8 pt-[140px] font-sans">
+      <div className="min-h-screen bg-[#FBF9F6] text-[#2B2B2B] px-8 pb-8 font-sans" style={{ paddingTop: '140px' }}>
         <div className="max-w-7xl mx-auto flex gap-8">
         {/* Sidebar */}
         <aside className="w-1/3 bg-white p-6 rounded-xl shadow-sm border border-[#EDE7DD]">
