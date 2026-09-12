@@ -31,8 +31,10 @@ export async function POST(request: Request) {
     }
 
     try {
-      // 1. Get current file SHA
-      const getUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/data/properties.json`;
+      // 1. Get current file SHA from the specific branch
+      const getUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/data/properties.json?ref=feature/seo-optimization`;
+      const putUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/data/properties.json`;
+      
       const getRes = await fetch(getUrl, {
         headers: { Authorization: `token ${GITHUB_TOKEN}` }
       });
@@ -40,7 +42,7 @@ export async function POST(request: Request) {
       
       // 2. Update file
       const content = Buffer.from(JSON.stringify(properties, null, 2)).toString('base64');
-      const putRes = await fetch(getUrl, {
+      const putRes = await fetch(putUrl, {
         method: 'PUT',
         headers: { 
           Authorization: `token ${GITHUB_TOKEN}`,
