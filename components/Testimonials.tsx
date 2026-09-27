@@ -4,33 +4,33 @@ import { testimonials } from "@/config/testimonials.config";
 export default function Testimonials() {
     return React.createElement(
           "section",
-      { className: "bg-stone-50 py-24 px-6 md:px-16" },
+      { className: "bg-sand/60 py-16 lg:py-24" },
           React.createElement(
             "div",
-      { className: "max-w-6xl mx-auto" },
+      { className: "max-w-7xl mx-auto px-6 lg:px-10" },
             React.createElement(
               "h2",
-      { className: "text-3xl md:text-4xl font-semibold text-neutral-900 mb-12 text-center" },
+      { className: "text-4xl lg:text-5xl text-charcoal mb-10 lg:mb-12" },
               "What Our Guests Say"
             ),
             React.createElement(
               "div",
-      { className: "grid grid-cols-1 md:grid-cols-3 gap-8" },
+      { className: "grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12" },
               testimonials.map((t) =>
                 React.createElement(
                   "figure",
       {
                     key: t.id,
-                    className: "bg-white border border-neutral-200 rounded-lg p-8 flex flex-col justify-between",
+                    className: "border-t border-charcoal/20 pt-6 flex flex-col",
       },
                   React.createElement(
                     "blockquote",
-      { className: "text-neutral-700 text-base leading-relaxed mb-6" },
-                    t.quote
+      { className: "font-display text-[1.6rem] leading-snug text-charcoal mb-5 flex-1" },
+                    "“" + t.quote + "”"
                   ),
                   React.createElement(
                     "figcaption",
-      { className: "text-sm text-neutral-500 font-medium" },
+      { className: "text-sm text-charcoal-soft font-medium" },
                     t.guestLabel + " " + String.fromCharCode(8212) + " " + t.location
                   )
                 )

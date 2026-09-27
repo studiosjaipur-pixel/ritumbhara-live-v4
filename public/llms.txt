@@ -9,17 +9,23 @@
 - Ritumbhara does not take reservations directly on this website. Every property links out to its own booking page on Hotel Spider, Ritumbhara's booking engine partner.
 
 ## Key Pages
-- Homepage: https://ritumbhara.com/
-- Our Story: https://ritumbhara.com/about
-- Destinations: https://ritumbhara.com/destinations
-- Experiences: https://ritumbhara.com/experiences
-- Contact: https://ritumbhara.com/contact
+- Homepage: https://www.ritumbhara.com/
+- Our Story: https://www.ritumbhara.com/about
+- Destinations: https://www.ritumbhara.com/destinations
+- Experiences: https://www.ritumbhara.com/experiences
+- Contact: https://www.ritumbhara.com/contact
+- Journal (travel guides): https://www.ritumbhara.com/journal
 
 ## Destinations
-- Jaipur: https://ritumbhara.com/destinations/jaipur
-- Alwar: https://ritumbhara.com/destinations/alwar
-- Sariska: https://ritumbhara.com/destinations/sariska
-- Agra (Coming Soon): https://ritumbhara.com/destinations/agra
+- Jaipur: https://www.ritumbhara.com/destinations/jaipur
+- Alwar: https://www.ritumbhara.com/destinations/alwar
+- Sariska: https://www.ritumbhara.com/destinations/sariska
+- Agra (Coming Soon): https://www.ritumbhara.com/destinations/agra
+
+## Travel Guides & FAQs
+- Serviced apartments in Jaipur: https://www.ritumbhara.com/serviced-apartments-jaipur
+- Studios in Alwar: https://www.ritumbhara.com/studios-in-alwar
+- Stays near Sariska: https://www.ritumbhara.com/stays-in-sariska
 
 ## Contact
 - Phone: +91 95030 02629
