@@ -5,9 +5,74 @@
 body {
   background-color: #FBF9F6;
   color: #2B2B2B;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Anchor targets (#stays, #destinations, #standard, #faq) land below the fixed header. */
+[id] {
+  scroll-margin-top: 96px;
+}
+
+/* Visible keyboard focus site-wide, in brand gold. */
+:focus-visible {
+  outline: 2px solid #C8A96A;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Jaali (Rajasthani lattice) motif, used only as an honest fallback where no photograph exists. */
+.rb-jaali {
+  background-color: #97183C;
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(200, 169, 106, 0.28) 0 2px, transparent 2.5px),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.07) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.07) 75%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.07) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.07) 75%);
+  background-size: 28px 28px, 28px 28px, 28px 28px;
+}
+
+.rb-jaali-light {
+  background-color: #F5F1EA;
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(151, 24, 60, 0.16) 0 2px, transparent 2.5px),
+    linear-gradient(45deg, rgba(151, 24, 60, 0.05) 25%, transparent 25%, transparent 75%, rgba(151, 24, 60, 0.05) 75%),
+    linear-gradient(-45deg, rgba(151, 24, 60, 0.05) 25%, transparent 25%, transparent 75%, rgba(151, 24, 60, 0.05) 75%);
+  background-size: 28px 28px, 28px 28px, 28px 28px;
+}
+
+/* One orchestrated page-load moment for hero content only. */
+@keyframes rb-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rb-rise {
+  animation: rb-rise 700ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.rb-rise-2 {
+  animation-delay: 120ms;
+}
+
+.rb-rise-3 {
+  animation-delay: 240ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   *,
   *::before,
   *::after {

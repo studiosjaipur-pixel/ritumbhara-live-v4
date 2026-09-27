@@ -23,6 +23,8 @@ export function generateMetadata({ params }: { params: { slug: string } }) {
     description: post.metaDescription,
     alternates: { canonical: "/journal/" + post.slug },
     openGraph: {
+      siteName: "Ritumbhara",
+      locale: "en_IN",
       type: "article",
       title: post.title,
       description: post.metaDescription,
@@ -43,18 +45,18 @@ function formatDate(iso: string) {
 
 function renderBlock(block: JournalBlock, i: number) {
   if (block.type === "heading") {
-    return React.createElement("h2", { key: i, className: "text-2xl font-semibold text-[#1A1A1A] mt-10 mb-4" }, block.text);
+    return React.createElement("h2", { key: i, className: "text-2xl lg:text-[28px] font-semibold text-[#1A1A1A] leading-snug mt-12 mb-4" }, block.text);
   }
   if (block.type === "list") {
     return React.createElement(
       "ul",
-      { key: i, className: "space-y-2 text-[#4A4A4A] mb-4 list-disc pl-5" },
+      { key: i, className: "space-y-2.5 text-[17px] text-[#3A3A3A] leading-[1.75] mb-6 list-disc pl-5 marker:text-[#C8A96A]" },
       block.items.map(function (item, j) {
         return React.createElement("li", { key: j }, item);
       })
     );
   }
-  return React.createElement("p", { key: i, className: "text-[#4A4A4A] leading-relaxed mb-4" }, block.text);
+  return React.createElement("p", { key: i, className: "text-[17px] text-[#3A3A3A] leading-[1.8] mb-6" }, block.text);
 }
 
 export default function JournalPostPage({ params }: { params: { slug: string } }) {
@@ -77,7 +79,7 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
     dateModified: post.publishedAt,
     author: { "@type": "Organization", name: "Ritumbhara" },
     publisher: { "@type": "Organization", name: "Ritumbhara" },
-    mainEntityOfPage: "https://ritumbhara.com/journal/" + post.slug,
+    mainEntityOfPage: "https://www.ritumbhara.com/journal/" + post.slug,
     image: post.heroImage || undefined,
   };
 
@@ -85,35 +87,35 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: "https://ritumbhara.com" },
-      { "@type": "ListItem", position: 2, name: "Journal", item: "https://ritumbhara.com/journal" },
-      { "@type": "ListItem", position: 3, name: post.title, item: "https://ritumbhara.com/journal/" + post.slug },
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://www.ritumbhara.com" },
+      { "@type": "ListItem", position: 2, name: "Journal", item: "https://www.ritumbhara.com/journal" },
+      { "@type": "ListItem", position: 3, name: post.title, item: "https://www.ritumbhara.com/journal/" + post.slug },
     ],
   };
 
   return React.createElement(
     "main",
-    { className: "max-w-3xl mx-auto px-6 pt-32 pb-24" },
+    { className: "max-w-3xl mx-auto px-6 pt-32 lg:pt-40 pb-24" },
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(articleSchema) } }),
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(breadcrumbSchema) } }),
     React.createElement(
       "nav",
-      { className: "text-xs text-[#8A8A8A] mb-8" },
-      React.createElement(Link, { href: "/journal", className: "hover:underline" }, "Journal"),
+      { className: "flex flex-wrap items-center gap-x-1 text-xs text-[#8A8A8A] mb-8" },
+      React.createElement(Link, { href: "/journal", className: "inline-flex items-center min-h-[44px] hover:underline hover:text-[#97183C]" }, "Journal"),
       " / ",
       React.createElement("span", null, post.destinationTag)
     ),
     React.createElement("p", { className: "uppercase tracking-[0.2em] text-xs text-[#C8A96A] font-semibold mb-3" }, post.destinationTag),
-    React.createElement("h1", { className: "text-4xl md:text-5xl font-semibold text-[#1A1A1A] mb-6" }, post.title),
+    React.createElement("h1", { className: "text-4xl md:text-5xl font-semibold text-[#1A1A1A] leading-[1.1] mb-6" }, post.title),
     React.createElement(
       "p",
-      { className: "text-sm text-[#8A8A8A] mb-10" },
+      { className: "text-sm text-[#8A8A8A] mb-10 pb-8 border-b border-[#EDE7DD]" },
       formatDate(post.publishedAt) + " · " + post.readingMinutes + " min read"
     ),
     post.heroImage
       ? React.createElement(
           "div",
-          { className: "relative w-full h-72 rounded-md overflow-hidden mb-10" },
+          { className: "relative w-full aspect-[16/9] rounded-md overflow-hidden mb-12 bg-[#EDE7DD]" },
           React.createElement(Image, {
             src: post.heroImage,
             alt: post.title,
@@ -130,18 +132,18 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
     relatedDestinations.length > 0 &&
       React.createElement(
         "div",
-        { className: "border border-[#EDE7DD] bg-[#F5F1EA] rounded-md p-6 my-12" },
+        { className: "border-l-[3px] border-[#C8A96A] bg-[#F5F1EA] rounded-md p-6 sm:p-7 my-12" },
         React.createElement("p", { className: "font-semibold text-[#1A1A1A] mb-3" }, "Planning this trip?"),
         React.createElement(
           "div",
-          { className: "flex flex-col gap-2" },
+          { className: "flex flex-col" },
           relatedDestinations.map(function (d) {
             return React.createElement(
               Link,
               {
                 key: d.slug,
                 href: "/destinations/" + d.slug,
-                className: "text-[#97183C] font-medium hover:underline",
+                className: "inline-flex items-center min-h-[40px] text-[#97183C] font-medium hover:underline",
               },
               "See stays and things to do in " + d.name + " →"
             );
@@ -149,7 +151,7 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
           post.relatedLinks.map(function (link) {
             return React.createElement(
               Link,
-              { key: link.href, href: link.href, className: "text-[#97183C] font-medium hover:underline" },
+              { key: link.href, href: link.href, className: "inline-flex items-center min-h-[40px] text-[#97183C] font-medium hover:underline" },
               link.label + " →"
             );
           })

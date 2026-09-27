@@ -71,7 +71,7 @@ return React.createElement(
           href: "/destinations/" + destination.slug,
           onClick: function () { setActiveSlug(marker.slug); },
           "aria-label": destination.name + (destination.status === "coming-soon" ? " -- Coming Soon" : ""),
-          className: "block",
+          className: "flex items-center justify-center w-11 h-11 -m-[15px]",
         },
         React.createElement("span", {
           className:

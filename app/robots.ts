@@ -25,7 +25,7 @@ export default function robots() {
                       allow: "/",
             },
                 ],
-          sitemap: "https://ritumbhara.com/sitemap.xml",
-          host: "https://ritumbhara.com",
+          sitemap: "https://www.ritumbhara.com/sitemap.xml",
+          host: "https://www.ritumbhara.com",
     };
 }

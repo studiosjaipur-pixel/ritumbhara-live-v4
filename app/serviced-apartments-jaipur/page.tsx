@@ -3,10 +3,16 @@ import React from "react";
 import Link from "next/link";
 import CheckAvailabilityWidget from "@/components/CheckAvailabilityWidget";
 import LeadCaptureForm from "@/components/LeadCaptureForm";
+import { socialMetadata } from "@/lib/seo";
+
+const pageTitle = "Serviced Apartments in Jaipur | Ritumbhara";
+const pageDescription = "Fully serviced apartments in Jaipur, close to the city's forts and old-city landmarks. Airbnb Superhost, book direct with Ritumbhara.";
 
 export const metadata: Metadata = {
-    title: "Serviced Apartments in Jaipur | Ritumbhara",
-    description: "Fully serviced apartments in Jaipur, close to the city's forts and old-city landmarks. Airbnb Superhost, book direct with Ritumbhara.",
+    title: { absolute: pageTitle },
+    description: pageDescription,
+    alternates: { canonical: "/serviced-apartments-jaipur" },
+    ...socialMetadata("/serviced-apartments-jaipur", pageTitle, pageDescription),
 };
 
 const faqs = [
@@ -19,15 +25,25 @@ const faqs = [
   { q: "Can I book directly instead of through an OTA?", a: "Yes — booking directly with Ritumbhara gets you the same or better rates than Airbnb or other platforms, with no platform fees and direct WhatsApp support." },
   ];
 
+// FAQPage structured data generated from the same FAQs shown on this page.
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map(function (f) {
+    return { "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } };
+  }),
+};
+
 export default function JaipurServicedApartmentsPage() {
     return React.createElement(
           "main",
-      { className: "max-w-5xl mx-auto px-6 pt-32 pb-24" },
+      { className: "max-w-5xl mx-auto px-6 pt-28 lg:pt-32 pb-24" },
+    React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(faqSchema) } }),
           React.createElement(
                   "section",
-            { className: "py-8 md:py-12 text-center" },
+            { className: "relative overflow-hidden rounded-md bg-[#F5F1EA] px-5 py-10 md:py-14 text-center" },
                   React.createElement("p", { className: "uppercase tracking-[0.2em] text-xs text-[#C8A96A] font-semibold mb-3" }, "Jaipur"),
-                  React.createElement("h1", { className: "text-4xl md:text-5xl font-semibold text-[#1A1A1A] mb-6" }, "Serviced Apartments in Jaipur"),
+                  React.createElement("h1", { className: "text-4xl md:text-5xl lg:text-6xl font-semibold text-[#1A1A1A] leading-[1.08] mb-6" }, "Serviced Apartments in Jaipur"),
                   React.createElement("p", { className: "text-lg text-[#4A4A4A] max-w-2xl mx-auto mb-8" }, "Comfortable, fully serviced apartments in Jaipur — a practical base for exploring the Pink City's forts, palaces, and bazaars."),
                   React.createElement(
                             "div",
@@ -38,17 +54,17 @@ export default function JaipurServicedApartmentsPage() {
           React.createElement(
                   "section",
             { className: "py-12 max-w-3xl mx-auto" },
-                  React.createElement("h2", { className: "text-2xl md:text-3xl font-semibold text-[#1A1A1A] mb-4" }, "About Jaipur"),
+                  React.createElement("h2", { className: "text-2xl md:text-3xl font-semibold text-[#1A1A1A] mb-5" }, "About Jaipur"),
                   React.createElement("p", { className: "text-[#4A4A4A] leading-relaxed mb-4" }, "These serviced apartments sit in Karolan Ka Barh, Jeerota village — about 19 km from central Jaipur, close to both local life and city amenities. Central Jaipur's landmarks — Hawa Mahal, City Palace, and Jantar Mantar — along with the hilltop Amber Fort and Nahargarh Fort, are all a manageable drive away."),
                   React.createElement("p", { className: "text-[#4A4A4A] leading-relaxed" }, "A serviced apartment gives more space and flexibility than a hotel room — useful for longer stays, families, or anyone who wants a kitchen and living area rather than just a room.")
                 ),
           React.createElement(
                   "section",
             { className: "py-12 max-w-3xl mx-auto" },
-                  React.createElement("h2", { className: "text-2xl md:text-3xl font-semibold text-[#1A1A1A] mb-4" }, "Getting Around"),
-                  React.createElement("h3", { className: "font-semibold text-[#1A1A1A] mb-2" }, "By Air"),
+                  React.createElement("h2", { className: "text-2xl md:text-3xl font-semibold text-[#1A1A1A] mb-5" }, "Getting Around"),
+                  React.createElement("h3", { className: "font-semibold text-[#97183C] mt-2 mb-2" }, "By Air"),
                   React.createElement("p", { className: "text-[#4A4A4A] leading-relaxed mb-6" }, "Jaipur International Airport (JAI, Sanganer) is around 15 km away, about a 26-minute drive by car or taxi."),
-                  React.createElement("h3", { className: "font-semibold text-[#1A1A1A] mb-2" }, "By Train"),
+                  React.createElement("h3", { className: "font-semibold text-[#97183C] mt-2 mb-2" }, "By Train"),
                   React.createElement(
                             "ul",
                     { className: "space-y-2 text-[#4A4A4A] mb-6" },
@@ -57,7 +73,7 @@ export default function JaipurServicedApartmentsPage() {
                             React.createElement("li", null, "Durgapura Railway Station: 15–20 minute drive"),
                             React.createElement("li", null, "Main Jaipur Railway Station: 18–20.7 km")
                           ),
-                  React.createElement("h3", { className: "font-semibold text-[#1A1A1A] mb-2" }, "Popular Local Spots Nearby (~5 km radius)"),
+                  React.createElement("h3", { className: "font-semibold text-[#97183C] mt-2 mb-2" }, "Popular Local Spots Nearby (~5 km radius)"),
                   React.createElement(
                             "ul",
                     { className: "space-y-2 text-[#4A4A4A] mb-6" },
@@ -66,7 +82,7 @@ export default function JaipurServicedApartmentsPage() {
                             React.createElement("li", null, "World Trade Park: ~12 minutes"),
                             React.createElement("li", null, "Hawa Mahal & City Palace: ~20 minutes each")
                           ),
-                  React.createElement("h3", { className: "font-semibold text-[#1A1A1A] mb-2" }, "Car & Cab Travel"),
+                  React.createElement("h3", { className: "font-semibold text-[#97183C] mt-2 mb-2" }, "Car & Cab Travel"),
                   React.createElement("p", { className: "text-[#4A4A4A] leading-relaxed" }, "Ride-hailing services like Uber and Ola operate throughout Jaipur and reach the property easily. To explore Jaipur's tourist circuit, booking a self-drive car or hiring a cab for the day is the most comfortable option — we're also happy to help with route details, transport bookings, or maps for local sightseeing if you'd like a more local experience.")
                 ),
           React.createElement(
@@ -75,7 +91,7 @@ export default function JaipurServicedApartmentsPage() {
                   React.createElement(
                             "div",
                     { className: "max-w-3xl mx-auto" },
-                            React.createElement("h2", { className: "text-2xl md:text-3xl font-semibold text-[#1A1A1A] mb-4" }, "Why Book Direct"),
+                            React.createElement("h2", { className: "text-2xl md:text-3xl font-semibold text-[#1A1A1A] mb-5" }, "Why Book Direct"),
                             React.createElement(
                                         "ul",
                               { className: "space-y-3 text-[#4A4A4A]" },
@@ -91,12 +107,12 @@ export default function JaipurServicedApartmentsPage() {
                   React.createElement("h2", { className: "text-2xl md:text-3xl font-semibold text-[#1A1A1A] mb-6" }, "Frequently Asked Questions"),
                   React.createElement(
                             "div",
-                    { className: "space-y-6" },
+                    { className: "divide-y divide-[#EDE7DD] border-y border-[#EDE7DD]" },
                             faqs.map((item, i) =>
                                         React.createElement(
                                                       "div",
-                                          { key: i },
-                                                      React.createElement("h3", { className: "font-semibold text-[#1A1A1A] mb-1" }, item.q),
+                                          { key: i, className: "py-5" },
+                                                      React.createElement("h3", { className: "font-semibold text-lg text-[#1A1A1A] mb-1.5" }, item.q),
                                                       React.createElement("p", { className: "text-[#4A4A4A] leading-relaxed" }, item.a)
                                                     )
                                              )
@@ -105,7 +121,7 @@ export default function JaipurServicedApartmentsPage() {
           React.createElement(
                   "section",
             { className: "pb-12 max-w-3xl mx-auto text-center" },
-                  React.createElement(Link, { href: "/destinations/jaipur", className: "text-[#97183C] font-medium underline hover:text-[#7E1433]" }, "See the full Jaipur destination guide →")
+                  React.createElement(Link, { href: "/destinations/jaipur", className: "inline-flex items-center min-h-[44px] text-[#97183C] font-medium underline underline-offset-4 hover:text-[#7E1433]" }, "See the full Jaipur destination guide →")
                 ),
           React.createElement(
                   "section",

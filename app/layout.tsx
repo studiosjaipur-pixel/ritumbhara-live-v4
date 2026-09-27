@@ -3,11 +3,12 @@ import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import "./globals.css";
 
 const montserrat = Montserrat({ subsets: ["latin"], weight: ["400","500","600","700"] });
 
-const siteUrl = "https://ritumbhara.com";
+const siteUrl = "https://www.ritumbhara.com";
 const siteTitle = "Ritumbhara | India, Thoughtfully Hosted";
 const siteDescription = "Hotels, villas, serviced apartments and boutique stays across India, each one managed to the same exacting standard.";
 
@@ -76,7 +77,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                                              React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(websiteSchema) } }),
                                                              React.createElement(Navbar, null),
                                                              children,
-                                                             React.createElement(Footer, null)
+                                                             React.createElement(Footer, null),
+                                                             React.createElement(FloatingWhatsApp, null)
                                                            )
                                  );
 }
