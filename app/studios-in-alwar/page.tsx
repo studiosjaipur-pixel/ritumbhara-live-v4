@@ -37,61 +37,61 @@ const faqSchema = {
 export default function AlwarStudiosPage() {
     return React.createElement(
           "main",
-      { className: "max-w-5xl mx-auto px-6 pt-28 lg:pt-32 pb-24" },
+      { className: "max-w-7xl mx-auto px-6 lg:px-10 pt-28 lg:pt-32 pb-24" },
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(faqSchema) } }),
           React.createElement(
                   "section",
-            { className: "relative overflow-hidden rounded-md bg-[#F5F1EA] px-5 py-10 md:py-14 text-center" },
-                  React.createElement("p", { className: "uppercase tracking-[0.2em] text-xs text-[#C8A96A] font-semibold mb-3" }, "Alwar"),
-                  React.createElement("h1", { className: "text-4xl md:text-5xl lg:text-6xl font-semibold text-[#1A1A1A] leading-[1.08] mb-6" }, "Boutique Studios in Alwar"),
-                  React.createElement("p", { className: "text-lg text-[#4A4A4A] max-w-2xl mx-auto mb-8" }, "A well-located studio in Wonder Megacity, 200 ft Road, Alwar — an easily accessible residential area, with Sariska Tiger Reserve about 36 km away."),
+            { className: "pt-6 pb-10 md:pb-12 border-b border-line" },
+                  React.createElement("p", { className: "flex items-center gap-3 text-sm font-medium text-sage mb-3" }, React.createElement("span", { "aria-hidden": true, className: "h-px w-8 bg-burgundy" }), "Alwar"),
+                  React.createElement("h1", { className: "text-[2.6rem] md:text-[3.25rem] lg:text-[3.75rem] text-charcoal leading-[1.04] mb-6" }, "Boutique Studios in Alwar"),
+                  React.createElement("p", { className: "text-lg text-charcoal-soft max-w-2xl mb-8" }, "A well-located studio in Wonder Megacity, 200 ft Road, Alwar — an easily accessible residential area, with Sariska Tiger Reserve about 36 km away."),
                   React.createElement(
                             "div",
-                    { className: "flex justify-center" },
+                    { className: "flex" },
                             React.createElement(CheckAvailabilityWidget, { variant: "inline" })
                           )
                 ),
           React.createElement(
                   "section",
-            { className: "py-12 max-w-3xl mx-auto" },
-                  React.createElement("h2", { className: "text-2xl md:text-3xl font-semibold text-[#1A1A1A] mb-5" }, "About the Location"),
-                  React.createElement("p", { className: "text-[#4A4A4A] leading-relaxed mb-4" }, "The studio is located in Wonder Megacity on 200 ft Road, Alwar — a well-known and easily accessible residential area. The exact Google Maps location is shared after booking confirmation for smooth navigation."),
-                  React.createElement("p", { className: "text-[#4A4A4A] leading-relaxed" }, "Alwar city's own landmarks — Bala Quila Fort and the City Palace (Vinay Vilas Mahal) — are nearby, with Siliserh Lake a short drive outside the city and Sariska Tiger Reserve roughly 36 km away for a half-day safari trip.")
+            { className: "py-10 md:py-12 max-w-3xl" },
+                  React.createElement("h2", { className: "text-3xl md:text-[2.5rem] text-charcoal mb-5" }, "About the Location"),
+                  React.createElement("p", { className: "text-charcoal-soft leading-relaxed mb-4" }, "The studio is located in Wonder Megacity on 200 ft Road, Alwar — a well-known and easily accessible residential area. The exact Google Maps location is shared after booking confirmation for smooth navigation."),
+                  React.createElement("p", { className: "text-charcoal-soft leading-relaxed" }, "Alwar city's own landmarks — Bala Quila Fort and the City Palace (Vinay Vilas Mahal) — are nearby, with Siliserh Lake a short drive outside the city and Sariska Tiger Reserve roughly 36 km away for a half-day safari trip.")
                 ),
           React.createElement(
                   "section",
-            { className: "py-12 max-w-3xl mx-auto" },
-                  React.createElement("h2", { className: "text-2xl md:text-3xl font-semibold text-[#1A1A1A] mb-5" }, "Getting There"),
-                  React.createElement("h3", { className: "font-semibold text-[#97183C] mt-2 mb-2" }, "By Car"),
+            { className: "py-10 md:py-12 max-w-3xl" },
+                  React.createElement("h2", { className: "text-3xl md:text-[2.5rem] text-charcoal mb-5" }, "Getting There"),
+                  React.createElement("h3", { className: "text-sm font-semibold text-sage mt-2 mb-2" }, "By Car"),
                   React.createElement(
                             "ul",
-                    { className: "space-y-2 text-[#4A4A4A] mb-6" },
+                    { className: "space-y-2 text-charcoal-soft mb-6" },
                             React.createElement("li", null, "From Delhi NCR: approximately 3 hours"),
                             React.createElement("li", null, "From Jaipur: approximately 3 hours"),
                             React.createElement("li", null, "Use the Delhi–Mumbai Expressway to reach the studio")
                           ),
-                  React.createElement("h3", { className: "font-semibold text-[#97183C] mt-2 mb-2" }, "By Train"),
-                  React.createElement("p", { className: "text-[#4A4A4A] leading-relaxed mb-6" }, "Nearest station: Alwar Junction Railway Station, approximately 15–20 minutes from the property. Autos and taxis are easily available outside."),
-                  React.createElement("h3", { className: "font-semibold text-[#97183C] mt-2 mb-2" }, "By Air"),
+                  React.createElement("h3", { className: "text-sm font-semibold text-sage mt-2 mb-2" }, "By Train"),
+                  React.createElement("p", { className: "text-charcoal-soft leading-relaxed mb-6" }, "Nearest station: Alwar Junction Railway Station, approximately 15–20 minutes from the property. Autos and taxis are easily available outside."),
+                  React.createElement("h3", { className: "text-sm font-semibold text-sage mt-2 mb-2" }, "By Air"),
                   React.createElement(
                             "ul",
-                    { className: "space-y-2 text-[#4A4A4A] mb-6" },
+                    { className: "space-y-2 text-charcoal-soft mb-6" },
                             React.createElement("li", null, "Jaipur International Airport: ~2.5–3 hours"),
                             React.createElement("li", null, "Delhi IGI Airport: ~3.5–4 hours")
                           ),
-                  React.createElement("p", { className: "text-[#4A4A4A] leading-relaxed mb-6" }, "Cab pickup can be arranged on request. Once you reach Wonder Megacity / 200 ft Road, call or message us and we'll guide you to the exact tower for a seamless check-in."),
-                  React.createElement("p", { className: "text-sm text-[#8A8A8A] italic" }, "Tip for guests: for the most convenient experience, we recommend using Google Maps navigation and staying in touch with us during the final 5 minutes of arrival.")
+                  React.createElement("p", { className: "text-charcoal-soft leading-relaxed mb-6" }, "Cab pickup can be arranged on request. Once you reach Wonder Megacity / 200 ft Road, call or message us and we'll guide you to the exact tower for a seamless check-in."),
+                  React.createElement("p", { className: "text-sm text-charcoal-muted italic" }, "Tip for guests: for the most convenient experience, we recommend using Google Maps navigation and staying in touch with us during the final 5 minutes of arrival.")
                 ),
           React.createElement(
                   "section",
-            { className: "py-12 border-t border-[#EDE7DD]" },
+            { className: "py-10 md:py-12 border-t border-line" },
                   React.createElement(
                             "div",
-                    { className: "max-w-3xl mx-auto" },
-                            React.createElement("h2", { className: "text-2xl md:text-3xl font-semibold text-[#1A1A1A] mb-5" }, "Why Book Direct"),
+                    { className: "max-w-3xl" },
+                            React.createElement("h2", { className: "text-3xl md:text-[2.5rem] text-charcoal mb-5" }, "Why Book Direct"),
                             React.createElement(
                                         "ul",
-                              { className: "space-y-3 text-[#4A4A4A]" },
+                              { className: "space-y-3 text-charcoal-soft" },
                                         React.createElement("li", null, "• Same or better rates than Airbnb and other OTAs — no platform markup"),
                                         React.createElement("li", null, "• Direct WhatsApp support before, during, and after your stay"),
                                         React.createElement("li", null, "• Airbnb Superhost track record, verified guest reviews")
@@ -100,33 +100,33 @@ export default function AlwarStudiosPage() {
                 ),
           React.createElement(
                   "section",
-            { className: "py-12 max-w-3xl mx-auto" },
-                  React.createElement("h2", { className: "text-2xl md:text-3xl font-semibold text-[#1A1A1A] mb-6" }, "Frequently Asked Questions"),
+            { className: "py-10 md:py-12 max-w-3xl" },
+                  React.createElement("h2", { className: "text-3xl md:text-[2.5rem] text-charcoal mb-6" }, "Frequently Asked Questions"),
                   React.createElement(
                             "div",
-                    { className: "divide-y divide-[#EDE7DD] border-y border-[#EDE7DD]" },
+                    { className: "divide-y divide-line border-y border-line" },
                             faqs.map((item, i) =>
                                         React.createElement(
                                                       "div",
                                           { key: i, className: "py-5" },
-                                                      React.createElement("h3", { className: "font-semibold text-lg text-[#1A1A1A] mb-1.5" }, item.q),
-                                                      React.createElement("p", { className: "text-[#4A4A4A] leading-relaxed" }, item.a)
+                                                      React.createElement("h3", { className: "font-semibold text-[17px] text-charcoal mb-1.5" }, item.q),
+                                                      React.createElement("p", { className: "text-charcoal-soft leading-relaxed" }, item.a)
                                                     )
                                              )
                           )
                 ),
           React.createElement(
                   "section",
-            { className: "pb-12 max-w-3xl mx-auto text-center" },
-                  React.createElement(Link, { href: "/destinations/alwar", className: "inline-flex items-center min-h-[44px] text-[#97183C] font-medium underline underline-offset-4 hover:text-[#7E1433]" }, "See the full Alwar destination guide →")
+            { className: "pb-12 max-w-3xl" },
+                  React.createElement(Link, { href: "/destinations/alwar", className: "inline-flex items-center min-h-[44px] text-burgundy font-semibold underline decoration-burgundy/30 underline-offset-4 hover:decoration-burgundy" }, "See the full Alwar destination guide →")
                 ),
           React.createElement(
                   "section",
-            { className: "py-12 border-t border-[#EDE7DD]" },
+            { className: "py-10 md:py-12 border-t border-line" },
                   React.createElement(
                             "div",
                     { className: "max-w-xl mx-auto text-center" },
-                            React.createElement("h2", { className: "text-2xl md:text-3xl font-semibold text-[#1A1A1A] mb-6" }, "Check Availability in Alwar"),
+                            React.createElement("h2", { className: "text-3xl md:text-[2.5rem] text-charcoal mb-6" }, "Check Availability in Alwar"),
                             React.createElement(
                                         "div",
                               { className: "flex justify-center" },

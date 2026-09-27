@@ -34,7 +34,7 @@ export default function FloatingWhatsApp() {
     "aria-label": "Chat with Ritumbhara on WhatsApp",
     "aria-hidden": visible ? undefined : true,
     tabIndex: visible ? undefined : -1,
-    className: "fixed z-40 bottom-4 right-4 sm:bottom-6 sm:right-6 inline-flex items-center gap-2 min-h-[48px] pl-4 pr-5 rounded-full bg-[#97183C] text-white text-sm font-semibold shadow-[0_8px_24px_rgba(151,24,60,0.35)] ring-1 ring-white/20 hover-fine:bg-[#7E1433] active:scale-[0.97] active:duration-100 transition-[opacity,transform,background-color] duration-300 ease-snap " + (visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none"),
+    className: "fixed z-40 bottom-4 right-4 sm:bottom-6 sm:right-6 inline-flex items-center gap-2 min-h-[48px] pl-4 pr-5 rounded-full bg-burgundy text-ivory text-sm font-semibold shadow-[0_6px_18px_rgba(38,34,31,0.18)] hover-fine:bg-burgundy-deep active:scale-[0.97] active:duration-100 transition-[opacity,transform,background-color] duration-300 ease-snap " + (visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none"),
   },
     React.createElement("svg", { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
       React.createElement("path", { d: "M3.5 20.5l1.4-4.2A8.5 8.5 0 1 1 8 19.3z" }),

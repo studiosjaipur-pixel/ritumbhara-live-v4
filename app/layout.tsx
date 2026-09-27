@@ -1,12 +1,14 @@
 import React from "react";
 import type { Metadata } from "next";
-import { Montserrat } from "next/font/google";
+import { Cormorant_Garamond, Manrope } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import "./globals.css";
 
-const montserrat = Montserrat({ subsets: ["latin"], weight: ["400","500","600","700"] });
+// Cormorant Garamond for display headings, Manrope for body and UI text.
+const display = Cormorant_Garamond({ subsets: ["latin"], weight: ["500", "600"], variable: "--font-display", display: "swap" });
+const sans = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-sans", display: "swap" });
 
 const siteUrl = "https://www.ritumbhara.com";
 const siteTitle = "Ritumbhara | India, Thoughtfully Hosted";
@@ -72,7 +74,7 @@ const websiteSchema = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return React.createElement("html", { lang: "en" },
-                                   React.createElement("body", { className: montserrat.className + " bg-[#FBF9F6] text-[#2B2B2B]" },
+                                   React.createElement("body", { className: display.variable + " " + sans.variable + " font-sans bg-ivory text-charcoal" },
                                                              React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(organizationSchema) } }),
                                                              React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(websiteSchema) } }),
                                                              React.createElement(Navbar, null),

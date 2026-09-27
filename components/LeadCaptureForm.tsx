@@ -48,15 +48,15 @@ export default function LeadCaptureForm({ title, subtitle, defaultDestination }:
   }
 
   if (status === "success") {
-    return React.createElement("div", { className: "border border-[#EDE7DD] bg-[#F5F1EA] rounded-md p-6 text-center" },
-      React.createElement("p", { className: "font-semibold text-[#1A1A1A] mb-1" }, "Thanks \u2014 you're on the list."),
-      React.createElement("p", { className: "text-sm text-[#4A4A4A]" }, "We'll reach out as soon as there's news to share.")
+    return React.createElement("div", { className: "border-t-2 border-burgundy bg-sand/70 rounded-sm p-6 text-center" },
+      React.createElement("p", { className: "font-semibold text-charcoal mb-1" }, "Thanks \u2014 you're on the list."),
+      React.createElement("p", { className: "text-sm text-charcoal-soft" }, "We'll reach out as soon as there's news to share.")
     );
   }
 
-  return React.createElement("form", { onSubmit: handleSubmit, className: "w-full bg-white border border-[#EDE7DD] rounded-md p-6 sm:p-7 max-w-xl text-left shadow-[0_8px_24px_rgba(26,26,26,0.05)]" },
-    title && React.createElement("h3", { className: "text-lg font-semibold text-[#1A1A1A] mb-1" }, title),
-    subtitle && React.createElement("p", { className: "text-sm text-[#4A4A4A] mb-5" }, subtitle),
+  return React.createElement("form", { onSubmit: handleSubmit, className: "w-full max-w-xl text-left" },
+    title && React.createElement("h3", { className: "font-display text-[1.75rem] leading-tight text-charcoal mb-1.5" }, title),
+    subtitle && React.createElement("p", { className: "text-sm text-charcoal-soft mb-5" }, subtitle),
     React.createElement("div", { className: "grid sm:grid-cols-2 gap-3 mb-3" },
       React.createElement("input", {
         type: "text",
@@ -65,7 +65,7 @@ export default function LeadCaptureForm({ title, subtitle, defaultDestination }:
         value: name,
         required: true,
         onChange: function (e: React.ChangeEvent<HTMLInputElement>) { setName(e.target.value); },
-        className: "min-h-[44px] border border-[#DDD3C2] rounded-md px-3 py-2.5 text-sm bg-white hover-fine:border-[#C8A96A] focus:border-[#97183C] transition-colors",
+        className: "min-h-[44px] border border-line rounded-sm px-3 py-2.5 text-sm bg-ivory hover-fine:border-charcoal-muted focus:border-burgundy transition-colors",
       }),
       React.createElement("input", {
         type: "email",
@@ -74,14 +74,14 @@ export default function LeadCaptureForm({ title, subtitle, defaultDestination }:
         value: email,
         required: true,
         onChange: function (e: React.ChangeEvent<HTMLInputElement>) { setEmail(e.target.value); },
-        className: "min-h-[44px] border border-[#DDD3C2] rounded-md px-3 py-2.5 text-sm bg-white hover-fine:border-[#C8A96A] focus:border-[#97183C] transition-colors",
+        className: "min-h-[44px] border border-line rounded-sm px-3 py-2.5 text-sm bg-ivory hover-fine:border-charcoal-muted focus:border-burgundy transition-colors",
       })
     ),
     React.createElement("select", {
       "aria-label": "Destination",
       value: destinationSlug,
       onChange: function (e: React.ChangeEvent<HTMLSelectElement>) { setDestinationSlug(e.target.value); },
-      className: "min-h-[44px] border border-[#DDD3C2] rounded-md px-3 py-2.5 text-sm bg-white hover-fine:border-[#C8A96A] focus:border-[#97183C] transition-colors w-full mb-3 bg-white",
+      className: "min-h-[44px] border border-line rounded-sm px-3 py-2.5 text-sm bg-ivory hover-fine:border-charcoal-muted focus:border-burgundy transition-colors w-full mb-3",
     },
       React.createElement("option", { value: "" }, "Which destination interests you?"),
       destinations.map(function (d) {
@@ -94,12 +94,12 @@ export default function LeadCaptureForm({ title, subtitle, defaultDestination }:
       value: message,
       onChange: function (e: React.ChangeEvent<HTMLTextAreaElement>) { setMessage(e.target.value); },
       rows: 3,
-      className: "min-h-[44px] border border-[#DDD3C2] rounded-md px-3 py-2.5 text-sm bg-white hover-fine:border-[#C8A96A] focus:border-[#97183C] transition-colors w-full mb-4",
+      className: "min-h-[44px] border border-line rounded-sm px-3 py-2.5 text-sm bg-ivory hover-fine:border-charcoal-muted focus:border-burgundy transition-colors w-full mb-4",
     }),
     React.createElement("button", {
       type: "submit",
       disabled: status === "submitting",
-      className: "w-full min-h-[48px] bg-[#97183C] text-white font-semibold py-3 rounded-md hover-fine:bg-[#7E1433] active:scale-[0.98] active:duration-100 active:ease-out transition-[background-color,transform] duration-200 ease-snap disabled:opacity-60 disabled:active:scale-100",
+      className: "w-full min-h-[48px] bg-burgundy text-ivory font-semibold py-3 rounded-sm hover-fine:bg-burgundy-deep active:scale-[0.98] active:duration-100 active:ease-out transition-[background-color,transform] duration-200 ease-snap disabled:opacity-60 disabled:active:scale-100",
     }, status === "submitting" ? "Sending..." : "Notify Me"),
     status === "error" && React.createElement("p", { className: "text-xs text-center text-red-600 mt-3" }, "Something went wrong \u2014 please try WhatsApp or email instead.")
   );

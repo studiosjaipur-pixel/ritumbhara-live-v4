@@ -33,22 +33,22 @@ return React.createElement(
   "div",
   {
     className:
-      "relative w-full aspect-[4/5] max-w-md mx-auto bg-gradient-to-b from-[#FBF9F6] to-stone-100 rounded-xl border border-neutral-200 overflow-hidden",
+      "relative w-full aspect-[4/5] max-w-md mx-auto bg-sand/60 rounded-sm overflow-hidden",
   },
   React.createElement(
     "p",
-    { className: "absolute top-4 left-4 text-xs uppercase tracking-wide text-neutral-400" },
+    { className: "absolute top-4 left-4 font-display text-lg text-charcoal-soft" },
     "Our Destinations"
     ),
   React.createElement(
     "div",
-    { className: "absolute bottom-4 left-4 flex items-center gap-4 text-[11px] text-neutral-500" },
+    { className: "absolute bottom-4 left-4 flex items-center gap-4 text-[11px] text-charcoal-muted" },
     React.createElement("span", { className: "flex items-center gap-1.5" },
-                        React.createElement("span", { className: "w-2.5 h-2.5 rounded-full bg-[#97183C]" }),
+                        React.createElement("span", { className: "w-2.5 h-2.5 rounded-full bg-burgundy" }),
                         "Open"
                         ),
     React.createElement("span", { className: "flex items-center gap-1.5" },
-                        React.createElement("span", { className: "w-2.5 h-2.5 rounded-full bg-neutral-400" }),
+                        React.createElement("span", { className: "w-2.5 h-2.5 rounded-full bg-charcoal-muted" }),
                         "Coming soon"
                         )
     ),
@@ -75,16 +75,16 @@ return React.createElement(
         },
         React.createElement("span", {
           className:
-            "block w-3.5 h-3.5 rounded-full border-2 border-white shadow transition-transform duration-200 " +
+            "block w-3.5 h-3.5 rounded-full border-2 border-ivory shadow transition-transform duration-200 " +
             (isActive ? "scale-125 " : "") +
-            (destination.status === "operational" ? "bg-[#97183C]" : "bg-neutral-400"),
+            (destination.status === "operational" ? "bg-burgundy" : "bg-charcoal-muted"),
         })
         ),
       React.createElement(
         "span",
         {
           className:
-            "mt-1.5 whitespace-nowrap bg-white/95 border border-neutral-200 rounded-md px-2 py-0.5 text-[11px] font-medium text-neutral-800 shadow-sm transition-opacity duration-150 " +
+            "mt-1.5 whitespace-nowrap bg-ivory border border-line rounded-sm px-2 py-0.5 text-[11px] font-medium text-charcoal transition-opacity duration-150 " +
             (isActive ? "opacity-100" : "opacity-80"),
         },
         destination.name

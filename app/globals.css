@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 body {
-  background-color: #FBF9F6;
-  color: #2B2B2B;
+  background-color: #F8F3EA;
+  color: #26221F;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: clip;
@@ -19,9 +19,26 @@ html {
   scroll-margin-top: 96px;
 }
 
-/* Visible keyboard focus site-wide, in brand gold. */
+/* Editorial type: Cormorant Garamond for page and section headings. */
+h1,
+h2 {
+  font-family: var(--font-display), "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  line-height: 1.08;
+}
+
+/* Lining figures in the display face, so names like "Studio 1210" and phone numbers read evenly. */
+h1,
+h2,
+.font-display {
+  font-variant-numeric: lining-nums;
+  font-feature-settings: "lnum" 1;
+}
+
+/* Visible keyboard focus site-wide. */
 :focus-visible {
-  outline: 2px solid #C8A96A;
+  outline: 2px solid #97183C;
   outline-offset: 3px;
   border-radius: 4px;
 }
@@ -36,8 +53,18 @@ html {
   background-size: 28px 28px, 28px 28px, 28px 28px;
 }
 
+/* Charcoal variant: used for the photo-less destination hero (Agra), matching the other dark destination heroes. */
+.rb-jaali-dark {
+  background-color: #26221F;
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(200, 169, 106, 0.22) 0 2px, transparent 2.5px),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.04) 75%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.04) 75%);
+  background-size: 28px 28px, 28px 28px, 28px 28px;
+}
+
 .rb-jaali-light {
-  background-color: #F5F1EA;
+  background-color: #EEE4D3;
   background-image:
     radial-gradient(circle at 50% 50%, rgba(151, 24, 60, 0.16) 0 2px, transparent 2.5px),
     linear-gradient(45deg, rgba(151, 24, 60, 0.05) 25%, transparent 25%, transparent 75%, rgba(151, 24, 60, 0.05) 75%),

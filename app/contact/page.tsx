@@ -13,9 +13,9 @@ export const metadata: Metadata = {
       ...socialMetadata("/contact", contactTitle + " | Ritumbhara", contactDescription),
 };
 
-const cardClass = "group bg-white border border-[#EDE7DD] rounded-md p-5 flex flex-col hover-fine:border-[#C8A96A] hover-fine:shadow-[0_12px_28px_rgba(26,26,26,0.06)] transition-[border-color,box-shadow] duration-200";
-const labelClass = "text-xs uppercase tracking-wide text-neutral-500 mb-1.5";
-const valueClass = "text-lg text-neutral-900 group-hover-fine:text-[#97183C] transition-colors break-words";
+const cardClass = "group border-t border-line py-5 flex flex-col transition-colors duration-200";
+const labelClass = "text-xs font-semibold text-sage mb-1";
+const valueClass = "font-display text-[1.75rem] leading-tight text-charcoal group-hover-fine:text-burgundy transition-colors break-words";
 
 export default function ContactPage() {
       return React.createElement(
@@ -29,29 +29,29 @@ export default function ContactPage() {
                                     null,
                                     React.createElement(
                                               "h1",
-                                        { className: "text-4xl lg:text-5xl font-semibold text-neutral-900 mb-4 pb-6 border-b border-[#EDE7DD]" },
+                                        { className: "text-[2.6rem] lg:text-[3.5rem] text-charcoal mb-4 pb-6 border-b border-line" },
                                               "Contact Us"
                                             ),
                                     React.createElement(
                                               "p",
-                                        { className: "text-neutral-600 leading-relaxed max-w-md" },
+                                        { className: "text-charcoal-soft leading-relaxed max-w-md" },
                                               "For reservations, please book directly through each property's page. For partnerships, press, or general questions, reach us below."
                                             ),
                                     React.createElement(
                                               "div",
-                                        { className: "mt-6 pt-5 border-t border-[#EDE7DD] max-w-md" },
-                                              React.createElement("p", { className: "text-sm font-semibold text-neutral-900 mb-1" }, "Property owners"),
+                                        { className: "mt-6 pt-5 border-t border-line max-w-md" },
+                                              React.createElement("p", { className: "text-sm font-semibold text-charcoal mb-1" }, "Property owners"),
                                               React.createElement(
                                                           "div",
                                                           { className: "flex flex-wrap gap-x-6" },
-                                                          React.createElement(Link, { href: "/about#foco", className: "inline-flex items-center min-h-[44px] text-sm font-semibold text-[#97183C] underline decoration-[#97183C]/30 underline-offset-4 hover-fine:decoration-[#97183C]" }, "Our FOCO model"),
-                                                          React.createElement("a", { href: "/partner-onboarding.html", className: "inline-flex items-center min-h-[44px] text-sm font-semibold text-[#97183C] underline decoration-[#97183C]/30 underline-offset-4 hover-fine:decoration-[#97183C]" }, "Partner With Us")
+                                                          React.createElement(Link, { href: "/about#foco", className: "inline-flex items-center min-h-[44px] text-sm font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy" }, "Our FOCO model"),
+                                                          React.createElement("a", { href: "/partner-onboarding.html", className: "inline-flex items-center min-h-[44px] text-sm font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy" }, "Partner With Us")
                                                         )
                                             )
                                   ),
                         React.createElement(
                                     "div",
-                                    { className: "grid sm:grid-cols-2 gap-4" },
+                                    { className: "grid sm:grid-cols-2 gap-x-8 border-b border-line" },
                                     React.createElement(
                                                 "a",
                                                 { href: "tel:+919503002629", className: cardClass },
@@ -77,7 +77,7 @@ export default function ContactPage() {
                   { className: "mt-12 lg:mt-auto lg:pt-12" },
                         React.createElement(
                                     "div",
-                                    { className: "relative overflow-hidden bg-[#F5F1EA] rounded-md p-6 sm:p-8" },
+                                    { className: "relative overflow-hidden bg-sand/70 rounded-sm p-6 sm:p-8" },
                                     React.createElement("div", { className: "absolute inset-y-0 right-0 w-1/3 rb-jaali-light hidden md:block", "aria-hidden": true }),
                                     React.createElement(
                                                 "div",
@@ -85,7 +85,7 @@ export default function ContactPage() {
                                                 React.createElement("p", { className: labelClass }, "Destinations"),
                                                 React.createElement(
                                                               "p",
-                                                    { className: "text-lg text-neutral-900" },
+                                                    { className: "font-display text-[1.6rem] leading-tight text-charcoal" },
                                                               "Jaipur, Alwar, Sariska, and Agra (coming soon)"
                                                             )
                                               )

@@ -45,18 +45,18 @@ function formatDate(iso: string) {
 
 function renderBlock(block: JournalBlock, i: number) {
   if (block.type === "heading") {
-    return React.createElement("h2", { key: i, className: "text-2xl lg:text-[28px] font-semibold text-[#1A1A1A] leading-snug mt-12 mb-4" }, block.text);
+    return React.createElement("h2", { key: i, className: "text-3xl lg:text-[2.1rem] text-charcoal leading-tight mt-12 mb-4" }, block.text);
   }
   if (block.type === "list") {
     return React.createElement(
       "ul",
-      { key: i, className: "space-y-2.5 text-[17px] text-[#3A3A3A] leading-[1.75] mb-6 list-disc pl-5 marker:text-[#C8A96A]" },
+      { key: i, className: "space-y-2.5 text-[17px] text-charcoal/90 leading-[1.75] mb-6 list-disc pl-5 marker:text-sage" },
       block.items.map(function (item, j) {
         return React.createElement("li", { key: j }, item);
       })
     );
   }
-  return React.createElement("p", { key: i, className: "text-[17px] text-[#3A3A3A] leading-[1.8] mb-6" }, block.text);
+  return React.createElement("p", { key: i, className: "text-[17px] text-charcoal/90 leading-[1.8] mb-6" }, block.text);
 }
 
 export default function JournalPostPage({ params }: { params: { slug: string } }) {
@@ -100,22 +100,22 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(breadcrumbSchema) } }),
     React.createElement(
       "nav",
-      { className: "flex flex-wrap items-center gap-x-1 text-xs text-[#8A8A8A] mb-8" },
-      React.createElement(Link, { href: "/journal", className: "inline-flex items-center min-h-[44px] hover:underline hover:text-[#97183C]" }, "Journal"),
+      { className: "flex flex-wrap items-center gap-x-1 text-xs text-charcoal-muted mb-8" },
+      React.createElement(Link, { href: "/journal", className: "inline-flex items-center min-h-[44px] hover:underline hover:text-burgundy" }, "Journal"),
       " / ",
       React.createElement("span", null, post.destinationTag)
     ),
-    React.createElement("p", { className: "uppercase tracking-[0.2em] text-xs text-[#C8A96A] font-semibold mb-3" }, post.destinationTag),
-    React.createElement("h1", { className: "text-4xl md:text-5xl font-semibold text-[#1A1A1A] leading-[1.1] mb-6" }, post.title),
+    React.createElement("p", { className: "flex items-center gap-3 text-sm font-medium text-sage mb-3" }, React.createElement("span", { "aria-hidden": true, className: "h-px w-8 bg-burgundy" }), post.destinationTag),
+    React.createElement("h1", { className: "text-[2.5rem] md:text-[3.25rem] text-charcoal leading-[1.06] mb-6" }, post.title),
     React.createElement(
       "p",
-      { className: "text-sm text-[#8A8A8A] mb-10 pb-8 border-b border-[#EDE7DD]" },
+      { className: "text-sm text-charcoal-muted mb-10 pb-8 border-b border-line" },
       formatDate(post.publishedAt) + " · " + post.readingMinutes + " min read"
     ),
     post.heroImage
       ? React.createElement(
           "div",
-          { className: "relative w-full aspect-[16/9] rounded-md overflow-hidden mb-12 bg-[#EDE7DD]" },
+          { className: "relative w-full aspect-[16/9] rounded-sm overflow-hidden mb-12 bg-sand" },
           React.createElement(Image, {
             src: post.heroImage,
             alt: post.title,
@@ -132,8 +132,8 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
     relatedDestinations.length > 0 &&
       React.createElement(
         "div",
-        { className: "border-l-[3px] border-[#C8A96A] bg-[#F5F1EA] rounded-md p-6 sm:p-7 my-12" },
-        React.createElement("p", { className: "font-semibold text-[#1A1A1A] mb-3" }, "Planning this trip?"),
+        { className: "border-t-2 border-burgundy bg-sand/70 rounded-sm p-6 sm:p-7 my-12" },
+        React.createElement("p", { className: "font-display text-[1.75rem] leading-tight text-charcoal mb-2" }, "Planning this trip?"),
         React.createElement(
           "div",
           { className: "flex flex-col" },
@@ -143,7 +143,7 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
               {
                 key: d.slug,
                 href: "/destinations/" + d.slug,
-                className: "inline-flex items-center min-h-[40px] text-[#97183C] font-medium hover:underline",
+                className: "inline-flex items-center min-h-[40px] text-burgundy font-medium hover:underline",
               },
               "See stays and things to do in " + d.name + " →"
             );
@@ -151,7 +151,7 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
           post.relatedLinks.map(function (link) {
             return React.createElement(
               Link,
-              { key: link.href, href: link.href, className: "inline-flex items-center min-h-[40px] text-[#97183C] font-medium hover:underline" },
+              { key: link.href, href: link.href, className: "inline-flex items-center min-h-[40px] text-burgundy font-medium hover:underline" },
               link.label + " →"
             );
           })
@@ -160,8 +160,8 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
 
     React.createElement(
       "div",
-      { className: "border-t border-[#EDE7DD] pt-12 mt-4" },
-      React.createElement("h2", { className: "text-2xl font-semibold text-[#1A1A1A] mb-6 text-center" }, "Check Availability"),
+      { className: "border-t border-line pt-12 mt-4" },
+      React.createElement("h2", { className: "text-3xl text-charcoal mb-6 text-center" }, "Check Availability"),
       React.createElement(
         "div",
         { className: "flex justify-center" },
