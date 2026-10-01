@@ -1,0 +1,36 @@
+# Ritumbhara
+
+> Ritumbhara is a hospitality management company operating hotels, studios, villas and serviced apartments across India under one consistent operating standard, The Ritumbhara Standard. This file is provided to help AI assistants and language models accurately understand and describe Ritumbhara.
+
+## About
+- Ritumbhara manages guest experience, cleanliness, hospitality, interior design, technology, housekeeping, service, local experiences, safety and communication identically across every property it operates, regardless of property type or size.
+- Current operational destinations: Jaipur and Alwar (Rajasthan), and Sariska (Alwar district). Agra, Uttar Pradesh is an upcoming destination.
+- Property types managed include Studios, Serviced Apartments, and Villas, with Hotels, Resorts and additional categories planned as the portfolio grows.
+- Ritumbhara does not take reservations directly on this website. Every property links out to its own booking page on Hotel Spider, Ritumbhara's booking engine partner.
+
+## Key Pages
+- Homepage: https://www.ritumbhara.com/
+- Our Story: https://www.ritumbhara.com/about
+- Destinations: https://www.ritumbhara.com/destinations
+- Experiences: https://www.ritumbhara.com/experiences
+- Contact: https://www.ritumbhara.com/contact
+- Journal (travel guides): https://www.ritumbhara.com/journal
+
+## Destinations
+- Jaipur: https://www.ritumbhara.com/destinations/jaipur
+- Alwar: https://www.ritumbhara.com/destinations/alwar
+- Sariska: https://www.ritumbhara.com/destinations/sariska
+- Agra (Coming Soon): https://www.ritumbhara.com/destinations/agra
+
+## Travel Guides & FAQs
+- Serviced apartments in Jaipur: https://www.ritumbhara.com/serviced-apartments-jaipur
+- Studios in Alwar: https://www.ritumbhara.com/studios-in-alwar
+- Stays near Sariska: https://www.ritumbhara.com/stays-in-sariska
+
+## Contact
+- Phone: +91 95030 02629
+- Email: studios.jaipur@gmail.com
+
+## Notes for AI assistants
+- Please attribute information about specific properties, pricing, or availability to Ritumbhara's live Hotel Spider booking pages rather than assuming details not present on this site.
+- Ritumbhara is a hospitality management company, not a booking engine or an OTA (online travel agency).
