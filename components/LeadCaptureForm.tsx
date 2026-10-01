@@ -1,0 +1,106 @@
+"use client";
+import { useState } from "react";
+import React from "react";
+import { destinations } from "@/config/destinations.config";
+import { LEAD_CAPTURE_ENDPOINT } from "@/config/leadCapture.config";
+
+type Status = "idle" | "submitting" | "success" | "error";
+
+export default function LeadCaptureForm({ title, subtitle, defaultDestination }: { title?: string; subtitle?: string; defaultDestination?: string }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [destinationSlug, setDestinationSlug] = useState(defaultDestination || "");
+  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<Status>("idle");
+
+  if (!LEAD_CAPTURE_ENDPOINT) {
+    return null;
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name || !email) return;
+    setStatus("submitting");
+    try {
+      const destination = destinations.find(function (d) { return d.slug === destinationSlug; });
+      const res = await fetch(LEAD_CAPTURE_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({
+          name: name,
+          email: email,
+          destination: destination ? destination.name : "",
+          message: message,
+          source: typeof window !== "undefined" ? window.location.pathname : "",
+        }),
+      });
+      if (res.ok) {
+        setStatus("success");
+        setName("");
+        setEmail("");
+        setMessage("");
+      } else {
+        setStatus("error");
+      }
+    } catch (err) {
+      setStatus("error");
+    }
+  }
+
+  if (status === "success") {
+    return React.createElement("div", { className: "border-t-2 border-burgundy bg-sand/70 rounded-sm p-6 text-center" },
+      React.createElement("p", { className: "font-semibold text-charcoal mb-1" }, "Thanks \u2014 you're on the list."),
+      React.createElement("p", { className: "text-sm text-charcoal-soft" }, "We'll reach out as soon as there's news to share.")
+    );
+  }
+
+  return React.createElement("form", { onSubmit: handleSubmit, className: "w-full max-w-xl text-left" },
+    title && React.createElement("h3", { className: "font-display text-[1.75rem] leading-tight text-charcoal mb-1.5" }, title),
+    subtitle && React.createElement("p", { className: "text-sm text-charcoal-soft mb-5" }, subtitle),
+    React.createElement("div", { className: "grid sm:grid-cols-2 gap-3 mb-3" },
+      React.createElement("input", {
+        type: "text",
+        placeholder: "Your name",
+        "aria-label": "Your name",
+        value: name,
+        required: true,
+        onChange: function (e: React.ChangeEvent<HTMLInputElement>) { setName(e.target.value); },
+        className: "min-h-[44px] border border-line rounded-sm px-3 py-2.5 text-sm bg-ivory hover-fine:border-charcoal-muted focus:border-burgundy transition-colors",
+      }),
+      React.createElement("input", {
+        type: "email",
+        placeholder: "Email address",
+        "aria-label": "Email address",
+        value: email,
+        required: true,
+        onChange: function (e: React.ChangeEvent<HTMLInputElement>) { setEmail(e.target.value); },
+        className: "min-h-[44px] border border-line rounded-sm px-3 py-2.5 text-sm bg-ivory hover-fine:border-charcoal-muted focus:border-burgundy transition-colors",
+      })
+    ),
+    React.createElement("select", {
+      "aria-label": "Destination",
+      value: destinationSlug,
+      onChange: function (e: React.ChangeEvent<HTMLSelectElement>) { setDestinationSlug(e.target.value); },
+      className: "min-h-[44px] border border-line rounded-sm px-3 py-2.5 text-sm bg-ivory hover-fine:border-charcoal-muted focus:border-burgundy transition-colors w-full mb-3",
+    },
+      React.createElement("option", { value: "" }, "Which destination interests you?"),
+      destinations.map(function (d) {
+        return React.createElement("option", { key: d.slug, value: d.slug }, d.name + (d.status === "coming-soon" ? " (Coming Soon)" : ""));
+      })
+    ),
+    React.createElement("textarea", {
+      placeholder: "Anything else we should know? (optional)",
+      "aria-label": "Message (optional)",
+      value: message,
+      onChange: function (e: React.ChangeEvent<HTMLTextAreaElement>) { setMessage(e.target.value); },
+      rows: 3,
+      className: "min-h-[44px] border border-line rounded-sm px-3 py-2.5 text-sm bg-ivory hover-fine:border-charcoal-muted focus:border-burgundy transition-colors w-full mb-4",
+    }),
+    React.createElement("button", {
+      type: "submit",
+      disabled: status === "submitting",
+      className: "w-full min-h-[48px] bg-burgundy text-ivory font-semibold py-3 rounded-sm hover-fine:bg-burgundy-deep active:scale-[0.98] active:duration-100 active:ease-out transition-[background-color,transform] duration-200 ease-snap disabled:opacity-60 disabled:active:scale-100",
+    }, status === "submitting" ? "Sending..." : "Notify Me"),
+    status === "error" && React.createElement("p", { className: "text-xs text-center text-red-600 mt-3" }, "Something went wrong \u2014 please try WhatsApp or email instead.")
+  );
+}
