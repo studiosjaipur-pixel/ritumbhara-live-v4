@@ -1,14 +1,34 @@
 import React from "react";
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
+import localFont from "next/font/local";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import "./globals.css";
 
 // Cormorant Garamond for display headings, Manrope for body and UI text.
-const display = Cormorant_Garamond({ subsets: ["latin"], weight: ["500", "600"], variable: "--font-display", display: "swap" });
-const sans = Manrope({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-sans", display: "swap" });
+// Self-hosted from app/fonts (latin subset, SIL Open Font License; licences alongside the files), so the
+// build no longer has to download them from Google Fonts. Same families and weights as before; next/font
+// still preloads them and generates size-matched fallbacks to avoid layout shift.
+const display = localFont({
+  src: [
+    { path: "./fonts/cormorant-garamond-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/cormorant-garamond-latin-600-normal.woff2", weight: "600", style: "normal" },
+  ],
+  variable: "--font-display",
+  display: "swap",
+  adjustFontFallback: "Times New Roman",
+});
+const sans = localFont({
+  src: [
+    { path: "./fonts/manrope-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/manrope-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/manrope-latin-600-normal.woff2", weight: "600", style: "normal" },
+  ],
+  variable: "--font-sans",
+  display: "swap",
+  adjustFontFallback: "Arial",
+});
 
 const siteUrl = "https://www.ritumbhara.com";
 const siteTitle = "Ritumbhara | India, Thoughtfully Hosted";

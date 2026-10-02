@@ -15,6 +15,9 @@ export interface LocationDetails {
   nearby: string[];
   // Google Maps search for the named area only (not an exact address). Omit when there is no named area.
   mapsQuery?: string;
+  // What the map shows, in words, and a note when that is a nearby landmark rather than the stay itself.
+  mapsLabel?: string;
+  mapsNote?: string;
 }
 
 // Applies to every property in the destination.
@@ -34,6 +37,8 @@ export const destinationLocations: Record<string, LocationDetails> = {
       "Hawa Mahal and City Palace: about 20 minutes each by car",
     ],
     mapsQuery: "Karolan Ka Barh, Jeerota, Jaipur, Rajasthan",
+    mapsLabel: "the Karolan Ka Barh area",
+    mapsNote: "The map shows the Karolan Ka Barh area, not the exact building.",
   },
 };
 
@@ -53,6 +58,10 @@ export const propertyLocations: Record<string, LocationDetails> = {
       "Grocery & local market: about 10 km",
       "ATM & pharmacy: about 10–12 km (in Alwar city)",
     ],
+    // No address or coordinates are published for the villa, so the map shows the reserve it is near.
+    mapsQuery: "Sariska Tiger Reserve, Rajasthan",
+    mapsLabel: "Sariska Tiger Reserve",
+    mapsNote: "The map shows Sariska Tiger Reserve. The villa is in Alwar district near the reserve, 12 km (about 30 minutes) by road from Alwar city.",
   },
 };
 

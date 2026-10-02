@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image, { getImageProps } from "next/image";
 import { destinations } from "@/config/destinations.config";
 import { isPlacementVerified } from "@/config/locations.config";
+import { bookingEngine } from "@/config/booking.config";
 import { properties } from "@/config/properties.config";
 import PropertyCard from "@/components/PropertyCard";
 import IndiaMap from "@/components/IndiaMap";
@@ -110,7 +111,7 @@ return React.createElement("main", null,
                                                                                                            destinations.map(function (d) {
                                                                                                              return React.createElement(Link, { key: d.slug, href: "/destinations/" + d.slug, className: "group grid grid-cols-[108px_1fr] gap-4 items-start sm:block" },
                                                                                                                                         React.createElement("div", { className: "relative aspect-square sm:aspect-[3/2] w-full overflow-hidden rounded-sm " + (d.heroImage ? "bg-sand" : "rb-jaali-light") },
-                                                                                                                                                            d.heroImage && React.createElement(Image, { src: d.heroImage, alt: d.name, fill: true, quality: 65, sizes: "(max-width: 639px) 108px, (max-width: 1023px) 50vw, 30vw", className: "object-cover transition-transform duration-700 ease-snap group-hover-fine:scale-[1.04]" })
+                                                                                                                                                            d.heroImage && React.createElement(Image, { src: d.heroImage, alt: d.name, fill: true, quality: 65, sizes: "(max-width: 639px) 108px, (max-width: 1023px) 50vw, 30vw", fetchPriority: "low", className: "object-cover transition-transform duration-700 ease-snap group-hover-fine:scale-[1.04]" })
                                                                                                                                                             ),
                                                                                                                                         React.createElement("div", { className: "min-w-0" },
                                                                                                                                         React.createElement("div", { className: "flex items-baseline justify-between gap-3 sm:mt-4" },
@@ -186,6 +187,38 @@ return React.createElement("main", null,
                                                                    )
                                                ),
                            React.createElement(Testimonials, null),
+                           // Where we are and the booking terms (UX-010, UX-006). Address and terms are exactly as shown on the
+                           // Hotel-Spider booking engine; the map is lazy-loaded so it costs nothing until it is scrolled near.
+                           React.createElement("section", { className: "border-t border-line" },
+                             React.createElement("div", { className: "max-w-7xl mx-auto px-6 lg:px-10 py-14 lg:py-20 grid lg:grid-cols-2 gap-12 lg:gap-16" },
+                               React.createElement("div", { id: "find-us", className: "scroll-mt-28 min-w-0" },
+                                 React.createElement("h2", { className: "text-4xl lg:text-5xl text-charcoal mb-5" }, "Find Us"),
+                                 React.createElement("address", { className: "not-italic text-lg text-charcoal mb-1" }, "Ritumbhara, " + bookingEngine.address),
+                                 React.createElement("p", { className: "text-sm text-charcoal-soft mb-5" }, "Our business address, as listed on our online booking engine. Each property page has that stay\u2019s own location details."),
+                                 React.createElement("div", { className: "relative aspect-[4/3] sm:aspect-[16/9] w-full overflow-hidden rounded-sm bg-sand mb-3" },
+                                   React.createElement("iframe", { src: "https://www.google.com/maps?q=" + encodeURIComponent(bookingEngine.address) + "&output=embed", title: "Map of " + bookingEngine.address, loading: "lazy", referrerPolicy: "no-referrer-when-downgrade", className: "absolute inset-0 w-full h-full border-0" })
+                                 ),
+                                 React.createElement("a", { href: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(bookingEngine.address), target: "_blank", rel: "noopener", className: "inline-flex items-center min-h-[44px] text-sm font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy" }, "Open in Google Maps")
+                               ),
+                               React.createElement("div", { id: "policies", className: "scroll-mt-28 min-w-0" },
+                                 React.createElement("h2", { className: "text-4xl lg:text-5xl text-charcoal mb-5" }, "Booking Policies"),
+                                 React.createElement("dl", { className: "border-t border-line mb-4" },
+                                   [
+                                     { label: "Check-in", value: bookingEngine.checkIn },
+                                     { label: "Check-out", value: "By " + bookingEngine.checkOut },
+                                     { label: "Cancellation", value: bookingEngine.cancellation },
+                                     { label: "Payment", value: bookingEngine.payment },
+                                   ].map(function (t) {
+                                     return React.createElement("div", { key: t.label, className: "py-3 border-b border-line" },
+                                       React.createElement("dt", { className: "text-xs font-semibold text-sage mb-0.5" }, t.label),
+                                       React.createElement("dd", { className: "text-[15px] text-charcoal" }, t.value)
+                                     );
+                                   })
+                                 ),
+                                 React.createElement("p", { className: "text-sm text-charcoal-soft leading-relaxed" }, "These are the terms on our online booking engine for rooms booked there. If you arrange a stay with us on WhatsApp, please confirm the terms with us before you book.")
+                               )
+                             )
+                           ),
                            React.createElement("section", { className: "max-w-7xl mx-auto px-6 lg:px-10 py-14 lg:py-20 flex justify-center" },
                                                React.createElement(LeadCaptureForm, {
                                                  title: "Not ready to book yet?",

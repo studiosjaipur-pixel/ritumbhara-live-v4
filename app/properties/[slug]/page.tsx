@@ -264,7 +264,21 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
           React.createElement("div", { className: "flex flex-wrap gap-x-6 gap-y-1" },
             placeDestination && React.createElement(Link, { href: "/destinations/" + placeDestination.slug, className: "inline-flex items-center min-h-[44px] text-sm font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy" }, "Explore " + placeDestination.name),
             guideHref && React.createElement(Link, { href: guideHref, className: "inline-flex items-center min-h-[44px] text-sm font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy" }, "Travel guide & FAQs"),
-            location && location.mapsQuery && React.createElement("a", { href: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(location.mapsQuery), target: "_blank", rel: "noopener", className: "inline-flex items-center min-h-[44px] text-sm font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy" }, "View the area on Google Maps")
+            location && location.mapsQuery && React.createElement("a", { href: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(location.mapsQuery), target: "_blank", rel: "noopener", className: "inline-flex items-center min-h-[44px] text-sm font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy" }, "View " + (location.mapsLabel || "the area") + " on Google Maps")
+          ),
+          // Map of the verified area or landmark (UX-003), with a note saying exactly what it shows. It sits in a
+          // native <details> toggle so Google Maps only loads when a visitor asks for it, keeping page loads light.
+          location && location.mapsQuery && React.createElement("details", { className: "group mt-2" },
+            React.createElement("summary", { className: "inline-flex items-center gap-2 min-h-[44px] cursor-pointer list-none [&::-webkit-details-marker]:hidden text-sm font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy" },
+              React.createElement("span", { className: "group-open:hidden" }, "Show map"),
+              React.createElement("span", { className: "hidden group-open:inline" }, "Hide map")
+            ),
+            React.createElement("figure", { className: "mt-2" },
+              React.createElement("div", { className: "relative aspect-[4/3] sm:aspect-[16/9] w-full overflow-hidden rounded-sm bg-sand" },
+                React.createElement("iframe", { src: "https://www.google.com/maps?q=" + encodeURIComponent(location.mapsQuery) + "&output=embed", title: "Map of " + (location.mapsLabel || location.mapsQuery), loading: "lazy", referrerPolicy: "no-referrer-when-downgrade", className: "absolute inset-0 w-full h-full border-0" })
+              ),
+              location.mapsNote && React.createElement("figcaption", { className: "text-xs text-charcoal-muted mt-2" }, location.mapsNote)
+            )
           )
         ),
         React.createElement("section", { id: "before-you-book", className: "border-t border-line pt-6 mb-10 scroll-mt-28" },
@@ -296,12 +310,22 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
       ),
       React.createElement("aside", { className: "bg-sand/70 border-t-2 border-burgundy rounded-sm p-6 lg:p-7 h-fit lg:sticky lg:top-28" },
         React.createElement("h2", { className: "text-[1.6rem] leading-tight text-charcoal mb-1" }, "Book Your Stay"),
-        React.createElement("div", { className: "flex items-center gap-2 mb-5 text-xs font-semibold text-burgundy" },
+        React.createElement("div", { className: "flex items-center gap-2 mb-4 text-xs font-semibold text-burgundy" },
           React.createElement("span", null, "\u2605 Airbnb Superhost")
+        ),
+        // How pricing works (UX-002). Hotel-Spider prices depend on dates, guests and availability, so the
+        // panel explains where the live price is shown instead of displaying a stale number.
+        React.createElement("div", { className: "bg-ivory/80 border-l-2 border-burgundy rounded-sm px-4 py-3 mb-5" },
+          React.createElement("p", { className: "text-xs font-semibold text-sage mb-1" }, "Price per night"),
+          React.createElement("p", { className: "font-display text-[1.45rem] leading-tight text-charcoal mb-1" }, hasRoomLink ? "Live price for your dates" : "Price on request"),
+          React.createElement("p", { className: "text-sm text-charcoal-soft leading-snug" }, hasRoomLink
+            ? "Shown in \u20B9 on our booking page for your dates and number of guests, before you pay. Rates change with dates and availability."
+            : "This stay isn\u2019t on our online booking engine \u2014 message us on WhatsApp with your dates for a price.")
         ),
         // One set of booking actions (UX-003): a fixed bar at the bottom of the screen on mobile, and part of
         // this sticky booking panel on desktop. Same links as before; rendered once instead of twice.
-        React.createElement("div", { className: "fixed bottom-0 inset-x-0 z-40 bg-ivory/95 backdrop-blur border-t border-line p-3 flex flex-row-reverse gap-2 lg:static lg:z-auto lg:bg-transparent lg:backdrop-blur-none lg:border-0 lg:p-0 lg:flex-col lg:gap-3 lg:mb-4" },
+        React.createElement("div", { className: "fixed bottom-0 inset-x-0 z-40 bg-ivory/95 backdrop-blur border-t border-line p-3 flex flex-row-reverse flex-wrap gap-2 lg:flex-nowrap lg:static lg:z-auto lg:bg-transparent lg:backdrop-blur-none lg:border-0 lg:p-0 lg:flex-col lg:gap-3 lg:mb-4" },
+          React.createElement("p", { className: "lg:hidden order-first basis-full text-center text-xs text-charcoal-soft -mt-0.5" }, hasRoomLink ? "Nightly price: live in \u20B9 for your dates" : "Nightly price: on request via WhatsApp"),
           // Room-specific booking link only when the room is verified on the engine; otherwise a WhatsApp
           // enquiry plus the engine's general page, never a broken room link.
           ...(hasRoomLink ? [
@@ -323,13 +347,8 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
           )
           ])
         ),
-        React.createElement("p", { className: "text-xs text-center text-charcoal-muted mb-2" }, hasRoomLink ? "Live nightly rates in \u20B9 for your dates \u00B7 Book direct, no OTA booking fees" : "This stay isn't listed on our online booking engine \u2014 message us for dates and rates."),
+        React.createElement("p", { className: "text-xs text-center text-charcoal-muted mb-2" }, "Book direct with Ritumbhara \u2014 no OTA booking fees"),
         React.createElement("a", { href: "#before-you-book", className: "flex items-center justify-center min-h-[44px] text-xs font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy mb-4" }, property.bookingEngineListed ? "Check-in times & cancellation terms" : "Check-in, cancellation & house rules"),
-        React.createElement("div", { className: "border-t border-line pt-5 text-sm" },
-          React.createElement("p", { className: "text-charcoal-soft mb-3" }, "Questions before you book? Message us on WhatsApp or get in touch:"),
-          React.createElement("a", { href: "tel:" + property.contact.phone.replace(/\s+/g, ""), className: "flex items-center min-h-[44px] font-medium text-charcoal hover-fine:text-burgundy" }, property.contact.phone),
-          React.createElement("a", { href: "mailto:" + property.contact.email, className: "flex items-center min-h-[44px] font-medium text-charcoal hover-fine:text-burgundy break-all" }, property.contact.email)
-        )
       )
     ),
     )

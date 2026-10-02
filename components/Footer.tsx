@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { destinations } from "@/config/destinations.config";
+import { bookingEngine } from "@/config/booking.config";
 
 const linkClass = "inline-flex items-center min-h-[40px] text-sm text-ivory/65 hover-fine:text-ivory transition-colors duration-200";
 
@@ -27,6 +28,7 @@ export default function Footer() {
           React.createElement(Link, { href: "/experiences", className: linkClass }, "Experiences"),
           React.createElement(Link, { href: "/journal", className: linkClass }, "Journal"),
           React.createElement(Link, { href: "/contact", className: linkClass }, "Contact"),
+          React.createElement(Link, { href: "/#policies", className: linkClass }, "Booking Policies"),
           React.createElement("a", { href: "/partner-onboarding.html", className: linkClass }, "Partner With Us")
         )
       ),
@@ -34,8 +36,10 @@ export default function Footer() {
         React.createElement("h4", { className: "text-xs font-semibold tracking-[0.14em] uppercase text-[#C8A96A] mb-3" }, "Contact"),
         React.createElement("div", { className: "flex flex-col" },
           React.createElement("a", { href: "tel:+919503002629", className: linkClass }, "+91 95030 02629"),
-          React.createElement("a", { href: "https://wa.me/919503002629", className: linkClass }, "WhatsApp Us"),
-          React.createElement("a", { href: "mailto:reservations@ritumbhara.com", className: linkClass + " break-all" }, "reservations@ritumbhara.com")
+          React.createElement("a", { href: "mailto:reservations@ritumbhara.com", className: linkClass + " break-all" }, "reservations@ritumbhara.com"),
+          // Business address as listed on the Hotel-Spider booking engine (UX-010).
+          React.createElement("address", { className: "not-italic text-sm text-ivory/65 mt-2 leading-relaxed" }, "Ritumbhara, " + bookingEngine.address),
+          React.createElement(Link, { href: "/#find-us", className: linkClass }, "Map & directions")
         )
       )
     ),
