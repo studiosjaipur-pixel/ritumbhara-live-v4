@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import Testimonials from "@/components/Testimonials";
 import { destinations } from "@/config/destinations.config";
+import { bookingEngine } from "@/config/booking.config";
 import { socialMetadata } from "@/lib/seo";
 import { Metadata } from "next";
 
@@ -71,6 +72,16 @@ export default function ContactPage() {
                                                 { href: "mailto:studios.jaipur@gmail.com", className: cardClass + " sm:col-span-2" },
                                                 React.createElement("p", { className: labelClass }, "Email"),
                                                 React.createElement("span", { className: valueClass }, "studios.jaipur@gmail.com")
+                                              ),
+                                    // Business location as listed on the Hotel-Spider booking engine (UX-004). It has no street
+                                    // line, so the map link searches the listed postcode area only. Property locations stay on
+                                    // each property page and are not replaced by this address.
+                                    React.createElement(
+                                                "a",
+                                                { href: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(bookingEngine.address), target: "_blank", rel: "noopener", className: cardClass + " sm:col-span-2" },
+                                                React.createElement("p", { className: labelClass }, "Business address"),
+                                                React.createElement("address", { className: "not-italic " + valueClass }, "Ritumbhara, " + bookingEngine.address),
+                                                React.createElement("span", { className: "mt-1 text-sm font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4" }, "View on Google Maps")
                                               )
                                   )
                       ),

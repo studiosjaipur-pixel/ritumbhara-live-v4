@@ -8,6 +8,9 @@ export interface Destination {
   propertyCount: number;
   thingsToDo: { title: string; description: string }[];
   transportation: string;
+  // One verified line on where the stays sit, shown on homepage destination cards (UX-008).
+  // Sources: the site's travel guides; the Jaipur area was confirmed by the owner for all Jaipur studios.
+  proximity?: string;
 }
 
 export const destinations: Destination[] = [
@@ -19,6 +22,7 @@ export const destinations: Destination[] = [
     heroImage: "https://multimedia.hotel-spider.com/03u69e20bdb541a7/03u69e76a5fdc6b9/03u69e8535df276f.jpg",
     shortStory: "The Pink City, and Ritumbhara's founding destination, with five managed studios.",
     propertyCount: 5,
+    proximity: "Karolan Ka Barh, Jeerota village \u2014 about 19 km from central Jaipur",
     thingsToDo: [],
       transportation: "Served by Jaipur International Airport and Jaipur Junction railway station.",
   },
@@ -46,6 +50,7 @@ export const destinations: Destination[] = [
       "https://multimedia.hotel-spider.com/03u69e20bdb541a7/03u6a2269dc57865/03u6a226bf5c08ad.jpg",
     shortStory: "Forest-edge stays near Sariska Tiger Reserve, within Alwar district.",
     propertyCount: 1,
+    proximity: "12 km (about 30 minutes) by road from Alwar city",
     thingsToDo: [
       { title: "Sariska Tiger Reserve", description: "Safari drives through one of India's prominent tiger reserves." },
       ],

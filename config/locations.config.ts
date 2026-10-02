@@ -6,8 +6,7 @@
 // - Jaipur: the /serviced-apartments-jaipur guide. Owner confirmed (Oct 2026) that the
 //   Karolan Ka Barh location applies to all Jaipur studios.
 // - Villa 65 Sariska: the /stays-in-sariska guide (Sariska has a single property).
-// - Alwar: property-level locations are not yet confirmed, so Alwar stays show city level only
-//   (from destinations.config). Add entries per property slug once confirmed.
+// - Alwar-named rooms: placement not verified (see unverifiedPlacementDestinations below).
 
 export interface LocationDetails {
   area: string;
@@ -61,27 +60,11 @@ export function getLocationDetails(propertySlug: string, destinationSlug: string
   return propertyLocations[propertySlug] || destinationLocations[destinationSlug];
 }
 
-// City-level facts for destinations whose property-level locations are not yet confirmed (Alwar).
-// Every distance here is measured from the city, not from a property, and is labelled that way on the page.
-// Source: the /studios-in-alwar guide and destinations.config.
-export interface CityLocation {
-  note: string;
-  gettingThere: string[];
-  nearby: string[];
-}
+// Destinations whose property placement is NOT verified (Oct 2026). Hotel-Spider, the source of truth,
+// lists the "Alwar"-named rooms at 302022 Jaipur, Rajasthan, and does not confirm they are in Alwar.
+// Property pages and cards for these destinations therefore make no city/area claim.
+export const unverifiedPlacementDestinations: string[] = ["alwar"];
 
-export const cityLocations: Record<string, CityLocation> = {
-  alwar: {
-    note: "In Alwar city. Distances below are from Alwar city; message us on WhatsApp for directions to the property.",
-    gettingThere: [
-      "From Delhi NCR or Jaipur: approximately 3 hours by road to Alwar",
-      "Jaipur International Airport: about 2.5–3 hours; Delhi IGI Airport: about 3.5–4 hours",
-      "By rail: Alwar Junction railway station",
-    ],
-    nearby: [
-      "Bala Qila & City Palace, which define Alwar's skyline",
-      "Siliserh Lake, a short drive outside the city",
-      "Sariska Tiger Reserve: about 36 km from Alwar city",
-    ],
-  },
-};
+export function isPlacementVerified(destinationSlug: string): boolean {
+  return unverifiedPlacementDestinations.indexOf(destinationSlug) === -1;
+}

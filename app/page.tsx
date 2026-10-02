@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import Image, { getImageProps } from "next/image";
 import { destinations } from "@/config/destinations.config";
+import { isPlacementVerified } from "@/config/locations.config";
 import { properties } from "@/config/properties.config";
 import PropertyCard from "@/components/PropertyCard";
 import IndiaMap from "@/components/IndiaMap";
@@ -43,7 +44,8 @@ export default function Home() {
   const heroImg = heroProperty
     ? getImageProps({ src: heroProperty.heroImage, alt: heroProperty.name, fill: true, quality: 75, sizes: "(max-width: 1440px) 45vw, 650px" }).props
     : undefined;
-  const openDestinations = destinations.filter(function (d) { return d.status === "operational"; });
+  // Only destinations whose stays' placement is verified (Hotel-Spider does not confirm the "Alwar"-named rooms).
+  const openDestinations = destinations.filter(function (d) { return d.status === "operational" && isPlacementVerified(d.slug); });
   const openStates = openDestinations.map(function (d) { return d.state; }).filter(function (st, i, all) { return all.indexOf(st) === i; });
 
 return React.createElement("main", null,
@@ -116,7 +118,14 @@ return React.createElement("main", null,
                                                                                                                                                             React.createElement("span", { className: "text-xs font-semibold shrink-0 " + (d.status === "operational" ? "text-sage" : "text-charcoal-muted") }, d.status === "operational" ? "Open" : "Coming soon")
                                                                                                                                                             ),
                                                                                                                                         React.createElement("p", { className: "text-xs font-medium text-charcoal-muted mb-2" }, d.state),
-                                                                                                                                        React.createElement("p", { className: "text-sm text-charcoal-soft leading-relaxed" }, d.shortStory)
+                                                                                                                                        React.createElement("p", { className: "text-sm text-charcoal-soft leading-relaxed" }, d.shortStory),
+                                                                                                                                        d.proximity && React.createElement("p", { className: "flex items-start gap-1.5 text-xs text-sage font-medium mt-2" },
+                                                                                                                                          React.createElement("svg", { width: 12, height: 12, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, "aria-hidden": true, className: "mt-0.5 shrink-0" },
+                                                                                                                                            React.createElement("path", { d: "M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" }),
+                                                                                                                                            React.createElement("circle", { cx: 12, cy: 9.5, r: 2.5 })
+                                                                                                                                          ),
+                                                                                                                                          d.proximity
+                                                                                                                                        )
                                                                                                                                         )
                                                                                                                                         );
                                                                                                            })
