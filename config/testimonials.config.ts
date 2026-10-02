@@ -5,7 +5,8 @@ export interface Testimonial {
       location: string;
 }
 
-// Real, consented guest testimonials sourced from Ritumbhara's Google Business Profile reviews.
+// Guest testimonials shown on the site. Their original source is not recorded in the project, so the site does
+// not name one; confirm the source before citing it.
 export const testimonials: Testimonial[] = [
     {
             id: "jaipur-1",

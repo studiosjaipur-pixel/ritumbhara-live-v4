@@ -6,7 +6,7 @@ import LeadCaptureForm from "@/components/LeadCaptureForm";
 import { socialMetadata } from "@/lib/seo";
 
 const pageTitle = "Boutique Stays Near Sariska | Ritumbhara";
-const pageDescription = "Villas and farm stays near Sariska Tiger Reserve, Alwar district, Rajasthan. Close to Neelkanth Mahadev Temple, Pandupol, and Kankwari Fort. Airbnb Superhost.";
+const pageDescription = "Villas and farm stays near Sariska Tiger Reserve, Alwar district, Rajasthan. Close to Neelkanth Mahadev Temple, Pandupol, and Kankwari Fort. Book direct with Ritumbhara.";
 
 export const metadata: Metadata = {
     title: { absolute: pageTitle },
@@ -42,7 +42,7 @@ const faqs = [
   },
   {
         q: "Can I book directly instead of through an OTA?",
-        a: "Yes — booking directly with Ritumbhara gets you the same or better rates than Airbnb or other platforms, with no platform fees and direct WhatsApp support.",
+        a: "Yes — you can book directly with Ritumbhara on WhatsApp. Send us your dates and we'll confirm current availability and the rate before you book, with direct WhatsApp support.",
   },
   ];
 
@@ -114,9 +114,8 @@ export default function SariskaStaysPage() {
                             React.createElement(
                                         "ul",
                               { className: "space-y-3 text-charcoal-soft" },
-                                        React.createElement("li", null, "• Same or better rates than Airbnb and other OTAs — no platform markup"),
-                                        React.createElement("li", null, "• Direct WhatsApp support before, during, and after your stay"),
-                                        React.createElement("li", null, "• Airbnb Superhost track record, verified guest reviews")
+                                        React.createElement("li", null, "• Book direct on WhatsApp — we confirm availability and the rate for your dates before you book"),
+                                        React.createElement("li", null, "• Direct WhatsApp support before, during, and after your stay")
                                       )
                           )
                 ),
@@ -154,7 +153,7 @@ export default function SariskaStaysPage() {
                               { className: "flex justify-center" },
                                         React.createElement(LeadCaptureForm, {
                                                       title: "Check Availability Near Sariska",
-                                                      subtitle: "We'll get back to you directly — no OTA fees, real-time human answers.",
+                                                      subtitle: "We'll get back to you directly — real-time human answers.",
                                                       defaultDestination: "sariska",
                                         })
                                       )

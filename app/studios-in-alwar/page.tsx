@@ -6,7 +6,7 @@ import LeadCaptureForm from "@/components/LeadCaptureForm";
 import { socialMetadata } from "@/lib/seo";
 
 const pageTitle = "Boutique Studios in Alwar | Ritumbhara";
-const pageDescription = "Studio stays in Alwar, Rajasthan — close to Bala Quila Fort, Siliserh Lake, and Sariska Tiger Reserve. Airbnb Superhost, book direct.";
+const pageDescription = "Studio stays in Alwar, Rajasthan — close to Bala Quila Fort, Siliserh Lake, and Sariska Tiger Reserve. Book direct with Ritumbhara.";
 
 export const metadata: Metadata = {
     title: { absolute: pageTitle },
@@ -22,7 +22,7 @@ const faqs = [
   { q: "What's the nearest airport?", a: "Jaipur International Airport is about 2.5–3 hours away, and Delhi IGI Airport is about 3.5–4 hours. Cab pickup can be arranged on request." },
   { q: "How do I find the exact building on arrival?", a: "Once you reach Wonder Megacity / 200 ft Road, call or message us and we'll guide you to the exact tower for a seamless check-in — we recommend staying in touch during the final 5 minutes of arrival." },
   { q: "Is Alwar a good base for visiting Sariska?", a: "Yes — Sariska Tiger Reserve is about 36 km from Alwar city, making it an easy half-day trip." },
-  { q: "Can I book directly instead of through an OTA?", a: "Yes — booking directly with Ritumbhara gets you the same or better rates than Airbnb or other platforms, with no platform fees and direct WhatsApp support." },
+  { q: "Can I book directly instead of through an OTA?", a: "Yes — you can book directly with Ritumbhara. Check current availability and see the rate for your dates on our online booking engine before you pay, with direct WhatsApp support." },
   ];
 
 // FAQPage structured data generated from the same FAQs shown on this page.
@@ -92,9 +92,8 @@ export default function AlwarStudiosPage() {
                             React.createElement(
                                         "ul",
                               { className: "space-y-3 text-charcoal-soft" },
-                                        React.createElement("li", null, "• Same or better rates than Airbnb and other OTAs — no platform markup"),
-                                        React.createElement("li", null, "• Direct WhatsApp support before, during, and after your stay"),
-                                        React.createElement("li", null, "• Airbnb Superhost track record, verified guest reviews")
+                                        React.createElement("li", null, "• Book direct — check current availability and see the rate for your dates before you pay"),
+                                        React.createElement("li", null, "• Direct WhatsApp support before, during, and after your stay")
                                       )
                           )
                 ),
@@ -132,7 +131,7 @@ export default function AlwarStudiosPage() {
                               { className: "flex justify-center" },
                                         React.createElement(LeadCaptureForm, {
                                                       title: "Check Availability in Alwar",
-                                                      subtitle: "We'll get back to you directly — no OTA fees, real-time human answers.",
+                                                      subtitle: "We'll get back to you directly — real-time human answers.",
                                                       defaultDestination: "alwar",
                                         })
                                       )

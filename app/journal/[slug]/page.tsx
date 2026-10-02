@@ -168,7 +168,7 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
         primaryDestinationSlug
           ? React.createElement(LeadCaptureForm, {
               title: "Plan your stay",
-              subtitle: "We'll get back to you directly — no OTA fees, real-time human answers.",
+              subtitle: "We'll get back to you directly — real-time human answers.",
               defaultDestination: primaryDestinationSlug,
             })
           : React.createElement(CheckAvailabilityWidget, { variant: "inline" })

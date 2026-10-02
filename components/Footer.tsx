@@ -45,7 +45,7 @@ export default function Footer() {
     ),
     React.createElement("div", { className: "max-w-7xl mx-auto px-6 lg:px-10 pt-8 border-t border-ivory/10 flex flex-col sm:flex-row gap-3 sm:justify-between text-xs text-ivory/60" },
               React.createElement("p", null, "\u00A9 " + new Date().getFullYear() + " Ritumbhara, a brand of LilacMosaic Technologies Private Limited. All rights reserved."),
-      React.createElement("p", null, "Secure booking \u00B7 Direct rates \u00B7 No OTA fees")
+      React.createElement("p", null, "Secure booking \u00B7 Direct rates \u00B7 Direct WhatsApp support")
     )
   );
 }

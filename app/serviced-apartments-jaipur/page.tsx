@@ -6,7 +6,7 @@ import LeadCaptureForm from "@/components/LeadCaptureForm";
 import { socialMetadata } from "@/lib/seo";
 
 const pageTitle = "Serviced Apartments in Jaipur | Ritumbhara";
-const pageDescription = "Fully serviced apartments in Jaipur, close to the city's forts and old-city landmarks. Airbnb Superhost, book direct with Ritumbhara.";
+const pageDescription = "Fully serviced apartments in Jaipur, close to the city's forts and old-city landmarks. Book direct with Ritumbhara.";
 
 export const metadata: Metadata = {
     title: { absolute: pageTitle },
@@ -22,7 +22,7 @@ const faqs = [
   { q: "What's nearby for sightseeing?", a: "Chokhi Dhani is about 6 minutes by car, the Jaipur Exhibition & Convention Centre about 7 minutes, World Trade Park about 12 minutes, and Hawa Mahal and City Palace are each about 20 minutes away." },
   { q: "How do guests get around?", a: "Uber and Ola operate throughout Jaipur and reach the property easily. For the tourist circuit, booking a self-drive car or hiring a cab for the day is the most comfortable option — we're also happy to help with route details, transport bookings, or maps for local sightseeing." },
   { q: "Are these suitable for longer stays?", a: "Yes — the apartment format with kitchen and living space tends to work better than a hotel room for stays of a week or more." },
-  { q: "Can I book directly instead of through an OTA?", a: "Yes — booking directly with Ritumbhara gets you the same or better rates than Airbnb or other platforms, with no platform fees and direct WhatsApp support." },
+  { q: "Can I book directly instead of through an OTA?", a: "Yes — you can book directly with Ritumbhara. Check current availability and see the rate for your dates on our online booking engine before you pay, with direct WhatsApp support." },
   ];
 
 // FAQPage structured data generated from the same FAQs shown on this page.
@@ -95,9 +95,8 @@ export default function JaipurServicedApartmentsPage() {
                             React.createElement(
                                         "ul",
                               { className: "space-y-3 text-charcoal-soft" },
-                                        React.createElement("li", null, "• Same or better rates than Airbnb and other OTAs — no platform markup"),
-                                        React.createElement("li", null, "• Direct WhatsApp support before, during, and after your stay"),
-                                        React.createElement("li", null, "• Airbnb Superhost track record, verified guest reviews")
+                                        React.createElement("li", null, "• Book direct — check current availability and see the rate for your dates before you pay"),
+                                        React.createElement("li", null, "• Direct WhatsApp support before, during, and after your stay")
                                       )
                           )
                 ),
@@ -135,7 +134,7 @@ export default function JaipurServicedApartmentsPage() {
                               { className: "flex justify-center" },
                                         React.createElement(LeadCaptureForm, {
                                                       title: "Check Availability in Jaipur",
-                                                      subtitle: "We'll get back to you directly — no OTA fees, real-time human answers.",
+                                                      subtitle: "We'll get back to you directly — real-time human answers.",
                                                       defaultDestination: "jaipur",
                                         })
                                       )

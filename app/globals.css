@@ -108,3 +108,10 @@ h2,
     scroll-behavior: auto !important;
   }
 }
+
+/* Property pages: keep the end of the page (footer) clear of the fixed mobile booking bar (UX-002). */
+@media (max-width: 1023.98px) {
+  body:has([data-booking-bar]) {
+    padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
+  }
+}

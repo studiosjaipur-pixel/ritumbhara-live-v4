@@ -9,7 +9,9 @@ import "./globals.css";
 // Cormorant Garamond for display headings, Manrope for body and UI text.
 // Self-hosted from app/fonts (latin subset, SIL Open Font License; licences alongside the files), so the
 // build no longer has to download them from Google Fonts. Same families and weights as before; next/font
-// still preloads them and generates size-matched fallbacks to avoid layout shift.
+// generates size-matched fallbacks to avoid layout shift. Only the display face (used by the headings that are
+// the LCP element) is preloaded; the body face loads on demand, so it no longer competes with the first paint
+// on slow mobile connections (UX-006).
 const display = localFont({
   src: [
     { path: "./fonts/cormorant-garamond-latin-500-normal.woff2", weight: "500", style: "normal" },
@@ -26,6 +28,7 @@ const sans = localFont({
     { path: "./fonts/manrope-latin-600-normal.woff2", weight: "600", style: "normal" },
   ],
   variable: "--font-sans",
+  preload: false,
   display: "swap",
   adjustFontFallback: "Arial",
 });

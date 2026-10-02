@@ -85,6 +85,6 @@ export default function CheckAvailabilityWidget({ variant }: { variant?: "hero" 
       rel: "noopener",
       className: "flex items-center justify-center min-h-[48px] text-center bg-burgundy text-ivory font-semibold py-3 rounded-sm hover-fine:bg-burgundy-deep active:scale-[0.98] active:duration-100 active:ease-out transition-[background-color,transform] duration-200 ease-snap",
     }, "Check Availability via WhatsApp"),
-    React.createElement("p", { className: "text-xs text-center text-charcoal-muted mt-3" }, "We reply directly \u2014 no OTA fees, real-time human answers")
+    React.createElement("p", { className: "text-xs text-center text-charcoal-muted mt-3" }, "We reply directly \u2014 real-time human answers")
   );
 }

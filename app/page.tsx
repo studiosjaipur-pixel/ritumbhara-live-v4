@@ -59,7 +59,8 @@ return React.createElement("main", null,
                                                                                                            React.createElement("span", { "aria-hidden": true, className: "h-px w-8 bg-burgundy" }),
                                                                                                            "India, Thoughtfully Hosted"
                                                                                                            ),
-                                                                                       React.createElement("h1", { className: "rb-rise text-[2.6rem] sm:text-[3.5rem] xl:text-[4rem] leading-[1.02] text-charcoal mb-6 max-w-2xl" }, "A Home-Away-From-Home, Managed So You Don't Have To Worry."),
+                                                                                       // No entrance animation on the headline: it is the mobile LCP element, so it paints fully on first render (UX-006).
+                                                                                       React.createElement("h1", { className: "text-[2.6rem] sm:text-[3.5rem] xl:text-[4rem] leading-[1.02] text-charcoal mb-6 max-w-2xl" }, "A Home-Away-From-Home, Managed So You Don't Have To Worry."),
                                                                                        React.createElement("p", { className: "rb-rise rb-rise-2 text-lg text-charcoal-soft leading-relaxed max-w-md mb-4" }, "Hotels, villas, serviced apartments and boutique stays across India, each one managed to the same exacting standard."),
                                                                                        // Where the stays are, right under the headline (UX-009). Built from destinations.config, so it only
                                                                                        // ever lists destinations the site actually has.
@@ -77,12 +78,29 @@ return React.createElement("main", null,
                                                                                                            }),
                                                                                                            openStates.length === 1 && React.createElement("span", { className: "-ml-1.5" }, ", " + openStates[0])
                                                                                                            ),
-                                                                                       React.createElement("p", { className: "rb-rise rb-rise-2 text-sm text-charcoal-soft mb-8" },
-                                                                                                           React.createElement("span", { className: "text-burgundy" }, "★ "),
-                                                                                                           "Airbnb Superhost · Book direct, no OTA fees"
-                                                                                                           ),
+                                                                                       React.createElement("p", { className: "rb-rise rb-rise-2 text-sm text-charcoal-soft mb-8" }, "Book direct with Ritumbhara"),
                                                                                        React.createElement("div", { className: "rb-rise rb-rise-3" },
                                                                                                            React.createElement(CheckAvailabilityWidget, { variant: "hero" })
+                                                                                                           ),
+                                                                                       // Trust details right under the booking form (UX-001). Only terms verified on the Hotel-Spider
+                                                                                       // booking engine (config/booking.config.ts). There is no verified TripAdvisor, Google or Airbnb
+                                                                                       // profile, rating or badge in the project, so none is shown.
+                                                                                       React.createElement("ul", { "aria-label": "Booking with Ritumbhara", className: "mt-3 max-w-xl grid sm:grid-cols-3 gap-x-4 text-[13px] leading-snug text-charcoal-soft" },
+                                                                                                           [
+                                                                                                             { href: "#policies", strong: "Free cancellation", rest: " until 17:59 on check-in day (online bookings)" },
+                                                                                                             { href: "#policies", strong: "Direct booking", rest: " on our Hotel-Spider booking engine" },
+                                                                                                             { href: "#policies", strong: "Check-in " + bookingEngine.checkIn, rest: ", check-out by " + bookingEngine.checkOut },
+                                                                                                           ].map(function (t) {
+                                                                                                             return React.createElement("li", { key: t.strong },
+                                                                                                                                        React.createElement("a", { href: t.href, className: "flex items-start gap-2 min-h-[40px] py-1.5 hover-fine:text-charcoal" },
+                                                                                                                                                            React.createElement("svg", { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "#5C6952", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true, className: "mt-0.5 shrink-0" },
+                                                                                                                                                                                React.createElement("path", { d: "M5 12.5l4.5 4.5L19 7.5" })
+                                                                                                                                                            ),
+                                                                                                                                                            React.createElement("span", { className: "underline decoration-line underline-offset-2" },
+                                                                                                                                                                                React.createElement("strong", { className: "font-semibold text-charcoal" }, t.strong), t.rest)
+                                                                                                                                        )
+                                                                                                                                        );
+                                                                                                           })
                                                                                                            ),
                                                                                        React.createElement("div", { className: "flex flex-wrap items-center gap-x-6 gap-y-1 mt-4" },
                                                                                                            React.createElement(Link, { href: "/destinations", className: "inline-flex items-center min-h-[44px] text-sm font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy transition-colors" }, "Or browse all destinations →"),
@@ -138,14 +156,14 @@ return React.createElement("main", null,
                            React.createElement("section", { className: "border-y border-line bg-sand/50" },
                                                React.createElement("div", { className: "max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid sm:grid-cols-3 gap-8 sm:gap-0 sm:divide-x sm:divide-line" },
                                                                    React.createElement("div", { className: "sm:px-8 sm:first:pl-0" },
-                                                                                       React.createElement("p", { className: "text-burgundy text-lg mb-1", "aria-hidden": true }, "★"),
-                                                                                       React.createElement("h3", { className: "text-charcoal font-semibold mb-1.5" }, "Airbnb Superhost"),
-                                                                                       React.createElement("p", { className: "text-charcoal-soft text-sm leading-relaxed" }, "Consistently rated for cleanliness, communication and hospitality across our portfolio.")
+                                                                                       React.createElement("p", { className: "text-burgundy text-lg mb-1", "aria-hidden": true }, "✓"),
+                                                                                       React.createElement("h3", { className: "text-charcoal font-semibold mb-1.5" }, "Clear Booking Terms"),
+                                                                                       React.createElement("p", { className: "text-charcoal-soft text-sm leading-relaxed" }, "Check-in " + bookingEngine.checkIn + ", check-out by " + bookingEngine.checkOut + ", and free cancellation until 17:59 on check-in day for rooms booked online.")
                                                                                        ),
                                                                    React.createElement("div", { className: "sm:px-8" },
                                                                                        React.createElement("p", { className: "text-burgundy text-lg mb-1", "aria-hidden": true }, "₹"),
-                                                                                       React.createElement("h3", { className: "text-charcoal font-semibold mb-1.5" }, "No OTA Booking Fees"),
-                                                                                       React.createElement("p", { className: "text-charcoal-soft text-sm leading-relaxed" }, "Book direct with Ritumbhara and skip the third-party commission markups.")
+                                                                                       React.createElement("h3", { className: "text-charcoal font-semibold mb-1.5" }, "Book Direct"),
+                                                                                       React.createElement("p", { className: "text-charcoal-soft text-sm leading-relaxed" }, "Book directly with Ritumbhara and check availability and applicable rates for your dates.")
                                                                                        ),
                                                                    React.createElement("div", { className: "sm:px-8" },
                                                                                        React.createElement("p", { className: "text-burgundy text-lg mb-1", "aria-hidden": true }, "☎"),
