@@ -81,26 +81,31 @@ return React.createElement("main", null,
                                                                                        React.createElement("div", { className: "rb-rise rb-rise-3" },
                                                                                                            React.createElement(CheckAvailabilityWidget, { variant: "hero" })
                                                                                                            ),
-                                                                                       // Trust details right under the booking form (UX-001). Only terms verified on the Hotel-Spider
-                                                                                       // booking engine (config/booking.config.ts). There is no verified TripAdvisor, Google or Airbnb
-                                                                                       // profile, rating or badge in the project, so none is shown.
-                                                                                       React.createElement("ul", { "aria-label": "Booking with Ritumbhara", className: "mt-3 max-w-xl grid sm:grid-cols-3 gap-x-4 text-[13px] leading-snug text-charcoal-soft" },
-                                                                                                           [
-                                                                                                             { href: "#policies", strong: "Free cancellation", rest: " until 17:59 on check-in day (online bookings)" },
-                                                                                                             { href: "#policies", strong: "Direct booking", rest: " on our Hotel-Spider booking engine" },
-                                                                                                             { href: "#policies", strong: "Check-in " + bookingEngine.checkIn, rest: ", check-out by " + bookingEngine.checkOut },
-                                                                                                           ].map(function (t) {
-                                                                                                             return React.createElement("li", { key: t.strong },
-                                                                                                                                        React.createElement("a", { href: t.href, className: "flex items-start gap-2 min-h-[40px] py-1.5 hover-fine:text-charcoal" },
-                                                                                                                                                            React.createElement("svg", { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "#5C6952", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true, className: "mt-0.5 shrink-0" },
-                                                                                                                                                                                React.createElement("path", { d: "M5 12.5l4.5 4.5L19 7.5" })
-                                                                                                                                                            ),
-                                                                                                                                                            React.createElement("span", { className: "underline decoration-line underline-offset-2" },
-                                                                                                                                                                                React.createElement("strong", { className: "font-semibold text-charcoal" }, t.strong), t.rest)
-                                                                                                                                        )
-                                                                                                                                        );
-                                                                                                           })
-                                                                                                           ),
+                                                                                       // Booking information right under the booking form (UX-001/UX-002, Round 9). Server-rendered, verified facts
+                                                                                       // only: Hotel-Spider booking engine terms (config/booking.config.ts), the engine's public booking page and the
+                                                                                       // site's WhatsApp number. No reviews, ratings or badges: none are verified for Ritumbhara.
+                                                                                       React.createElement("section", { "aria-labelledby": "hero-booking-info", className: "mt-5 max-w-xl border-t border-line pt-4" },
+                                                                                         React.createElement("h2", { id: "hero-booking-info", className: "font-sans text-xs font-semibold text-sage mb-1" }, "Booking information"),
+                                                                                         React.createElement("dl", { className: "grid sm:grid-cols-2 gap-x-6 text-[13px] leading-snug" },
+                                                                                           [
+                                                                                             { label: "Check-in", value: bookingEngine.checkIn },
+                                                                                             { label: "Check-out", value: "By " + bookingEngine.checkOut },
+                                                                                             { label: "Cancellation policy (online bookings)", value: bookingEngine.cancellation, wide: true },
+                                                                                             { label: "Book online", value: "Our Hotel-Spider booking engine", href: bookingEngine.generalUrl },
+                                                                                             { label: "WhatsApp", value: "+91 95030 02629", href: "https://wa.me/919503002629" },
+                                                                                           ].map(function (t: { label: string; value: string; href?: string; wide?: boolean }) {
+                                                                                             return React.createElement("div", { key: t.label, className: "py-1.5 border-b border-line/70" + (t.wide ? " sm:col-span-2" : "") },
+                                                                                               React.createElement("dt", { className: "text-[11px] font-semibold text-charcoal-muted" }, t.label),
+                                                                                               React.createElement("dd", { className: "text-charcoal" },
+                                                                                                 t.href
+                                                                                                   ? React.createElement("a", { href: t.href, target: "_blank", rel: "noopener", className: "inline-flex items-center min-h-[40px] -my-2 font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy" }, t.value)
+                                                                                                   : t.value
+                                                                                               )
+                                                                                             );
+                                                                                           })
+                                                                                         ),
+                                                                                         React.createElement("a", { href: "#policies", className: "inline-flex items-center min-h-[44px] text-[13px] font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy" }, "All booking policies")
+                                                                                       ),
                                                                                        React.createElement("div", { className: "flex flex-wrap items-center gap-x-6 gap-y-1 mt-4" },
                                                                                                            React.createElement(Link, { href: "/destinations", className: "inline-flex items-center min-h-[44px] text-sm font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy transition-colors" }, "Or browse all destinations →"),
                                                                                                            React.createElement(Link, { href: "/about", className: "inline-flex items-center min-h-[44px] text-sm text-charcoal-soft underline decoration-line underline-offset-4 hover-fine:text-charcoal transition-colors" }, "Our Story")
