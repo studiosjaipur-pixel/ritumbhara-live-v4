@@ -114,4 +114,8 @@ h2,
   body:has([data-booking-bar]) {
     padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
   }
+  /* Contact page: same for its fixed contact bar (UX-005). */
+  body:has([data-mobile-action-bar]) {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
 }

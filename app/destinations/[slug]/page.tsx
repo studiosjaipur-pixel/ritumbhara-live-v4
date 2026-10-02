@@ -3,7 +3,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { destinations } from "@/config/destinations.config";
 import { properties } from "@/config/properties.config";
-import { testimonials } from "@/config/testimonials.config";
 import PropertyCard from "@/components/PropertyCard";
 import CheckAvailabilityWidget from "@/components/CheckAvailabilityWidget";
 import LeadCaptureForm from "@/components/LeadCaptureForm";
@@ -58,7 +57,6 @@ export default function DestinationPage({ params }: { params: { slug: string } }
   const destination = destinations.find(function (d) { return d.slug === params.slug; });
   if (!destination) return notFound();
   const destinationProperties = properties.filter(function (p) { return p.destinationSlug === destination.slug; });
-  const matchingTestimonial = testimonials.find(function (t) { return t.location.toLowerCase() === destination.name.toLowerCase(); });
   const guideHref = travelGuides[destination.slug];
   // Existing journal posts that reference this destination (internal linking: destination -> journal).
   const relatedPosts = journalPosts.filter(function (post) { return post.relatedDestinationSlugs.indexOf(destination.slug) !== -1; });
@@ -158,10 +156,7 @@ export default function DestinationPage({ params }: { params: { slug: string } }
       ),
       React.createElement(CheckAvailabilityWidget, { variant: "inline" })
     ),
-    matchingTestimonial && React.createElement("figure", { className: "mb-16 max-w-3xl border-t border-charcoal/20 pt-6" },
-      React.createElement("blockquote", { className: "font-display text-[1.75rem] leading-snug text-charcoal mb-4" }, "\u201C" + matchingTestimonial.quote + "\u201D"),
-      React.createElement("figcaption", { className: "text-sm text-charcoal-soft font-medium" }, matchingTestimonial.guestLabel + " \u2014 " + matchingTestimonial.location)
-    ),
+    // Guest testimonials are not shown: their source is not recorded in the project (see testimonials.config).
     destination.thingsToDo.length > 0 && React.createElement("div", null,
       React.createElement("h2", { className: "text-3xl lg:text-[2.5rem] text-charcoal mb-6" }, "Things To Do"),
       React.createElement("div", { className: "grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 mb-16" },

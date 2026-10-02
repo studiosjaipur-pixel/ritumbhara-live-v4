@@ -136,6 +136,8 @@ export default function FloatingWhatsApp() {
   }, [pathname]);
 
   if (pathname.indexOf("/properties/") === 0) return null;
+  // On /contact, phones and tablets get the page's own fixed "WhatsApp Us" bar instead (UX-005).
+  const contactPage = pathname === "/contact";
   const mode = place.mode;
   const hidden = mode === "hidden" || typing;
   const placement =
@@ -158,7 +160,7 @@ export default function FloatingWhatsApp() {
       "aria-hidden": hidden ? true : undefined,
       tabIndex: hidden ? -1 : undefined,
       style: place.lift ? { transform: "translateY(-" + place.lift + "px)" } : undefined,
-      className: "fixed z-40 " + placement + " " + bottomClass + " sm:right-6 inline-flex items-center justify-center gap-2 sm:w-auto sm:h-auto sm:min-h-[48px] sm:pl-4 sm:pr-5 bg-burgundy text-ivory text-sm font-semibold shadow-[0_6px_18px_rgba(38,34,31,0.22)] hover-fine:bg-burgundy-deep active:scale-[0.97] active:duration-100 transition-[opacity,background-color,transform] duration-200 ease-snap " + (hidden ? "opacity-0 pointer-events-none" : "opacity-100"),
+      className: (contactPage ? "max-lg:!hidden " : "") + "fixed z-40 " + placement + " " + bottomClass + " sm:right-6 inline-flex items-center justify-center gap-2 sm:w-auto sm:h-auto sm:min-h-[48px] sm:pl-4 sm:pr-5 bg-burgundy text-ivory text-sm font-semibold shadow-[0_6px_18px_rgba(38,34,31,0.22)] hover-fine:bg-burgundy-deep active:scale-[0.97] active:duration-100 transition-[opacity,background-color,transform] duration-200 ease-snap " + (hidden ? "opacity-0 pointer-events-none" : "opacity-100"),
     },
       React.createElement("svg", { width: mode === "compact" ? 18 : 22, height: mode === "compact" ? 18 : 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
         React.createElement("path", { d: "M3.5 20.5l1.4-4.2A8.5 8.5 0 1 1 8 19.3z" }),

@@ -7,7 +7,6 @@ import { bookingEngine } from "@/config/booking.config";
 import { properties } from "@/config/properties.config";
 import PropertyCard from "@/components/PropertyCard";
 import IndiaMap from "@/components/IndiaMap";
-import Testimonials from "@/components/Testimonials";
 import CheckAvailabilityWidget from "@/components/CheckAvailabilityWidget";
 import LeadCaptureForm from "@/components/LeadCaptureForm";
 
@@ -204,7 +203,7 @@ return React.createElement("main", null,
                                                                                        )
                                                                    )
                                                ),
-                           React.createElement(Testimonials, null),
+                           // Guest testimonials are not shown: their source is not recorded in the project (see testimonials.config).
                            // Where we are and the booking terms (UX-010, UX-006). Address and terms are exactly as shown on the
                            // Hotel-Spider booking engine; the map is lazy-loaded so it costs nothing until it is scrolled near.
                            React.createElement("section", { className: "border-t border-line" },
