@@ -3,7 +3,8 @@ import { useEffect } from "react";
 
 // Week 5: records clicks on any WhatsApp link (a[href*="wa.me/"]) as a "Lead Intent" event.
 // A click is not a confirmed lead: the website never learns the visitor's WhatsApp number.
-// Events go to this site's own /api/wa-click route (which forwards them to n8n), never straight to n8n.
+// Events go to this site's own /api/wa-click route (which logs them to the Google Sheet and emails the team),
+// never straight to Google.
 // Sent with navigator.sendBeacon so tracking never delays or blocks opening WhatsApp, and every step is
 // wrapped so a tracking error can't break the link.
 

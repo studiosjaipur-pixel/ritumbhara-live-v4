@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 import { WHATSAPP_NUMBER, WHATSAPP_REF_PATTERN } from "@/lib/whatsapp";
+import { emit } from "@/lib/events/bus";
+import "@/lib/leads/apps-script-sink"; // registers the WHATSAPP_CLICK handler (Google Sheet + team email)
 
-// Week 5: receives "Lead Intent" events from components/WhatsAppClickTracker.tsx and forwards them to n8n,
-// which writes them to Google Sheets and emails the team.
-// The n8n URL and secret are server-only environment variables, never sent to the browser.
+// Week 5: receives "Lead Intent" events from components/WhatsAppClickTracker.tsx, validates them and emits
+// WHATSAPP_CLICK on the event bus. The handler in lib/leads/apps-script-sink.ts sends the event to a Google
+// Apps Script web app, which appends a row to the leads Sheet and emails the team.
+// The Apps Script URL and secret are server-only environment variables, never sent to the browser.
 // This route always fails quietly: tracking problems must never affect visitors opening WhatsApp.
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 15; // allows for an Apps Script cold start (the sink itself times out at 8 s)
 
 const MAX_BODY_BYTES = 4096;
-const FORWARD_TIMEOUT_MS = 4000;
 const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const;
 const CTA_VALUES = ["floating", "availability", "property", "contact", ""];
 
@@ -85,29 +88,8 @@ export async function POST(req: Request) {
       event[k] = str(input[k], 200);
     });
 
-    const webhookUrl = process.env.N8N_LEAD_WEBHOOK_URL;
-    const webhookSecret = process.env.N8N_LEAD_WEBHOOK_SECRET;
-    if (!webhookUrl || !webhookSecret) {
-      console.warn("[wa-click] N8N_LEAD_WEBHOOK_URL or N8N_LEAD_WEBHOOK_SECRET is not set; event not forwarded.");
-      return noContent();
-    }
-
-    const controller = new AbortController();
-    const timer = setTimeout(function () { controller.abort(); }, FORWARD_TIMEOUT_MS);
-    try {
-      const res = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Webhook-Secret": webhookSecret },
-        body: JSON.stringify(event),
-        signal: controller.signal,
-        cache: "no-store",
-      });
-      if (!res.ok) console.warn("[wa-click] n8n responded with status " + res.status);
-    } catch (err) {
-      console.warn("[wa-click] Could not reach n8n:", err instanceof Error ? err.message : err);
-    } finally {
-      clearTimeout(timer);
-    }
+    // Handlers never throw out of emit(); failures are logged and the visitor is unaffected.
+    await emit("WHATSAPP_CLICK", event);
 
     return noContent();
   } catch (err) {
