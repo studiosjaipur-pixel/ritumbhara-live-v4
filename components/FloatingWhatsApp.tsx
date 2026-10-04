@@ -1,9 +1,10 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 // Persistent WhatsApp access (UX-001).
-// Uses the site's existing WhatsApp destination unchanged.
+// Uses the site's WhatsApp number from lib/whatsapp.ts, with a short pre-filled message and reference code.
 // Visible from first load on every page, so mobile visitors never have to scroll to find it.
 // On phones it is a round button (accessible name via aria-label); from the sm breakpoint up it also
 // shows the "WhatsApp" label.
@@ -15,7 +16,8 @@ import { usePathname } from "next/navigation";
 // While a form field is focused it steps aside (fades out) so it can never cover the field being filled in.
 // Hidden on property pages, which have their own fixed booking bar with WhatsApp (mobile)
 // and a sticky booking panel with a WhatsApp button (desktop), to avoid duplicate CTAs.
-const WHATSAPP_URL = "https://wa.me/919503002629";
+const WHATSAPP_REF = "W-FLOATING";
+const WHATSAPP_URL = buildWhatsAppUrl("Hi, I'd like to know more about staying with Ritumbhara.", WHATSAPP_REF);
 
 // Phone layouts (below the sm breakpoint). Must match the Tailwind classes used below.
 const NORMAL = { size: 56, inset: 16 }; // w-14 h-14 right-4
@@ -155,6 +157,8 @@ export default function FloatingWhatsApp() {
       rel: "noopener",
       "aria-label": "Chat with Ritumbhara on WhatsApp",
       "data-floating-whatsapp": "",
+      "data-wa-ref": WHATSAPP_REF,
+      "data-wa-cta": "floating",
       "aria-hidden": hidden ? true : undefined,
       tabIndex: hidden ? -1 : undefined,
       style: place.lift ? { transform: "translateY(-" + place.lift + "px)" } : undefined,

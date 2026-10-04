@@ -4,6 +4,7 @@ import Testimonials from "@/components/Testimonials";
 import { destinations } from "@/config/destinations.config";
 import { bookingEngine } from "@/config/booking.config";
 import { socialMetadata } from "@/lib/seo";
+import { buildWhatsAppUrl, WHATSAPP_DISPLAY_NUMBER } from "@/lib/whatsapp";
 import { Metadata } from "next";
 
 const contactTitle = "Contact: Reservations & Partner Enquiries";
@@ -63,9 +64,9 @@ export default function ContactPage() {
                                               ),
                                     React.createElement(
                                                 "a",
-                                                { href: "https://wa.me/919503002629", target: "_blank", rel: "noopener", className: cardClass },
+                                                { href: buildWhatsAppUrl("Hi, I have a question for Ritumbhara.", "W-CONTACT"), target: "_blank", rel: "noopener", "data-wa-ref": "W-CONTACT", "data-wa-cta": "contact", className: cardClass },
                                                 React.createElement("p", { className: labelClass }, "WhatsApp"),
-                                                React.createElement("span", { className: valueClass }, "+91 95030 02629")
+                                                React.createElement("span", { className: valueClass }, WHATSAPP_DISPLAY_NUMBER)
                                               ),
                                     React.createElement(
                                                 "a",

@@ -7,6 +7,7 @@ import { getLocationDetails, isPlacementVerified } from "@/config/locations.conf
 import { bookingEngine } from "@/config/booking.config";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { buildWhatsAppUrl, makeWhatsAppRef } from "@/lib/whatsapp";
 
 // Existing standalone landing pages with directions and FAQs for each destination (Week 3: UX-005, UX-012).
 const travelGuides: Record<string, string> = {
@@ -89,7 +90,8 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
   };
 
   const guideHref = placeDestination ? travelGuides[placeDestination.slug] : undefined;
-  const whatsappHref = "https://wa.me/919503002629?text=" + encodeURIComponent("Hi, I'd like to check availability for " + property.name);
+  const whatsappRef = makeWhatsAppRef("PROP", property.slug);
+  const whatsappHref = buildWhatsAppUrl("Hi, I'd like to check availability for " + property.name, whatsappRef);
   const location = placeDestination ? getLocationDetails(property.slug, placeDestination.slug) : undefined;
   const heroAlt = property.name + " \u2014 " + property.propertyType.toLowerCase() + (placeDestination ? " in " + placeDestination.name + ", " + placeDestination.state : "");
   const gallery = property.gallery || [];
@@ -333,11 +335,11 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
             React.createElement("span", { className: "lg:hidden" }, "Availability & Prices"),
             React.createElement("span", { className: "hidden lg:inline" }, "Check Availability & Pricing")
           ),
-          React.createElement("a", { href: whatsappHref, target: "_blank", rel: "noopener", className: "flex-1 flex items-center justify-center min-h-[48px] text-center border border-burgundy text-burgundy text-sm lg:text-base font-semibold rounded-sm hover-fine:bg-burgundy hover-fine:text-ivory active:scale-[0.98] active:duration-100 transition-[background-color,color,transform] duration-200 ease-snap" },
+          React.createElement("a", { href: whatsappHref, target: "_blank", rel: "noopener", "data-wa-ref": whatsappRef, "data-wa-cta": "property", className: "flex-1 flex items-center justify-center min-h-[48px] text-center border border-burgundy text-burgundy text-sm lg:text-base font-semibold rounded-sm hover-fine:bg-burgundy hover-fine:text-ivory active:scale-[0.98] active:duration-100 transition-[background-color,color,transform] duration-200 ease-snap" },
             "WhatsApp", React.createElement("span", { className: "hidden lg:inline" }, "\u00A0Us")
           )
           ] : [
-          React.createElement("a", { href: whatsappHref, target: "_blank", rel: "noopener", className: "flex-1 flex items-center justify-center min-h-[48px] lg:min-h-[52px] text-center bg-burgundy text-ivory text-sm lg:text-base font-semibold rounded-sm hover-fine:bg-burgundy-deep active:scale-[0.98] active:duration-100 transition-[background-color,transform] duration-200 ease-snap" },
+          React.createElement("a", { href: whatsappHref, target: "_blank", rel: "noopener", "data-wa-ref": whatsappRef, "data-wa-cta": "property", className: "flex-1 flex items-center justify-center min-h-[48px] lg:min-h-[52px] text-center bg-burgundy text-ivory text-sm lg:text-base font-semibold rounded-sm hover-fine:bg-burgundy-deep active:scale-[0.98] active:duration-100 transition-[background-color,transform] duration-200 ease-snap" },
             React.createElement("span", { className: "lg:hidden" }, "Ask on WhatsApp"),
             React.createElement("span", { className: "hidden lg:inline" }, "Ask About Availability on WhatsApp")
           ),

@@ -1,7 +1,9 @@
 "use client";
 import { useState, useId } from "react";
 import React from "react";
+import { usePathname } from "next/navigation";
 import { destinations } from "@/config/destinations.config";
+import { buildWhatsAppUrl, makeWhatsAppRef, pageRefFromPath } from "@/lib/whatsapp";
 
 export default function CheckAvailabilityWidget({ variant }: { variant?: "hero" | "inline" }) {
   const operationalDestinations = destinations.filter(function (d) { return d.status === "operational"; });
@@ -10,6 +12,8 @@ export default function CheckAvailabilityWidget({ variant }: { variant?: "hero" 
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState("2");
   const uid = useId();
+  // Reference code from the page this widget is on, e.g. W-HOME-AVAILABILITY or W-DEST-jaipur-AVAILABILITY.
+  const waRef = makeWhatsAppRef(pageRefFromPath(usePathname() || "/"), "AVAILABILITY");
 
   function buildWhatsAppLink() {
     const destination = destinations.find(function (d) { return d.slug === destinationSlug; });
@@ -21,7 +25,7 @@ export default function CheckAvailabilityWidget({ variant }: { variant?: "hero" 
       message += " from " + checkIn;
     }
     message += " for " + guests + " guest" + (guests === "1" ? "" : "s") + ".";
-    return "https://wa.me/919503002629?text=" + encodeURIComponent(message);
+    return buildWhatsAppUrl(message, waRef);
   }
 
   const isHero = variant !== "inline";
@@ -81,6 +85,13 @@ export default function CheckAvailabilityWidget({ variant }: { variant?: "hero" 
     ),
     React.createElement("a", {
       href: buildWhatsAppLink(),
+      // Context for click tracking (components/WhatsAppClickTracker.tsx). Booking details only, no personal data.
+      "data-wa-ref": waRef,
+      "data-wa-cta": "availability",
+      "data-wa-destination": destinationSlug,
+      "data-wa-check-in": checkIn,
+      "data-wa-check-out": checkOut,
+      "data-wa-guests": guests,
       target: "_blank",
       rel: "noopener",
       className: "flex items-center justify-center min-h-[48px] text-center bg-burgundy text-ivory font-semibold py-3 rounded-sm hover-fine:bg-burgundy-deep active:scale-[0.98] active:duration-100 active:ease-out transition-[background-color,transform] duration-200 ease-snap",

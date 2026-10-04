@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
+import WhatsAppClickTracker from "@/components/WhatsAppClickTracker";
 import "./globals.css";
 
 // Cormorant Garamond for display headings, Manrope for body and UI text.
@@ -100,7 +101,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                                              React.createElement(Navbar, null),
                                                              children,
                                                              React.createElement(Footer, null),
-                                                             React.createElement(FloatingWhatsApp, null)
+                                                             React.createElement(FloatingWhatsApp, null),
+                                                             React.createElement(WhatsAppClickTracker, null)
                                                            )
                                  );
 }
