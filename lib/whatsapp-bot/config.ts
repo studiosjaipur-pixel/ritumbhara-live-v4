@@ -26,7 +26,13 @@ export interface WhatsAppBotConfig {
   groqModel: string;
   upstashRedisRestUrl: string;
   upstashRedisRestToken: string;
+  redisNamespace: RedisNamespace; // prefix for every Redis key, from VERCEL_ENV (see redisNamespaceFor)
 }
+
+// Preview and Production share one Upstash database, so every bot key is prefixed with the deployment
+// environment ("production:wa:…", "preview:wa:…") and the two can never read or change each other's state.
+export const REDIS_NAMESPACES = ["production", "preview", "development"] as const;
+export type RedisNamespace = (typeof REDIS_NAMESPACES)[number];
 
 export type BotConfigResult =
   | { status: "disabled" }
@@ -44,6 +50,13 @@ function isHttpsUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+// VERCEL_ENV is set by Vercel on every deployment ("production", "preview", "development"). Anything else
+// (unset when running locally, or an unexpected value) maps to "development", never to "production".
+export function redisNamespaceFor(env: Env = process.env): RedisNamespace {
+  const value = read(env, "VERCEL_ENV").toLowerCase();
+  return value === "production" || value === "preview" ? value : "development";
 }
 
 // True only when WHATSAPP_BOT_ENABLED is "true" (case-insensitive). Anything else, including unset, is off.
@@ -101,6 +114,7 @@ export function getBotConfig(env: Env = process.env): BotConfigResult {
       groqModel: groqModel,
       upstashRedisRestUrl: upstashRedisRestUrl,
       upstashRedisRestToken: upstashRedisRestToken,
+      redisNamespace: redisNamespaceFor(env),
     },
   };
 }

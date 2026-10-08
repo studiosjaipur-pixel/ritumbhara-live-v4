@@ -87,7 +87,7 @@ function sidPrefix(sid: string): string {
 export function createConversationHandler(options?: ConversationHandlerOptions): MessageHandler {
   const o = options || {};
   const createStore = o.createStore || function (config: WhatsAppBotConfig) {
-    return createUpstashConversationStore(config.upstashRedisRestUrl, config.upstashRedisRestToken);
+    return createUpstashConversationStore(config.upstashRedisRestUrl, config.upstashRedisRestToken, config.redisNamespace);
   };
   const now = o.now || function () { return new Date(); };
   const emitQualified = o.emitQualified || function (lead: QualifiedLeadPayload) { return emit("LEAD_QUALIFIED", lead).then(firstDelivery); };

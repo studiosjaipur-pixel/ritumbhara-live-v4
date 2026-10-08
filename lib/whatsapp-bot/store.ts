@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { REDIS_NAMESPACES, type RedisNamespace } from "./config";
 import { CONVERSATION_STATES, type ConversationState } from "./types";
 import { createUpstashClient, type RedisClient } from "./upstash";
 
@@ -32,14 +33,27 @@ function checked(value: string, pattern: RegExp, what: string): string {
   return value;
 }
 
-// Redis key layout. Only validated E.164 numbers and Twilio MessageSids are ever used in keys.
-export const storeKeys = {
-  conversation: function (sender: string) { return "wa:conv:" + checked(sender, E164, "sender"); },
-  optOut: function (sender: string) { return "wa:optout:" + checked(sender, E164, "sender"); },
-  message: function (messageSid: string) { return "wa:msg:" + checked(messageSid, MESSAGE_SID, "MessageSid"); },
-  senderLock: function (sender: string) { return "wa:lock:" + checked(sender, E164, "sender"); },
-  rateLimit: function (scope: string, windowStart: number) { return "wa:rl:" + checked(scope, SCOPE, "scope") + ":" + windowStart; },
-};
+function checkedNamespace(namespace: string): RedisNamespace {
+  if ((REDIS_NAMESPACES as readonly string[]).indexOf(namespace) === -1) throw new Error("Invalid Redis namespace for store keys");
+  return namespace as RedisNamespace;
+}
+
+// Redis key layout. Only validated E.164 numbers and Twilio MessageSids are ever used in keys. Every key the bot
+// writes is built here; with a namespace each one starts with "<namespace>:" ("production:wa:conv:+91…").
+export function createStoreKeys(namespace?: RedisNamespace) {
+  const p = (namespace === undefined ? "" : checkedNamespace(namespace) + ":") + "wa:";
+  return {
+    conversation: function (sender: string) { return p + "conv:" + checked(sender, E164, "sender"); },
+    optOut: function (sender: string) { return p + "optout:" + checked(sender, E164, "sender"); },
+    message: function (messageSid: string) { return p + "msg:" + checked(messageSid, MESSAGE_SID, "MessageSid"); },
+    senderLock: function (sender: string) { return p + "lock:" + checked(sender, E164, "sender"); },
+    rateLimit: function (scope: string, windowStart: number) { return p + "rl:" + checked(scope, SCOPE, "scope") + ":" + windowStart; },
+  };
+}
+
+// Un-namespaced layout ("wa:…"), kept for in-memory tests only. Real Redis always goes through
+// createUpstashConversationStore, which requires a namespace.
+export const storeKeys = createStoreKeys();
 
 export type MessageClaim = "claimed" | "duplicate";
 
@@ -89,7 +103,8 @@ function parseConversation(raw: unknown, sender: string): ConversationState | nu
   }
 }
 
-export function createConversationStore(client: RedisClient): ConversationStore {
+export function createConversationStore(client: RedisClient, namespace?: RedisNamespace): ConversationStore {
+  const storeKeys = createStoreKeys(namespace);
   return {
     getConversation: async function (sender) {
       return parseConversation(await client.command(["GET", storeKeys.conversation(sender)]), sender);
@@ -143,6 +158,7 @@ export function createConversationStore(client: RedisClient): ConversationStore 
   };
 }
 
-export function createUpstashConversationStore(url: string, token: string): ConversationStore {
-  return createConversationStore(createUpstashClient({ url: url, token: token }));
+// The real store. A namespace is mandatory, so Preview and Production keys can never mix in a shared database.
+export function createUpstashConversationStore(url: string, token: string, namespace: RedisNamespace): ConversationStore {
+  return createConversationStore(createUpstashClient({ url: url, token: token }), checkedNamespace(namespace));
 }
