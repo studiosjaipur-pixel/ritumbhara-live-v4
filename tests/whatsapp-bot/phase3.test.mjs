@@ -432,12 +432,12 @@ test("25. HUMAN / AGENT hands off with the configured team number (no wa.me link
   }
 });
 
-test("26. HANDED_OFF stays silent; only START/RESTART resets; HUMAN repeats the number", async () => {
+test("26. HANDED_OFF: one acknowledgement, then silent; only START/RESTART resets; HUMAN repeats the number", async () => {
   const h = setup();
   await h.send("Hi");
   await h.send("HUMAN");
-  assert.equal(await h.send("Hello?"), null);
-  assert.equal(await h.send("12 Nov to 15 Nov"), null);
+  assert.match(await h.send("Hello?"), /Our team already has your request/); // first normal message: acknowledged
+  assert.equal(await h.send("12 Nov to 15 Nov"), null); // within 24 hours: silent
   assert.equal(await h.send("", { bodyStatus: "empty", numMedia: 1 }), null);
   assert.match(await h.send("human"), /9000000009/);
   assert.equal((await h.conv()).state, "HANDED_OFF");
@@ -473,7 +473,9 @@ test("28. at most 15 bot turns per conversation", async () => {
   assert.equal(c.outcome, "NEEDS_FOLLOW_UP");
   assert.equal(c.botTurns, MAX_BOT_TURNS);
   assert.match(last, /pass your details to our team/);
-  assert.equal(await h.send("guests 2"), null);
+  assert.match(await h.send("guests 2"), /Our team already has your request/); // acknowledgement, no new turn
+  assert.equal(await h.send("guests 3"), null);
+  assert.equal((await h.conv()).botTurns, MAX_BOT_TURNS);
 });
 
 test("29. invalid dates are rejected with a reason and asked again", async () => {

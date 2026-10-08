@@ -61,6 +61,11 @@ export function handoffDeliveryFailed(number: string): string {
   return "Please contact our team directly on WhatsApp at " + number + ", and they'll help you from there.";
 }
 
+// A normal message after the request was delivered to the team (sent at most once per POST_HANDOFF_ACK_INTERVAL).
+export function postHandoffAck(number: string): string {
+  return "Our team already has your request and will continue with you here on WhatsApp. For urgent help, contact " + number + ". To start a new enquiry, reply RESTART.";
+}
+
 export function handoffLimit(number: string): string {
   return "Thanks for your patience. I'll pass your details to our team, and they'll continue with you on WhatsApp at " + number + ".";
 }

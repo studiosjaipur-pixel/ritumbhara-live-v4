@@ -11,7 +11,9 @@ if (typeof window !== "undefined") {
   throw new Error("lib/whatsapp-bot/config is server-only and must not be imported in browser code.");
 }
 
-export const DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant";
+// Groq shut down llama-3.1-8b-instant on 16 Aug 2026 (its listed replacement is openai/gpt-oss-20b). GROQ_MODEL
+// overrides this default.
+export const DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b";
 
 type Env = Record<string, string | undefined>;
 
@@ -91,6 +93,10 @@ export function getBotConfig(env: Env = process.env): BotConfigResult {
   const handoffRaw = required("WHATSAPP_HANDOFF_NUMBER");
   const handoffNumber = normalizePhoneNumber(handoffRaw);
   if (handoffRaw && !handoffNumber) problems.push("WHATSAPP_HANDOFF_NUMBER must be a phone number in international format");
+  // The number is shown to guests, so a mistyped Indian number (wrong digit count) must not go live.
+  if (handoffNumber && /^\+91/.test(handoffNumber) && !/^\+91\d{10}$/.test(handoffNumber)) {
+    problems.push("WHATSAPP_HANDOFF_NUMBER must have exactly 10 digits after +91");
+  }
 
   const groqApiKey = read(env, "GROQ_API_KEY") || null; // optional fallback extractor
   const groqModel = read(env, "GROQ_MODEL") || DEFAULT_GROQ_MODEL;

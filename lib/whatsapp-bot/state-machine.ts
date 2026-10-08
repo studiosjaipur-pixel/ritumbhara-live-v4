@@ -3,7 +3,8 @@ import { findDestination, findProperty, type Catalog } from "./catalog";
 import { addDays, daysBetween, formatDisplayDate, todayInIndia, validateCheckIn, validateCheckOut } from "./dates";
 import { mergeExtraction } from "./extraction";
 import {
-  DATE_ERRORS, MESSAGES, askStay, handoffDeliveryFailed, handoffHuman, handoffLimit, handoffQualified, qualifiedDeliveryFailed,
+  DATE_ERRORS, MESSAGES, askStay, handoffDeliveryFailed, handoffHuman, handoffLimit, handoffQualified, postHandoffAck,
+  qualifiedDeliveryFailed,
 } from "./messages";
 import {
   MAX_REQUIREMENTS_CHARS, detectConfirmAnswer, detectControlKeyword, detectCorrectionTarget, isNoneAnswer, parseMessage,
@@ -22,6 +23,8 @@ import type {
 
 export const MAX_BOT_TURNS = 15;
 export const MAX_ASKS_PER_FIELD = 2;
+// After a handoff, a normal message gets a short acknowledgement at most this often.
+export const POST_HANDOFF_ACK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export interface MachineContext {
   now: Date;
@@ -383,6 +386,22 @@ function handleConfirm(conv: ConversationState, text: string, parsed: MessagePar
 
 // ---------- entry point ----------
 
+// Post-handoff acknowledgement, rate-limited with lastReminderAt. The record keeps its original 30-day expiry
+// (counted from the handoff, i.e. updatedAt, which nothing after the handoff changes), so acknowledgements never
+// extend how long a guest stays handed off. If the team was never notified, the guest is pointed at the team number
+// instead of being told the team has the request.
+function postHandoffReminder(conv: ConversationState, ctx: MachineContext): MachineResult {
+  const nowMs = ctx.now.getTime();
+  const last = conv.lastReminderAt ? Date.parse(conv.lastReminderAt) : NaN;
+  if (isFinite(last) && last <= nowMs && nowMs - last < POST_HANDOFF_ACK_INTERVAL_MS) return nothing();
+  conv.lastReminderAt = ctx.now.toISOString();
+  const maxTtl = STORE_TTL.conversationAfterHandoff;
+  const handedOffMs = Date.parse(conv.updatedAt);
+  const remaining = isFinite(handedOffMs) ? Math.ceil((handedOffMs + maxTtl * 1000 - nowMs) / 1000) : maxTtl;
+  const reply = conv.leadDelivered ? postHandoffAck(ctx.handoffNumber) : handoffDeliveryFailed(ctx.handoffNumber);
+  return { persist: "save", conversation: conv, ttlSeconds: Math.min(maxTtl, Math.max(1, remaining)), reply: reply, optOut: null, qualifiedLead: null };
+}
+
 export function runStateMachine(existing: ConversationState | null, optedOut: boolean, input: MachineInput, ctx: MachineContext): MachineResult {
   const text = input.bodyStatus === "ok" ? input.text : "";
   const keyword = text ? detectControlKeyword(text) : null;
@@ -402,9 +421,12 @@ export function runStateMachine(existing: ConversationState | null, optedOut: bo
 
   const conv = existing && existing.state !== "OPTED_OUT" ? clone(existing) : freshConversation(input, ctx);
 
-  // After a handoff the bot stays silent; an explicit HUMAN/AGENT gets the team number again.
+  // After a handoff an explicit HUMAN/AGENT gets the team number again; any other message gets a short
+  // acknowledgement at most once per 24 hours (and silence otherwise). Qualification never restarts here and no lead
+  // is emitted, so nothing is duplicated; only RESTART (handled above) starts a new enquiry.
   if (conv.state === "HANDED_OFF") {
-    return keyword === "AGENT" ? { persist: "none", conversation: null, ttlSeconds: 0, reply: handoffHuman(ctx.handoffNumber), optOut: null, qualifiedLead: null } : nothing();
+    if (keyword === "AGENT") return { persist: "none", conversation: null, ttlSeconds: 0, reply: handoffHuman(ctx.handoffNumber), optOut: null, qualifiedLead: null };
+    return postHandoffReminder(conv, ctx);
   }
 
   conv.updatedAt = ctx.now.toISOString();

@@ -122,7 +122,10 @@ export function createConversationHandler(options?: ConversationHandlerOptions):
       }
       const result = await extract(text, buildRequestContext(plan, cat), config);
       if (!result.ok) {
-        log("ai_failed", Object.assign({ reason: result.reason }, meta));
+        const detail: Record<string, string | number> = { reason: result.reason };
+        if (result.status !== undefined) detail.status = result.status;
+        if (result.code !== undefined) detail.code = result.code;
+        log("ai_failed", Object.assign(detail, meta));
         return null;
       }
       const validated = validateExtraction(result.data, text, plan, cat);

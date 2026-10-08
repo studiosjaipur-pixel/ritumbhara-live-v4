@@ -23,7 +23,7 @@ const CONFIG = {
   botTo: "+14155238886",
   handoffNumber: "+919000000009",
   groqApiKey: GROQ_KEY,
-  groqModel: "llama-3.1-8b-instant",
+  groqModel: "openai/gpt-oss-20b",
   upstashRedisRestUrl: "https://fake-redis.example.com",
   upstashRedisRestToken: "fake_redis_token_ZZREDIS",
 };
@@ -270,7 +270,7 @@ test("20-22. HTTP 401 / 429 / 4xx / 5xx / network map to reason codes; the guest
   const ctx = { todayIst: "2026-10-07", currentStep: "ASK_DATES", known: {}, destinations: [], properties: [] };
   for (const [status, reason] of [[401, "http_401"], [429, "http_429"], [400, "http_4xx"], [500, "http_5xx"], [503, "http_5xx"]]) {
     const g = mockGroq(() => ({ status, body: JSON.stringify({ error: { message: "secret detail " + GROQ_KEY } }) }));
-    assert.deepEqual(await groqExtract("x", ctx, { apiKey: "k", model: "m", fetchImpl: g.fetchImpl }), { ok: false, reason });
+    assert.deepEqual(await groqExtract("x", ctx, { apiKey: "k", model: "m", fetchImpl: g.fetchImpl }), { ok: false, reason, status });
     const h = setup({ responder: () => ({ status, body: "{}" }) });
     await h.send("Hi");
     const reply = await h.send("next friday please");
@@ -366,9 +366,12 @@ test("26. no secrets, auth headers, full numbers or message text in logs; minima
   for (const s of [GROQ_KEY, CONFIG.twilioAuthToken, CONFIG.upstashRedisRestToken, GUEST, "Test Guest", "wa:conv"]) assert.equal(bodyText.includes(s), false, s);
   assert.deepEqual(Object.keys(call.payload).sort(), ["allowed_destinations", "allowed_properties", "current_step", "guest_message", "known_fields", "today_ist"]);
   assert.equal(call.body.temperature, 0);
-  assert.equal(call.body.max_tokens, 200);
+  assert.equal(call.body.max_completion_tokens, 1024); // reasoning model: room for hidden reasoning + JSON
+  assert.equal(call.body.max_tokens, undefined);
+  assert.equal(call.body.reasoning_effort, "low");
+  assert.equal(call.body.include_reasoning, false);
   assert.deepEqual(call.body.response_format, { type: "json_object" });
-  assert.equal(call.body.model, "llama-3.1-8b-instant");
+  assert.equal(call.body.model, "openai/gpt-oss-20b");
   // The guest message is capped at 1000 characters.
   const h2 = setup();
   await h2.send("Hi");
@@ -414,5 +417,5 @@ test("shouldExtract: skips commands, greetings, templates and states where AI is
   assert.equal(shouldExtract(conv("ASK_DATES"), false, "12 Nov to 15 Nov", "ok", catalog, now), null);
   assert.equal(shouldExtract(conv("ASK_DATES"), false, "31 Feb", "ok", catalog, now), null); // deterministic error exists
   assert.ok(shouldExtract(conv("ASK_DATES"), false, "next friday", "ok", catalog, now));
-  assert.equal(SYSTEM_PROMPT.includes("Return ONLY a JSON object"), true);
+  assert.equal(SYSTEM_PROMPT.includes("Return ONLY a valid json object"), true);
 });

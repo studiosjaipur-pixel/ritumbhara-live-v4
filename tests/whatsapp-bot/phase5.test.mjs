@@ -286,7 +286,11 @@ test("18. email failure after storage: guest told it was received, no second row
   const again = await postLeadEnvelope({ type: "qualified_lead", lead: h.events.qualified[0] }, sinkOpts(sink));
   assert.equal(again.ok && again.status, "duplicate");
   assert.equal(Object.keys(sink.state.rows).length, 1);
-  assert.equal(await h.send("YES"), null); // handed off: the bot stays silent, nothing is resent
+  // Handed off: a repeated YES only gets the post-handoff acknowledgement; nothing is resent.
+  assert.match(await h.send("YES"), /Our team already has your request/);
+  assert.equal(await h.send("YES"), null);
+  assert.equal(h.events.qualified.length, 1);
+  assert.equal(Object.keys(sink.state.rows).length, 1);
 });
 
 test("19. HUMAN is never QUALIFIED: it is delivered as a separate LEAD_HANDOFF", async () => {
