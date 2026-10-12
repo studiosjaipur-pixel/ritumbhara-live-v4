@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "crypto";
 import { maskPhoneNumber } from "./address";
 import { getBotConfig, isBotEnabled, redisNamespaceFor, type RedisNamespace } from "./config";
+import { buildCatalog, type CatalogProperty } from "./catalog";
 import { createConversationStore, createStoreKeys } from "./store";
 import { createUpstashClient, RedisUnavailableError, type RedisClient } from "./upstash";
 import { sendWhatsAppTemplate, type TwilioSendResult, type WhatsAppTemplateMessage } from "../twilio/send";
@@ -41,6 +42,10 @@ export const FOLLOW_UP_PHONE_COOLDOWN_SECONDS = 30 * 24 * 60 * 60;
 // Lead fields that may be put into the guest's template. Nothing else from the Sheet can ever reach a guest.
 export const GUEST_SAFE_FIELDS = ["destination", "property", "checkIn", "checkOut"] as const;
 export type GuestSafeField = (typeof GUEST_SAFE_FIELDS)[number];
+
+// What the guest sees for "property" when the lead has none, or a value that is not a property on the website.
+// Template variables can never be empty, so property always resolves to a name or to this phrase.
+export const PROPERTY_FALLBACK = "our stays";
 
 const LEAD_ID = /^L-[0-9A-F]{10}$/;
 const E164 = /^\+[1-9]\d{7,14}$/;
@@ -177,13 +182,34 @@ function safeText(v: string): boolean {
     !/https?:|www\.|@/i.test(v) && !/\d{5,}/.test(v);
 }
 
+let propertyCatalog: CatalogProperty[] | null = null;
+
+// The guest-facing name for a lead's property, taken ONLY from the website's property list
+// (config/properties.config.ts, via the bot's catalog). The Sheet normally holds the display name ("Studio 925");
+// a slug ("studio-925") is also recognised. Empty, unknown or edited values become PROPERTY_FALLBACK, so an internal
+// or made-up value never reaches a guest and the variable is never empty.
+export function guestPropertyName(raw: unknown): string {
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  if (!value) return PROPERTY_FALLBACK;
+  if (!propertyCatalog) propertyCatalog = buildCatalog().properties;
+  for (let i = 0; i < propertyCatalog.length; i++) {
+    const p = propertyCatalog[i];
+    if (p.name.trim().toLowerCase() === value || p.slug === value) return safeText(p.name) ? p.name : PROPERTY_FALLBACK;
+  }
+  return PROPERTY_FALLBACK;
+}
+
 // The template variables for one lead, built ONLY from the mapped guest-safe fields. Returns the first field that
-// is missing or not guest-safe (by name, never its value).
+// is missing or not guest-safe (by name, never its value). property never fails: see guestPropertyName.
 export function buildTemplateVariables(variables: Array<[string, GuestSafeField]>, body: Record<string, unknown>):
   { ok: true; values: Record<string, string> } | { ok: false; field: GuestSafeField } {
   const values: Record<string, string> = {};
   for (let i = 0; i < variables.length; i++) {
     const field = variables[i][1];
+    if (field === "property") {
+      values[variables[i][0]] = guestPropertyName(body.property);
+      continue;
+    }
     const raw = typeof body[field] === "string" ? (body[field] as string).trim() : "";
     if (field === "checkIn" || field === "checkOut") {
       if (!isRealIsoDate(raw)) return { ok: false, field: field };

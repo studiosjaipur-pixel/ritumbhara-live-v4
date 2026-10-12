@@ -7,7 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createFakeRedis } from "../helpers/fake-redis.mjs";
 
-const { createFollowUpHandler, getFollowUpConfig, getFollowUpLiveStatus, parseContentVariables, buildTemplateVariables, FOLLOW_UP_PHONE_COOLDOWN_SECONDS } =
+const { createFollowUpHandler, getFollowUpConfig, getFollowUpLiveStatus, parseContentVariables, buildTemplateVariables, FOLLOW_UP_PHONE_COOLDOWN_SECONDS, guestPropertyName, PROPERTY_FALLBACK } =
   await import("../../lib/whatsapp-bot/follow-up.ts");
 const { createStoreKeys } = await import("../../lib/whatsapp-bot/store.ts");
 
@@ -351,4 +351,72 @@ test("template text: tabs, new lines and 4+ consecutive spaces are rejected (Wha
   }
   const ok = setup({ WHATSAPP_FOLLOW_UP_CONTENT_VARIABLES: "1=destination" });
   assert.equal((await call(ok, live(LEAD, { destination: "Jai   pur" }))).body.result, "sent");
+});
+
+// ---------- property display name (template lead_follow_up: {{2}} = property) ----------
+
+const { properties: SITE_PROPERTIES } = await import("../../config/properties.config.ts");
+const PROD_MAPPING = "1=destination,2=property,3=checkIn,4=checkOut"; // the Production mapping for lead_follow_up
+
+test("property: a known property shows its website display name (from the name the Sheet holds, or its slug)", () => {
+  assert.equal(guestPropertyName("Studio 925"), "Studio 925");
+  assert.equal(guestPropertyName("  studio 925 "), "Studio 925", "case and spaces do not matter");
+  assert.equal(guestPropertyName("studio-925"), "Studio 925", "an internal slug is shown as the display name, never as the slug");
+  assert.equal(guestPropertyName("villa-65-sariska"), "Villa 65 Sariska");
+  // every property on the website maps to its own name, and every name is a valid template value
+  for (const p of SITE_PROPERTIES) {
+    assert.equal(guestPropertyName(p.name), p.name, p.slug);
+    assert.equal(guestPropertyName(p.slug), p.name, p.slug);
+  }
+});
+
+test("property: missing or empty -> exactly 'our stays'", () => {
+  assert.equal(PROPERTY_FALLBACK, "our stays");
+  for (const v of [undefined, null, "", "   ", 0, 925, {}, []]) assert.equal(guestPropertyName(v), "our stays", JSON.stringify(v));
+});
+
+test("property: unknown names, unknown slugs and edited values -> 'our stays' (nothing invented, nothing internal)", () => {
+  for (const v of ["studio-999", "Studio 999", "internal-xyz", "L-0123456789", "Hot", "https://example.com", "+919000000001",
+    "Studio 925 (VIP)", "studio_925", "x".repeat(200)]) {
+    assert.equal(guestPropertyName(v), "our stays", v);
+  }
+});
+
+test("Production mapping: destination, property, check-in and check-out reach Twilio as guest-safe values", async () => {
+  const t = setup({ WHATSAPP_FOLLOW_UP_CONTENT_VARIABLES: PROD_MAPPING });
+  const r = await call(t, live(LEAD, { destination: "Jaipur", property: "Studio 925", checkIn: "2026-12-10", checkOut: "2026-12-13", score: 95, ref: "W-PROP-X" }));
+  assert.equal(r.body.result, "sent");
+  assert.deepEqual(t.sends[0].msg.contentVariables, { 1: "Jaipur", 2: "Studio 925", 3: "10 Dec 2026", 4: "13 Dec 2026" });
+});
+
+test("Production mapping: a lead with no property is still sent, with 'our stays' (not rejected, not empty)", async () => {
+  for (const extra of [{}, { property: "" }, { property: "studio-999" }]) {
+    const t = setup({ WHATSAPP_FOLLOW_UP_CONTENT_VARIABLES: PROD_MAPPING });
+    const r = await call(t, live(LEAD, Object.assign({ destination: "Alwar", checkIn: "2027-01-05", checkOut: "2027-01-07" }, extra)));
+    assert.equal(r.status, 200, JSON.stringify(extra));
+    assert.equal(r.body.result, "sent");
+    assert.deepEqual(t.sends[0].msg.contentVariables, { 1: "Alwar", 2: "our stays", 3: "5 Jan 2027", 4: "7 Jan 2027" });
+  }
+});
+
+test("empty-variable protection: no template variable is ever empty; missing destination or dates are still refused", async () => {
+  const t = setup({ WHATSAPP_FOLLOW_UP_CONTENT_VARIABLES: PROD_MAPPING });
+  await call(t, live(LEAD, { destination: "Jaipur", checkIn: "2026-12-10", checkOut: "2026-12-13" }));
+  for (const v of Object.values(t.sends[0].msg.contentVariables)) assert.ok(typeof v === "string" && v.trim().length > 0);
+  for (const [extra, field] of [[{ checkIn: "2026-12-10", checkOut: "2026-12-13" }, "destination"], [{ destination: "Jaipur", checkOut: "2026-12-13" }, "checkIn"],
+    [{ destination: "Jaipur", checkIn: "2026-12-10" }, "checkOut"], [{ destination: "   ", checkIn: "2026-12-10", checkOut: "2026-12-13" }, "destination"]]) {
+    const u = setup({ WHATSAPP_FOLLOW_UP_CONTENT_VARIABLES: PROD_MAPPING });
+    const r = await call(u, live(LEAD, extra));
+    assert.equal(r.status, 400, field);
+    assert.equal(r.body.field, field);
+    assert.equal(u.sends.length, 0);
+    assert.equal(u.redisCount(), 0, "refused before any claim");
+  }
+});
+
+test("dry run is unchanged by the property mapping (no template is built, nothing is sent)", async () => {
+  const t = setup({ WHATSAPP_FOLLOW_UP_CONTENT_VARIABLES: PROD_MAPPING });
+  const r = await call(t, { leadId: LEAD, phone: PHONE, mode: "dry_run" });
+  assert.equal(r.body.result, "would_send");
+  assert.equal(t.sends.length, 0);
 });

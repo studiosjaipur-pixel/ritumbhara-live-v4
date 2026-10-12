@@ -182,7 +182,7 @@ The website also requires `TWILIO_ACCOUNT_SID` and the **approved template's Con
    - In live, the claim is permanent and is taken *before* Twilio is called, so a lead can never get a second automatic message, not even after a failed send.
 3. Under the lock again, it writes the results to the row found again by Lead ID.
 
-**What reaches the guest (live):** only the approved template. If the template has variables, `WHATSAPP_FOLLOW_UP_CONTENT_VARIABLES` maps them to these guest-safe fields only: `destination`, `property`, `checkIn`, `checkOut` (dates are shown as "10 Dec 2026"). Lead ID, score, priority, Source, Ref, requirements, notes and the handoff number are never sent to Twilio.
+**What reaches the guest (live):** only the approved template. If the template has variables, `WHATSAPP_FOLLOW_UP_CONTENT_VARIABLES` maps them to these guest-safe fields only: `destination`, `property`, `checkIn`, `checkOut` (dates are shown as "10 Dec 2026"). Lead ID, score, priority, Source, Ref, requirements, notes and the handoff number are never sent to Twilio. `property` is shown as the property's name from the website's property list (`config/properties.config.ts`); a lead with no property, or a value that isn't a website property, shows **"our stays"** instead, because a template variable can never be empty.
 
 **A lead is processed only when all of these are true:**
 - it is on `Qualified Leads` (handoffs are never followed up automatically), with a valid Lead ID (first row with that ID);
