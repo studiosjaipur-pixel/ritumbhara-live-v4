@@ -27,6 +27,7 @@ export const CONVERSATION_SCHEMA_VERSION = 1;
 const E164 = /^\+[1-9]\d{7,14}$/;
 const MESSAGE_SID = /^(SM|MM)[0-9a-fA-F]{32}$/;
 const SCOPE = /^[A-Za-z0-9:+_-]{1,64}$/;
+const LEAD_ID = /^L-[0-9A-F]{10}$/;
 
 function checked(value: string, pattern: RegExp, what: string): string {
   if (!pattern.test(value)) throw new Error("Invalid " + what + " for store key");
@@ -48,6 +49,10 @@ export function createStoreKeys(namespace?: RedisNamespace) {
     message: function (messageSid: string) { return p + "msg:" + checked(messageSid, MESSAGE_SID, "MessageSid"); },
     senderLock: function (sender: string) { return p + "lock:" + checked(sender, E164, "sender"); },
     rateLimit: function (scope: string, windowStart: number) { return p + "rl:" + checked(scope, SCOPE, "scope") + ":" + windowStart; },
+    // Week 6 Stretch 2 (automatic follow-ups): one claim per lead. Live and dry-run claims are separate keys, so a
+    // dry run can never block a later real follow-up.
+    followUp: function (leadId: string) { return p + "fu:" + checked(leadId, LEAD_ID, "Lead ID"); },
+    followUpDryRun: function (leadId: string) { return p + "fu-dry:" + checked(leadId, LEAD_ID, "Lead ID"); },
   };
 }
 
