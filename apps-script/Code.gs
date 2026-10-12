@@ -20,6 +20,27 @@
  * Both are idempotent: the same Lead ID / Handoff ID never creates a second row or a second email.
  * Click flow: a repeat of the same button on the same page within 15 seconds is logged once (cache fast path,
  * plus a check of the Sheet's recent rows because the cache is best-effort).
+ *
+ * Week 6, Step 1 (lead status tracking) on "Qualified Leads" and "Handoffs": Status dropdown (New, Contacted,
+ * Booked, Lost), "Status Updated (IST)" and "Next Follow-up" columns, kept up to date by the onLeadStatusEdit
+ * trigger. Run setupLeadStatusTracking() once after deploying. Bot-lead values are written by header name, and
+ * Email Status goes to its own column (it is no longer the last one).
+ *
+ * Week 6, Step 2 (simple lead scoring) on the same two tabs: "Score" (0-100) and "Priority" (Hot/Warm/Cold),
+ * calculated by scoreLead_ when a lead is written. recalculateLeadScores() re-scores open leads on demand.
+ *
+ * Week 6, Step 3 (follow-up reminders): sendFollowUpDigest, run daily by the trigger that setupFollowUpReminders
+ * installs, emails one digest of due/overdue leads (Hot first) to TEAM_EMAILS. Reminder only: it changes nothing
+ * in the Sheet and never contacts a guest. All emails share one recipient/quota check (teamMailCheck_).
+ *
+ * Week 6, Stretch 1 (conversion report): generateConversionReport(), run by hand, rebuilds a separate
+ * "Conversion Report" tab (by Source and by Ref) from the current data. Read-only on the lead and click tabs.
+ *
+ * Week 6, Stretch 2 (automatic WhatsApp follow-ups): sendWhatsAppFollowUps picks eligible Contacted leads on
+ * "Qualified Leads" and calls the website's /api/whatsapp/follow-up endpoint (opt-out + one-claim-per-lead checks in
+ * Redis). OFF by default. WA_FOLLOW_UP_MODE "dry_run" never sends. "live" sends one approved WhatsApp template per
+ * lead and also needs WA_FOLLOW_UP_LIVE_ENABLED=true here plus the website's own live configuration.
+ * Run setupWhatsAppFollowUps() once to add the columns and the daily trigger.
  */
 var SHEET_NAME = "WhatsApp Clicks";
 var HEADERS = ["Received (IST)", "Status", "Ref", "CTA", "Page", "Destination", "Check-in", "Check-out", "Guests",
@@ -98,12 +119,22 @@ function doGet(e) {
   return json_({ ok: false, error: "method_not_allowed" });
 }
 
-function emailDecision_(props, cache) {
+// The one recipient + quota check shared by every email this script sends (click emails, bot-lead emails and
+// the follow-up digest): TEAM_EMAILS must be set, and today's Mail quota must cover one email to all of them.
+function teamMailCheck_(props) {
   var to = (props.getProperty("TEAM_EMAILS") || "").split(",")
     .map(function (s) { return s.trim(); })
     .filter(function (s) { return s; });
   if (!to.length) return { send: false, reason: "skipped: TEAM_EMAILS not set" };
   if (MailApp.getRemainingDailyQuota() < to.length) return { send: false, reason: "skipped: daily email quota" };
+  return { send: true, to: to };
+}
+
+// Click emails: the shared check, plus the hourly cap (EMAIL_HOURLY_CAP) that applies to click emails only.
+function emailDecision_(props, cache) {
+  var check = teamMailCheck_(props);
+  if (!check.send) return check;
+  var to = check.to;
   var cap = parseInt(props.getProperty("EMAIL_HOURLY_CAP") || "20", 10);
   var hourKey = "h:" + Utilities.formatDate(new Date(), "UTC", "yyyyMMddHH");
   var sent = parseInt(cache.get(hourKey) || "0", 10);
@@ -237,11 +268,11 @@ function setupTest() {
 var QUALIFIED_SHEET = "Qualified Leads";
 var QUALIFIED_HEADERS = ["Received (IST)", "Lead ID", "Status", "Phone", "Destination", "Property", "Check-in", "Check-out",
   "Nights", "Guests", "Requirements", "Ref", "Source", "Conversation State", "Qualification Status", "Site",
-  "Received (UTC)", "Handoff Number", "Notes", "Email Status"];
+  "Received (UTC)", "Handoff Number", "Notes", "Email Status", "Status Updated (IST)", "Next Follow-up", "Score", "Priority"];
 var HANDOFF_SHEET = "Handoffs";
 var HANDOFF_HEADERS = ["Received (IST)", "Handoff ID", "Status", "Reason", "Phone", "Destination", "Property", "Check-in",
   "Check-out", "Nights", "Guests", "Requirements", "Ref", "Source", "Conversation State", "Qualification Status", "Site",
-  "Received (UTC)", "Handoff Number", "Email Status"];
+  "Received (UTC)", "Handoff Number", "Email Status", "Status Updated (IST)", "Next Follow-up", "Score", "Priority"];
 
 var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 var REF_RE = /^(DIRECT|W-[A-Za-z0-9-]{1,80})$/;
@@ -290,7 +321,7 @@ function handoffProblem_(h) {
 function validQualifiedLead_(l) { return qualifiedLeadProblem_(l) ? null : l; }
 function validHandoff_(h) { return handoffProblem_(h) ? null : h; }
 
-var BOT_CODE_VERSION = "bot-v5.4-sheetid";
+var BOT_CODE_VERSION = "bot-v6.6-follow-up-live";
 
 // Wrapper: an unexpected exception returns JSON (never Google's HTML error page) with a SAFE diagnostic:
 // the step that failed, the error type, a scrubbed message and the Code.gs line. No secrets, phone numbers,
@@ -339,29 +370,39 @@ function handleBotLeadInner_(body, props, trace, opts) {
   trace.stage = "lock";
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return { ok: false, error: "busy", code: "BUSY", v: BOT_CODE_VERSION };
-  var sheet, rowIndex;
+  var sheet, rowIndex, cols;
   try {
     var ss = openLeadsSpreadsheet_(props, trace);
     trace.stage = "open_tab";
     sheet = ss.getSheetByName(tabName);
     if (!sheet) { trace.stage = "create_tab"; sheet = ss.insertSheet(tabName); }
-    if (sheet.getLastRow() === 0) {
-      trace.stage = "write_headers";
-      sheet.appendRow(headers);
-      sheet.setFrozenRows(1);
-    }
+    // Writes the header row on a new tab and adds any missing column (e.g. the Week 6 status columns) to an
+    // existing one. Every value below is placed by header NAME, so team-added columns are never overwritten.
+    trace.stage = "write_headers";
+    cols = ensureLeadHeaders_(sheet, headers);
     trace.stage = "find_id";
     if (findRowById_(sheet, id) > 0) return { ok: true, duplicate: true }; // retry: no new row, no new email
     trace.stage = "build_row";
-    var istNow = Utilities.formatDate(new Date(), "Asia/Kolkata", "yyyy-MM-dd HH:mm:ss");
-    var row = qualified
-      ? [istNow, id, "New", item.phone, item.destination, item.property, item.checkIn, item.checkOut, item.nights, item.guests,
-         item.requirements, item.ref, item.source, item.conversationState, item.qualificationStatus, item.site, item.receivedAt,
-         item.handoffNumber, notesText_(item.notes), "PENDING"]
-      : [istNow, id, "New", item.reason, item.phone, item.destination, item.property, item.checkIn, item.checkOut, item.nights,
+    var now = new Date();
+    var istNow = istText_(now);
+    var scored = scoreLead_({
+      qualified: qualified, reason: qualified ? null : item.reason, checkIn: item.checkIn, checkOut: item.checkOut,
+      nights: item.nights, property: item.property, ref: item.ref
+    }, istDateText_(now));
+    var values = qualified
+      ? [istNow, id, DEFAULT_LEAD_STATUS, item.phone, item.destination, item.property, item.checkIn, item.checkOut, item.nights,
          item.guests, item.requirements, item.ref, item.source, item.conversationState, item.qualificationStatus, item.site,
-         item.receivedAt, item.handoffNumber, "PENDING"];
-    row = row.map(cell_);
+         item.receivedAt, item.handoffNumber, notesText_(item.notes), "PENDING", istNow, nextFollowUpFor_(DEFAULT_LEAD_STATUS, now),
+         scored.score, scored.priority]
+      : [istNow, id, DEFAULT_LEAD_STATUS, item.reason, item.phone, item.destination, item.property, item.checkIn, item.checkOut,
+         item.nights, item.guests, item.requirements, item.ref, item.source, item.conversationState, item.qualificationStatus,
+         item.site, item.receivedAt, item.handoffNumber, "PENDING", istNow, nextFollowUpFor_(DEFAULT_LEAD_STATUS, now),
+         scored.score, scored.priority];
+    var byName = {};
+    headers.forEach(function (h, i) { byName[h] = values[i]; });
+    var row = cols.names.map(function (name) {
+      return cell_(Object.prototype.hasOwnProperty.call(byName, name) ? byName[name] : "");
+    });
     trace.stage = "append_row";
     sheet.appendRow(row);
     trace.stage = "read_row_index";
@@ -369,6 +410,9 @@ function handleBotLeadInner_(body, props, trace, opts) {
     if (opts.dryRun) {
       trace.stage = "dry_run_cleanup";
       sheet.deleteRow(rowIndex);
+    } else {
+      trace.stage = "status_dropdown";
+      applyStatusValidation_(sheet.getRange(rowIndex, cols.index[STATUS_HEADER]));
     }
   } finally {
     lock.releaseLock();
@@ -379,8 +423,1240 @@ function handleBotLeadInner_(body, props, trace, opts) {
   trace.stage = "email";
   var emailStatus = sendBotLeadEmail_(item, qualified, props, sheet.getParent().getUrl()) ? "SENT" : "FAILED";
   trace.stage = "email_status";
-  sheet.getRange(rowIndex, headers.length).setValue(emailStatus);
+  // Explicit column (found by header name), not "the last column": columns after Email Status exist now.
+  sheet.getRange(rowIndex, cols.index[EMAIL_STATUS_HEADER]).setValue(emailStatus);
   return { ok: true, stored: true, emailStatus: emailStatus };
+}
+
+// ===================== Week 6, Step 1: lead status tracking =====================
+//
+// Applies to the "Qualified Leads" and "Handoffs" tabs only ("WhatsApp Clicks" is lead intent, not a lead).
+//   Status               - dropdown: New, Contacted, Booked, Lost. New rows start as New.
+//   Status Updated (IST) - set when a row is created and whenever the team changes Status.
+//   Next Follow-up (IST) - set from the status: New = 1 day later, Contacted = 2 days later, Booked/Lost = empty.
+// The team changes Status by hand; onLeadStatusEdit (an installable "on edit" trigger, created by
+// setupLeadStatusTracking) updates the two date columns. Edits made by this script do not fire the trigger.
+
+var LEAD_STATUSES = ["New", "Contacted", "Booked", "Lost"];
+var DEFAULT_LEAD_STATUS = "New";
+var FOLLOW_UP_DAYS = { "New": 1, "Contacted": 2 }; // Booked and Lost: no follow-up
+var STATUS_HEADER = "Status";
+var EMAIL_STATUS_HEADER = "Email Status";
+var STATUS_UPDATED_HEADER = "Status Updated (IST)";
+var NEXT_FOLLOW_UP_HEADER = "Next Follow-up";
+var LEAD_TABS = [QUALIFIED_SHEET, HANDOFF_SHEET];
+var STATUS_EDIT_HANDLER = "onLeadStatusEdit";
+
+// "yyyy-MM-dd HH:mm:ss" in IST, the same format as "Received (IST)".
+function istText_(date) {
+  return Utilities.formatDate(date, "Asia/Kolkata", "yyyy-MM-dd HH:mm:ss");
+}
+
+// The canonical status for a cell value ("contacted " -> "Contacted"), or "" if it is not one of LEAD_STATUSES.
+function canonicalStatus_(v) {
+  var s = String(v === null || v === undefined ? "" : v).trim().toLowerCase();
+  for (var i = 0; i < LEAD_STATUSES.length; i++) if (LEAD_STATUSES[i].toLowerCase() === s) return LEAD_STATUSES[i];
+  return "";
+}
+
+// Next follow-up for a status, counted from `from` (a Date): IST text, or "" when no follow-up is due.
+function nextFollowUpFor_(status, from) {
+  var days = FOLLOW_UP_DAYS[status];
+  return days ? istText_(new Date(from.getTime() + days * 86400000)) : "";
+}
+
+// Header row of a lead tab: writes it on an empty tab, appends any header from `headers` that is missing,
+// and returns { names: [header per column], index: { header name -> 1-based column } }.
+function ensureLeadHeaders_(sheet, headers) {
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+    sheet.setFrozenRows(1);
+  }
+  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  var names = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (v) { return String(v).trim(); });
+  headers.forEach(function (h) {
+    if (names.indexOf(h) === -1) {
+      names.push(h);
+      sheet.getRange(1, names.length).setValue(h);
+    }
+  });
+  return { names: names, index: headerIndex_(names) };
+}
+
+function headerIndex_(names) {
+  var index = {};
+  names.forEach(function (n, i) { if (n && !index[n]) index[n] = i + 1; });
+  return index;
+}
+
+// Reads the header row of an existing tab without changing it.
+function readLeadHeaders_(sheet) {
+  var lastCol = sheet.getLastColumn();
+  if (sheet.getLastRow() === 0 || lastCol === 0) return { names: [], index: {} };
+  var names = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (v) { return String(v).trim(); });
+  return { names: names, index: headerIndex_(names) };
+}
+
+// Status dropdown: only the four milestone statuses are accepted.
+function applyStatusValidation_(range) {
+  var rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(LEAD_STATUSES, true)
+    .setAllowInvalid(false)
+    .setHelpText("Choose New, Contacted, Booked or Lost.")
+    .build();
+  range.setDataValidation(rule);
+}
+
+/**
+ * Installable "on edit" trigger (created by setupLeadStatusTracking). When the team changes Status on a lead
+ * tab, stamps Status Updated (IST) and sets Next Follow-up from the new status. Ignores other tabs, other
+ * columns, the header row, rows without a Lead/Handoff ID, values that are not a milestone status, and
+ * re-selecting the value a cell already had.
+ */
+function onLeadStatusEdit(e) {
+  if (!e || !e.range) return;
+  var range = e.range;
+  var sheet = range.getSheet();
+  if (LEAD_TABS.indexOf(sheet.getName()) === -1) return;
+  var cols = readLeadHeaders_(sheet);
+  var statusCol = cols.index[STATUS_HEADER];
+  var updatedCol = cols.index[STATUS_UPDATED_HEADER];
+  var nextCol = cols.index[NEXT_FOLLOW_UP_HEADER];
+  if (!statusCol || !updatedCol || !nextCol) return; // setupLeadStatusTracking has not been run on this tab
+  if (statusCol < range.getColumn() || statusCol > range.getLastColumn()) return;
+  var first = Math.max(range.getRow(), 2);
+  var last = range.getLastRow();
+  if (last < first) return;
+  var n = last - first + 1;
+  var singleCell = range.getNumRows() === 1 && range.getNumColumns() === 1;
+
+  var ids = sheet.getRange(first, 2, n, 1).getValues();
+  var statuses = sheet.getRange(first, statusCol, n, 1).getValues();
+  var updated = sheet.getRange(first, updatedCol, n, 1).getValues();
+  var next = sheet.getRange(first, nextCol, n, 1).getValues();
+  var now = new Date();
+  var changed = false, recased = false;
+  for (var i = 0; i < n; i++) {
+    if (!String(ids[i][0]).trim()) continue;
+    var status = canonicalStatus_(statuses[i][0]);
+    if (!status) continue;
+    if (singleCell && e.oldValue !== undefined && canonicalStatus_(e.oldValue) === status) continue;
+    if (statuses[i][0] !== status) { statuses[i][0] = status; recased = true; }
+    updated[i][0] = istText_(now);
+    next[i][0] = nextFollowUpFor_(status, now);
+    changed = true;
+  }
+  if (!changed) return;
+  if (recased) sheet.getRange(first, statusCol, n, 1).setValues(statuses);
+  sheet.getRange(first, updatedCol, n, 1).setValues(updated);
+  sheet.getRange(first, nextCol, n, 1).setValues(next);
+}
+
+/**
+ * Run ONCE from the Apps Script editor after deploying Week 6 (safe to run again). For each lead tab:
+ *   - adds the "Status Updated (IST)" and "Next Follow-up" columns if missing (existing columns are not moved),
+ *   - puts the Status dropdown on every data row,
+ *   - existing rows: empty Status -> New; a different-case status is normalised; any other value is left as
+ *     it is and counted as "invalid" for the team to fix,
+ *   - fills only EMPTY date cells: New rows get Status Updated = their Received (IST) time and Next Follow-up
+ *     1 day after it; Contacted rows get Next Follow-up 2 days from now; Booked/Lost rows have Next Follow-up
+ *     cleared,
+ *   - installs the onLeadStatusEdit trigger for the leads Sheet (once).
+ * Logs and returns a summary with counts only (no phone numbers or lead details).
+ */
+function setupLeadStatusTracking() {
+  var props = PropertiesService.getScriptProperties();
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) throw new Error("Another request holds the script lock; run this again in a minute.");
+  var summary = { version: BOT_CODE_VERSION, tabs: {} };
+  var ss;
+  try {
+    ss = openLeadsSpreadsheet_(props, null);
+    var tz = ss.getSpreadsheetTimeZone();
+    var now = new Date();
+    [[QUALIFIED_SHEET, QUALIFIED_HEADERS], [HANDOFF_SHEET, HANDOFF_HEADERS]].forEach(function (pair) {
+      var sheet = ss.getSheetByName(pair[0]) || ss.insertSheet(pair[0]);
+      var cols = ensureLeadHeaders_(sheet, pair[1]);
+      var statusCol = cols.index[STATUS_HEADER], updatedCol = cols.index[STATUS_UPDATED_HEADER];
+      var nextCol = cols.index[NEXT_FOLLOW_UP_HEADER], receivedCol = cols.index["Received (IST)"];
+      var stats = { rows: 0, setToNew: 0, normalised: 0, invalid: 0, statusUpdatedFilled: 0, followUpsSet: 0, followUpsCleared: 0 };
+      if (sheet.getMaxRows() > 1) applyStatusValidation_(sheet.getRange(2, statusCol, sheet.getMaxRows() - 1, 1));
+      var lastRow = sheet.getLastRow();
+      if (lastRow >= 2) {
+        var n = lastRow - 1;
+        var ids = sheet.getRange(2, 2, n, 1).getValues();
+        var received = receivedCol ? sheet.getRange(2, receivedCol, n, 1).getValues() : null;
+        var statuses = sheet.getRange(2, statusCol, n, 1).getValues();
+        var updated = sheet.getRange(2, updatedCol, n, 1).getValues();
+        var next = sheet.getRange(2, nextCol, n, 1).getValues();
+        for (var i = 0; i < n; i++) {
+          if (!String(ids[i][0]).trim()) continue;
+          stats.rows++;
+          var raw = String(statuses[i][0]).trim();
+          var status = canonicalStatus_(raw);
+          if (!raw) { status = DEFAULT_LEAD_STATUS; statuses[i][0] = status; stats.setToNew++; }
+          else if (!status) { stats.invalid++; continue; }
+          else if (statuses[i][0] !== status) { statuses[i][0] = status; stats.normalised++; }
+          var receivedMs = received ? istCellMs_(received[i][0], tz) : NaN;
+          if (status === DEFAULT_LEAD_STATUS && String(updated[i][0]).trim() === "" && !isNaN(receivedMs)) {
+            updated[i][0] = istText_(new Date(receivedMs));
+            stats.statusUpdatedFilled++;
+          }
+          var hasNext = String(next[i][0]).trim() !== "";
+          if (FOLLOW_UP_DAYS[status] && !hasNext) {
+            var from = status === DEFAULT_LEAD_STATUS && !isNaN(receivedMs) ? new Date(receivedMs) : now;
+            next[i][0] = nextFollowUpFor_(status, from);
+            stats.followUpsSet++;
+          } else if (!FOLLOW_UP_DAYS[status] && hasNext) {
+            next[i][0] = "";
+            stats.followUpsCleared++;
+          }
+        }
+        sheet.getRange(2, statusCol, n, 1).setValues(statuses);
+        sheet.getRange(2, updatedCol, n, 1).setValues(updated);
+        sheet.getRange(2, nextCol, n, 1).setValues(next);
+      }
+      summary.tabs[pair[0]] = stats;
+    });
+    SpreadsheetApp.flush();
+  } finally {
+    lock.releaseLock();
+  }
+  var exists = ScriptApp.getProjectTriggers().some(function (t) {
+    return t.getHandlerFunction() === STATUS_EDIT_HANDLER && t.getTriggerSourceId() === ss.getId();
+  });
+  if (!exists) ScriptApp.newTrigger(STATUS_EDIT_HANDLER).forSpreadsheet(ss).onEdit().create();
+  summary.trigger = exists ? "already installed" : "installed";
+  var text = "LEAD STATUS SETUP | " + JSON.stringify(summary);
+  console.log(text);
+  Logger.log(text);
+  return summary;
+}
+
+// ===================== Week 6, Step 2: simple lead scoring =====================
+//
+// "Score" (0-100) and "Priority" (Hot / Warm / Cold) on "Qualified Leads" and "Handoffs". Calculated when a
+// lead is written, and again for open leads (Status New or Contacted) whenever recalculateLeadScores() is run.
+// All rules live in scoreLead_ below; the bands live in priorityFor_.
+
+var SCORE_HEADER = "Score";
+var PRIORITY_HEADER = "Priority";
+var OPEN_LEAD_STATUSES = ["New", "Contacted"]; // Booked and Lost are closed: their score is left as it was
+
+/**
+ * THE scoring rules. Deterministic: the same lead on the same day always gets the same score.
+ *   lead:     { qualified: true|false, reason, checkIn, checkOut, nights, property, ref }
+ *             (the existing lead columns; dates are "yyyy-MM-dd" text, anything else counts as "not given")
+ *   todayIst: today's date in India, "yyyy-MM-dd"
+ * Returns { score, priority, reasons } where reasons lists every rule that applied, e.g. "Qualified lead +40".
+ *
+ *   Check-in date already passed ........................ score 0 (no other rule applies)
+ *   Qualified lead ...................................... +40
+ *   Handoff, guest asked for a person (HUMAN_REQUESTED) . +25
+ *   Handoff, bot could not finish (NEEDS_FOLLOW_UP) ..... +10
+ *   Check-in within 7 days (today counts as 0 days) ..... +20
+ *   Check-in in 8 to 30 days ............................ +10   (the 7-day and 30-day rules never add up)
+ *   Both check-in and check-out given ................... +10
+ *   Specific property given ............................. +10
+ *   3 or more nights .................................... +10
+ *   Ref from a property page or availability widget ..... +5    (W-PROP-..., or ending in -AVAILABILITY)
+ * The highest possible score is 95; the result is kept within 0-100.
+ */
+function scoreLead_(lead, todayIst) {
+  var checkIn = isoDateOrNull_(lead.checkIn);
+  var checkOut = isoDateOrNull_(lead.checkOut);
+  if (checkIn && checkIn < todayIst) {
+    return { score: 0, priority: priorityFor_(0), reasons: ["Check-in has already passed: score 0"] };
+  }
+  var score = 0;
+  var reasons = [];
+  function add(points, why) { score += points; reasons.push(why + " +" + points); }
+
+  if (lead.qualified) add(40, "Qualified lead");
+  else if (lead.reason === "HUMAN_REQUESTED") add(25, "Guest asked for a person");
+  else if (lead.reason === "NEEDS_FOLLOW_UP") add(10, "Needs follow-up");
+
+  if (checkIn) {
+    var daysAway = nightsBetween_(todayIst, checkIn);
+    if (daysAway <= 7) add(20, "Check-in within 7 days");
+    else if (daysAway <= 30) add(10, "Check-in within 30 days");
+  }
+  if (checkIn && checkOut) add(10, "Check-in and check-out given");
+  if (String(lead.property === null || lead.property === undefined ? "" : lead.property).trim()) add(10, "Specific property");
+  var nights = Number(lead.nights);
+  if (isFinite(nights) && nights >= 3) add(10, "3 or more nights");
+  if (isPropertyOrAvailabilityRef_(lead.ref)) add(5, "Property/availability Ref");
+
+  score = Math.max(0, Math.min(100, score));
+  return { score: score, priority: priorityFor_(score), reasons: reasons };
+}
+
+// Priority bands: 70-100 Hot, 40-69 Warm, below 40 Cold.
+function priorityFor_(score) {
+  if (score >= 70) return "Hot";
+  if (score >= 40) return "Warm";
+  return "Cold";
+}
+
+// "yyyy-MM-dd" for a real calendar date, otherwise null.
+function isoDateOrNull_(v) {
+  var s = String(v === null || v === undefined ? "" : v).trim();
+  if (!ISO_DATE.test(s)) return null;
+  var d = new Date(Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)));
+  return d.getUTCFullYear() === +s.slice(0, 4) && d.getUTCMonth() === +s.slice(5, 7) - 1 && d.getUTCDate() === +s.slice(8, 10) ? s : null;
+}
+
+// Website Refs: W-PROP-<slug> (property page) or W-...-AVAILABILITY (Check Availability widget).
+function isPropertyOrAvailabilityRef_(ref) {
+  var s = String(ref === null || ref === undefined ? "" : ref).trim();
+  return /^W-PROP-./.test(s) || /^W-.+-AVAILABILITY$/.test(s);
+}
+
+// Today's date in India, "yyyy-MM-dd".
+function istDateText_(date) {
+  return Utilities.formatDate(date, "Asia/Kolkata", "yyyy-MM-dd");
+}
+
+// A date cell as "yyyy-MM-dd": our text as written, or the Date the Sheet may have turned it into.
+function sheetDateText_(v, tz) {
+  if (Object.prototype.toString.call(v) === "[object Date]") return isNaN(v.getTime()) ? "" : Utilities.formatDate(v, tz, "yyyy-MM-dd");
+  return sheetText_(v).trim();
+}
+
+/**
+ * Run from the Apps Script editor (no trigger yet). Recalculates Score and Priority for every OPEN lead
+ * (Status New, Contacted, or empty) on both lead tabs, using today's date, so "check-in within 7 days" and
+ * "check-in has passed" stay current. Booked and Lost rows, and rows with any other status, are not changed.
+ * Adds the Score and Priority columns if they are missing. Logs and returns counts only (no lead details).
+ */
+function recalculateLeadScores() {
+  var props = PropertiesService.getScriptProperties();
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) throw new Error("Another request holds the script lock; run this again in a minute.");
+  var today = istDateText_(new Date());
+  var summary = { version: BOT_CODE_VERSION, today: today, tabs: {} };
+  try {
+    var ss = openLeadsSpreadsheet_(props, null);
+    var tz = ss.getSpreadsheetTimeZone();
+    [[QUALIFIED_SHEET, QUALIFIED_HEADERS, true, "Lead ID"], [HANDOFF_SHEET, HANDOFF_HEADERS, false, "Handoff ID"]].forEach(function (t) {
+      var sheet = ss.getSheetByName(t[0]);
+      if (!sheet) { summary.tabs[t[0]] = { missing: true }; return; }
+      var cols = ensureLeadHeaders_(sheet, t[1]);
+      var stats = { open: 0, notOpen: 0, hot: 0, warm: 0, cold: 0 };
+      var last = sheet.getLastRow();
+      if (last >= 2) {
+        var n = last - 1;
+        var rows = sheet.getRange(2, 1, n, cols.names.length).getValues();
+        var scoreCol = cols.index[SCORE_HEADER], priorityCol = cols.index[PRIORITY_HEADER];
+        var scores = sheet.getRange(2, scoreCol, n, 1).getValues();
+        var priorities = sheet.getRange(2, priorityCol, n, 1).getValues();
+        for (var i = 0; i < n; i++) {
+          var get = function (name) { return cols.index[name] ? rows[i][cols.index[name] - 1] : ""; };
+          if (!String(get(t[3])).trim()) continue;
+          var rawStatus = String(get(STATUS_HEADER)).trim();
+          if (rawStatus && OPEN_LEAD_STATUSES.indexOf(canonicalStatus_(rawStatus)) === -1) { stats.notOpen++; continue; }
+          var result = scoreLead_({
+            qualified: t[2], reason: t[2] ? null : sheetText_(get("Reason")).trim(),
+            checkIn: sheetDateText_(get("Check-in"), tz), checkOut: sheetDateText_(get("Check-out"), tz),
+            nights: get("Nights"), property: sheetText_(get("Property")), ref: sheetText_(get("Ref"))
+          }, today);
+          scores[i][0] = result.score;
+          priorities[i][0] = result.priority;
+          stats.open++;
+          stats[result.priority.toLowerCase()]++;
+        }
+        sheet.getRange(2, scoreCol, n, 1).setValues(scores);
+        sheet.getRange(2, priorityCol, n, 1).setValues(priorities);
+      }
+      summary.tabs[t[0]] = stats;
+    });
+    SpreadsheetApp.flush();
+  } finally {
+    lock.releaseLock();
+  }
+  var text = "LEAD SCORE RECALC | " + JSON.stringify(summary);
+  console.log(text);
+  Logger.log(text);
+  return summary;
+}
+
+// ===================== Week 6, Step 3: follow-up reminders =====================
+//
+// Once a day, sendFollowUpDigest emails ONE digest to TEAM_EMAILS listing every lead whose follow-up is due:
+//   Next Follow-up is today or earlier (date in India), Status is not Booked or Lost, and the row has a valid
+//   Lead ID (L-XXXXXXXXXX) or Handoff ID (H-XXXXXXXXXX).
+// Sorted Hot, then Warm, then Cold (then any row without a Priority). Within a priority: overdue first, then
+// higher score, then the oldest follow-up date. A lead is marked OVERDUE when its follow-up date is before today,
+// or when it is still New more than 24 hours after it was received.
+// Reminder only: it never changes Status or any other cell, never contacts a guest (no WhatsApp, no Twilio), and
+// sends nothing when no lead is due. setupFollowUpReminders installs the daily trigger (once).
+
+var FOLLOW_UP_DIGEST_HANDLER = "sendFollowUpDigest";
+var FOLLOW_UP_DIGEST_HOUR = 9; // about 09:30 in the project's time zone (Apps Script runs it within +/- 15 min)
+var FOLLOW_UP_DIGEST_MINUTE = 30;
+var FOLLOW_UP_FALLBACK_TZ = "Asia/Kolkata"; // used only if the project has no time zone set
+var LAST_DIGEST_PROPERTY = "LAST_FOLLOW_UP_DIGEST"; // date (India) of the last digest actually sent
+var CLOSED_LEAD_STATUSES = ["Booked", "Lost"];
+var PRIORITY_RANK = { "Hot": 0, "Warm": 1, "Cold": 2 }; // anything else sorts after Cold
+var NEW_LEAD_OVERDUE_MS = 24 * 60 * 60 * 1000;
+
+// Date part ("yyyy-MM-dd") of a Next Follow-up cell: our "yyyy-MM-dd HH:mm:ss" text, a date typed by the team,
+// or a Date cell (read in the spreadsheet's time zone). "" when there is no usable date.
+function followUpDateText_(v, tz) {
+  if (Object.prototype.toString.call(v) === "[object Date]") return isNaN(v.getTime()) ? "" : Utilities.formatDate(v, tz, "yyyy-MM-dd");
+  var m = sheetText_(v).trim().match(/^(\d{4}-\d{2}-\d{2})(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/);
+  return m ? (isoDateOrNull_(m[1]) || "") : "";
+}
+
+// A cell for the email: Date cells as "yyyy-MM-dd HH:mm" in the spreadsheet's time zone, text as written.
+function cellDisplay_(v, tz) {
+  if (Object.prototype.toString.call(v) === "[object Date]") return isNaN(v.getTime()) ? "" : Utilities.formatDate(v, tz, "yyyy-MM-dd HH:mm");
+  return sheetText_(v).trim();
+}
+
+// Every due lead on both lead tabs (read-only). Returns { items, tabs } where tabs says, per tab, how many
+// were due or why the tab was skipped. A Lead/Handoff ID that appears on more than one row is listed once.
+function collectDueFollowUps_(ss, today, now) {
+  var tz = ss.getSpreadsheetTimeZone();
+  var sheetUrl = String(ss.getUrl()).replace(/[?#].*$/, "");
+  var items = [], seen = {}, tabs = {};
+  [[QUALIFIED_SHEET, "Lead ID", /^L-[0-9A-F]{10}$/, "Qualified lead"],
+   [HANDOFF_SHEET, "Handoff ID", /^H-[0-9A-F]{10}$/, "Handoff"]].forEach(function (t) {
+    var sheet = ss.getSheetByName(t[0]);
+    if (!sheet) { tabs[t[0]] = "missing tab"; return; }
+    var cols = readLeadHeaders_(sheet);
+    if (!cols.index[t[1]] || !cols.index[STATUS_HEADER] || !cols.index[NEXT_FOLLOW_UP_HEADER]) {
+      tabs[t[0]] = "missing columns (run setupLeadStatusTracking)";
+      return;
+    }
+    var last = sheet.getLastRow();
+    var rows = last >= 2 ? sheet.getRange(2, 1, last - 1, cols.names.length).getValues() : [];
+    var due = 0;
+    rows.forEach(function (row, i) {
+      var get = function (name) { return cols.index[name] ? row[cols.index[name] - 1] : ""; };
+      var id = sheetText_(get(t[1])).trim();
+      if (!t[2].test(id) || seen[id]) return;
+      var statusText = sheetText_(get(STATUS_HEADER)).trim();
+      if (CLOSED_LEAD_STATUSES.indexOf(canonicalStatus_(statusText)) !== -1) return;
+      var followUpDate = followUpDateText_(get(NEXT_FOLLOW_UP_HEADER), tz);
+      if (!followUpDate || followUpDate > today) return;
+      seen[id] = true;
+      due++;
+      var receivedMs = istCellMs_(get("Received (IST)"), tz);
+      var overdueWhy = [];
+      if (followUpDate < today) overdueWhy.push("follow-up date has passed");
+      if (canonicalStatus_(statusText) === DEFAULT_LEAD_STATUS && !isNaN(receivedMs) && now.getTime() - receivedMs > NEW_LEAD_OVERDUE_MS) {
+        overdueWhy.push("still New more than 24 hours after it was received");
+      }
+      var scoreNum = Number(get(SCORE_HEADER));
+      var scoreText = sheetText_(get(SCORE_HEADER)).trim();
+      items.push({
+        kind: t[3], id: id, row: i + 2, link: sheetUrl + "#gid=" + sheet.getSheetId() + "&range=A" + (i + 2),
+        status: statusText || "(empty)", priority: sheetText_(get(PRIORITY_HEADER)).trim(),
+        score: scoreText !== "" && isFinite(scoreNum) ? scoreNum : null,
+        phone: sheetText_(get("Phone")).trim(), reason: sheetText_(get("Reason")).trim(),
+        destination: sheetText_(get("Destination")).trim(), property: sheetText_(get("Property")).trim(),
+        checkIn: sheetDateText_(get("Check-in"), tz), checkOut: sheetDateText_(get("Check-out"), tz),
+        nights: sheetText_(get("Nights")).trim(), guests: sheetText_(get("Guests")).trim(),
+        received: cellDisplay_(get("Received (IST)"), tz), nextFollowUp: cellDisplay_(get(NEXT_FOLLOW_UP_HEADER), tz),
+        followUpDate: followUpDate, overdue: overdueWhy.length > 0, overdueWhy: overdueWhy
+      });
+    });
+    tabs[t[0]] = due;
+  });
+  items.sort(compareDueFollowUps_);
+  return { items: items, tabs: tabs };
+}
+
+// Hot, Warm, Cold, then no/unknown Priority; then overdue first; then higher score; then oldest follow-up date.
+function compareDueFollowUps_(a, b) {
+  var pa = PRIORITY_RANK.hasOwnProperty(a.priority) ? PRIORITY_RANK[a.priority] : 3;
+  var pb = PRIORITY_RANK.hasOwnProperty(b.priority) ? PRIORITY_RANK[b.priority] : 3;
+  if (pa !== pb) return pa - pb;
+  if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
+  var sa = a.score === null ? -1 : a.score, sb = b.score === null ? -1 : b.score;
+  if (sa !== sb) return sb - sa;
+  if (a.followUpDate !== b.followUpDate) return a.followUpDate < b.followUpDate ? -1 : 1;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
+// The digest email (plain text) for a sorted list of due leads.
+function followUpDigestEmail_(items, today, sheetUrl) {
+  var overdue = items.filter(function (it) { return it.overdue; }).length;
+  var counts = { Hot: 0, Warm: 0, Cold: 0, other: 0 };
+  items.forEach(function (it) { counts[PRIORITY_RANK.hasOwnProperty(it.priority) ? it.priority : "other"]++; });
+  var lines = [
+    "Lead follow-ups due on " + today + " (India time): " + items.length + (items.length === 1 ? " lead" : " leads") +
+      (overdue ? ", " + overdue + " overdue." : "."),
+    "Hot: " + counts.Hot + " | Warm: " + counts.Warm + " | Cold: " + counts.Cold + (counts.other ? " | No priority: " + counts.other : ""),
+    "",
+    "Reminder only: no status was changed and no message was sent to any guest. After following up, update Status",
+    "(Contacted, Booked or Lost) in the Sheet; Next Follow-up then moves on by itself.",
+    ""
+  ];
+  items.forEach(function (it, i) {
+    lines.push((i + 1) + ". " + (it.overdue ? "OVERDUE (" + it.overdueWhy.join("; ") + ") | " : "Due today | ") +
+      (it.priority || "No priority") + (it.score === null ? "" : ", score " + it.score));
+    lines.push("   " + it.kind + " " + it.id + " | Status: " + it.status);
+    if (it.reason) lines.push("   Reason: " + (it.reason === "HUMAN_REQUESTED" ? "guest asked for a team member" : it.reason === "NEEDS_FOLLOW_UP" ? "assistant could not complete the details" : it.reason));
+    if (it.phone) lines.push("   Guest WhatsApp: " + it.phone);
+    var stay = [it.property, it.destination].filter(function (s) { return s; }).join(", ");
+    var details = [];
+    if (stay) details.push("Stay: " + stay);
+    if (it.checkIn) details.push("Check-in " + it.checkIn);
+    if (it.checkOut) details.push("Check-out " + it.checkOut);
+    if (it.nights) details.push(it.nights + (it.nights === "1" ? " night" : " nights"));
+    if (it.guests) details.push(it.guests + (it.guests === "1" ? " guest" : " guests"));
+    if (details.length) lines.push("   " + details.join(" | "));
+    lines.push("   Next follow-up: " + it.nextFollowUp + (it.received ? " | Received: " + it.received : ""));
+    lines.push("   Row: " + it.link);
+    lines.push("");
+  });
+  lines.push("Leads Sheet: " + sheetUrl);
+  return {
+    subject: "Lead follow-ups due " + today + ": " + items.length + (overdue ? " (" + overdue + " overdue)" : ""),
+    body: lines.join("\n")
+  };
+}
+
+/**
+ * Daily trigger handler (installed by setupFollowUpReminders; can also be run by hand from the editor).
+ * Sends at most one digest per day: once a digest has been sent, later runs on the same date (India) send
+ * nothing. To send again the same day, delete the Script Property LAST_FOLLOW_UP_DIGEST.
+ * Logs and returns counts only (no phone numbers or lead details).
+ */
+function sendFollowUpDigest() {
+  var props = PropertiesService.getScriptProperties();
+  var now = new Date();
+  var today = istDateText_(now);
+  var result = { version: BOT_CODE_VERSION, today: today, sent: false };
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) {
+    result.reason = "busy: another request holds the script lock";
+  } else {
+    try {
+      if (props.getProperty(LAST_DIGEST_PROPERTY) === today) {
+        result.reason = "already sent today";
+      } else {
+        var ss = openLeadsSpreadsheet_(props, null);
+        var found = collectDueFollowUps_(ss, today, now);
+        result.tabs = found.tabs;
+        result.due = found.items.length;
+        result.overdue = found.items.filter(function (it) { return it.overdue; }).length;
+        if (!found.items.length) {
+          result.reason = "nothing due";
+        } else {
+          var check = teamMailCheck_(props);
+          if (!check.send) {
+            result.reason = check.reason;
+          } else {
+            var email = followUpDigestEmail_(found.items, today, String(ss.getUrl()).replace(/[?#].*$/, ""));
+            try {
+              MailApp.sendEmail({ to: check.to.join(","), subject: email.subject, body: email.body });
+              props.setProperty(LAST_DIGEST_PROPERTY, today);
+              result.sent = true;
+              result.recipients = check.to.length;
+            } catch (err) {
+              result.reason = "send failed: " + safeErrName_(err);
+            }
+          }
+        }
+      }
+    } finally {
+      lock.releaseLock();
+    }
+  }
+  var text = "FOLLOW-UP DIGEST | " + JSON.stringify(result);
+  console.log(text);
+  Logger.log(text);
+  return result;
+}
+
+/**
+ * Run ONCE from the Apps Script editor (safe to run again). Installs the daily sendFollowUpDigest trigger at
+ * about 09:30 in the project's time zone (Project Settings -> Time zone); if the project has none, India time.
+ * Never creates a second trigger: an existing one is kept, and any extra copies are removed.
+ * Logs and returns a summary.
+ */
+function setupFollowUpReminders() {
+  var existing = ScriptApp.getProjectTriggers().filter(function (t) {
+    return t.getHandlerFunction() === FOLLOW_UP_DIGEST_HANDLER;
+  });
+  for (var i = 1; i < existing.length; i++) ScriptApp.deleteTrigger(existing[i]);
+  var projectTz = Session.getScriptTimeZone();
+  if (!existing.length) {
+    var builder = ScriptApp.newTrigger(FOLLOW_UP_DIGEST_HANDLER).timeBased()
+      .atHour(FOLLOW_UP_DIGEST_HOUR).nearMinute(FOLLOW_UP_DIGEST_MINUTE).everyDays(1);
+    if (!projectTz) builder = builder.inTimezone(FOLLOW_UP_FALLBACK_TZ);
+    builder.create();
+  }
+  var tz = projectTz || FOLLOW_UP_FALLBACK_TZ;
+  var summary = {
+    version: BOT_CODE_VERSION,
+    trigger: existing.length ? "already installed" : "installed",
+    duplicatesRemoved: Math.max(existing.length - 1, 0),
+    runsAt: "daily, about 09:30 (" + tz + ")",
+    teamEmailsSet: !!String(PropertiesService.getScriptProperties().getProperty("TEAM_EMAILS") || "").trim()
+  };
+  if (tz !== FOLLOW_UP_FALLBACK_TZ) {
+    summary.note = "The project time zone is " + tz + ", so the digest runs at about 09:30 there. To run it at 09:30 India time, set the project time zone to Asia/Kolkata (Project Settings) and run this again after deleting the trigger.";
+  }
+  var text = "FOLLOW-UP REMINDER SETUP | " + JSON.stringify(summary);
+  console.log(text);
+  Logger.log(text);
+  return summary;
+}
+
+// ===================== Week 6, Stretch 1: conversion report by source =====================
+//
+// generateConversionReport() (run by hand from the editor) rebuilds the "Conversion Report" tab from the current
+// data. It only READS "Qualified Leads", "Handoffs" and "WhatsApp Clicks", and only WRITES the report tab:
+// no lead row is changed, no email is sent, no guest is contacted. Safe to run any number of times.
+//   One lead = one valid Lead ID (L-...) or Handoff ID (H-...), counted once even if it appears on several rows.
+//   Status as on the lead tabs: empty counts as New; anything other than the four statuses is "Other status".
+//   Open = New + Contacted. Booking conversion = Booked / Total. Contact rate = Contacted / Total (current
+//   status). Reached rate = (Contacted + Booked) / Total. Click -> Lead (approximate) = leads with a Ref / clicks
+//   with the same Ref; clicks are not matched to individual leads.
+
+var CONVERSION_REPORT_SHEET = "Conversion Report";
+var CONVERSION_REPORT_MARKER = "Conversion Report"; // cell A1 of a report this script generated
+var CONVERSION_STATUS_COLUMNS = ["New", "Contacted", "Booked", "Lost"];
+
+// Percentage text with one decimal ("33.3%"), or "N/A" when there is nothing to divide by.
+function percentText_(part, whole) {
+  return whole > 0 ? (Math.round(part / whole * 1000) / 10).toFixed(1) + "%" : "N/A";
+}
+
+// Which kind of website link a Ref comes from (Refs are built in the website's lib/whatsapp.ts).
+function refEntryPoint_(ref) {
+  if (ref === "DIRECT" || ref === "(none)") return "Direct (no website Ref)";
+  if (ref === "W-FLOATING") return "Floating button";
+  if (ref === "W-CONTACT") return "Contact page";
+  if (/^W-PROP-./.test(ref)) return "Property page";
+  if (/^W-.+-AVAILABILITY$/.test(ref)) return "Availability widget";
+  if (/^W-./.test(ref)) return "Other website link";
+  return "Unknown";
+}
+
+function emptyConversionGroup_() {
+  return { total: 0, qualified: 0, handoffs: 0, phones: {}, New: 0, Contacted: 0, Booked: 0, Lost: 0, other: 0, clicks: 0 };
+}
+
+function addToConversionGroup_(g, lead) {
+  g.total++;
+  if (lead.kind === "qualified") g.qualified++; else g.handoffs++;
+  if (lead.phone) g.phones[lead.phone] = true;
+  var status = lead.status ? canonicalStatus_(lead.status) : DEFAULT_LEAD_STATUS; // empty Status = New
+  if (status) g[status]++; else g.other++;
+}
+
+/**
+ * Pure counting. leads: [{ kind: "qualified"|"handoff", id, source, ref, status, phone }] in sheet order;
+ * clickRefs: the Ref of every WhatsApp Clicks row. IDs must already be valid; a repeated ID counts once.
+ * Returns { bySource: {name: group}, byRef: {ref: group}, total: group, duplicates }.
+ */
+function buildConversionStats_(leads, clickRefs) {
+  var bySource = {}, byRef = {}, total = emptyConversionGroup_(), seen = {}, duplicates = 0;
+  leads.forEach(function (lead) {
+    if (seen[lead.id]) { duplicates++; return; }
+    seen[lead.id] = true;
+    var source = lead.source || "(none)";
+    var ref = lead.ref || "(none)";
+    addToConversionGroup_(bySource[source] || (bySource[source] = emptyConversionGroup_()), lead);
+    addToConversionGroup_(byRef[ref] || (byRef[ref] = emptyConversionGroup_()), lead);
+    addToConversionGroup_(total, lead);
+  });
+  clickRefs.forEach(function (ref) {
+    if (!/^W-[A-Za-z0-9-]{1,80}$/.test(ref)) return;
+    (byRef[ref] || (byRef[ref] = emptyConversionGroup_())).clicks++;
+    total.clicks++;
+  });
+  return { bySource: bySource, byRef: byRef, total: total, duplicates: duplicates };
+}
+
+// The shared columns of both sections for one group.
+function conversionCells_(g) {
+  var open = g.New + g.Contacted;
+  return [g.total, g.qualified, g.handoffs, Object.keys(g.phones).length, g.New, g.Contacted, g.Booked, g.Lost, g.other, open,
+    percentText_(g.Booked, g.total), percentText_(g.Contacted, g.total), percentText_(g.Contacted + g.Booked, g.total)];
+}
+
+var CONVERSION_COMMON_HEADERS = ["Total leads", "Qualified", "Handoffs", "Unique guests", "New", "Contacted", "Booked", "Lost",
+  "Other status", "Open leads", "Booking conversion %", "Contact rate %", "Reached rate %"];
+var CONVERSION_SOURCE_HEADERS = ["Source"].concat(CONVERSION_COMMON_HEADERS);
+var CONVERSION_REF_HEADERS = ["Ref", "Entry point"].concat(CONVERSION_COMMON_HEADERS, ["WhatsApp clicks", "Click → Lead % (approx.)"]);
+
+// Groups sorted by total leads (most first), then clicks, then name.
+function sortedGroupNames_(groups) {
+  return Object.keys(groups).sort(function (a, b) {
+    var ga = groups[a], gb = groups[b];
+    if (ga.total !== gb.total) return gb.total - ga.total;
+    if (ga.clicks !== gb.clicks) return gb.clicks - ga.clicks;
+    return a < b ? -1 : a > b ? 1 : 0;
+  });
+}
+
+/** The report as rows of cells (text cells are not yet passed through cell_). */
+function conversionReportRows_(stats, generatedIst, notes) {
+  var rows = [
+    [CONVERSION_REPORT_MARKER, "Generated by generateConversionReport(). Do not edit: run it again to refresh."],
+    ["Generated (IST)", generatedIst],
+    ["Definitions", "One lead = one Lead ID or Handoff ID, counted once. Empty Status counts as New. Open = New + Contacted. " +
+      "Booking conversion = Booked / Total. Contact rate = Contacted / Total (current status). Reached rate = (Contacted + Booked) / Total."]
+  ];
+  notes.forEach(function (n) { rows.push(["Note", n]); });
+  rows.push([]);
+  rows.push(["By Source"]);
+  rows.push(CONVERSION_SOURCE_HEADERS.slice());
+  sortedGroupNames_(stats.bySource).forEach(function (name) {
+    rows.push([name].concat(conversionCells_(stats.bySource[name])));
+  });
+  rows.push(["Total"].concat(conversionCells_(stats.total)));
+  rows.push([]);
+  rows.push(["By Ref (website entry point)"]);
+  rows.push(["Note", "WhatsApp clicks are counted by exact Ref from the WhatsApp Clicks tab. Click → Lead % is APPROXIMATE: " +
+    "clicks are not matched to individual leads, not every click becomes a WhatsApp message, and clicks count even when the bot is off. " +
+    "N/A = no clicks for that Ref."]);
+  rows.push(CONVERSION_REF_HEADERS.slice());
+  var websiteLeads = 0;
+  sortedGroupNames_(stats.byRef).forEach(function (ref) {
+    var g = stats.byRef[ref];
+    if (/^W-./.test(ref)) websiteLeads += g.total;
+    rows.push([ref, refEntryPoint_(ref)].concat(conversionCells_(g), [g.clicks, percentText_(g.total, g.clicks)]));
+  });
+  rows.push(["Total", "All"].concat(conversionCells_(stats.total), [stats.total.clicks, percentText_(websiteLeads, stats.total.clicks)]));
+  return rows;
+}
+
+/**
+ * Run from the Apps Script editor. Rebuilds the "Conversion Report" tab from the current lead and click data.
+ * Refuses to overwrite a non-empty "Conversion Report" tab that this script did not create (cell A1 is checked).
+ * Logs and returns counts only (no phone numbers or lead details).
+ */
+function generateConversionReport() {
+  var props = PropertiesService.getScriptProperties();
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) throw new Error("Another request holds the script lock; run this again in a minute.");
+  var summary = { version: BOT_CODE_VERSION };
+  try {
+    var ss = openLeadsSpreadsheet_(props, null);
+    var leads = [], notes = [], skippedNoId = 0;
+    [[QUALIFIED_SHEET, "Lead ID", /^L-[0-9A-F]{10}$/, "qualified"],
+     [HANDOFF_SHEET, "Handoff ID", /^H-[0-9A-F]{10}$/, "handoff"]].forEach(function (t) {
+      var sheet = ss.getSheetByName(t[0]);
+      if (!sheet) { notes.push("The " + t[0] + " tab is missing, so it is not counted."); return; }
+      var cols = readLeadHeaders_(sheet);
+      if (!cols.index[t[1]]) { notes.push("The " + t[0] + " tab has no " + t[1] + " column, so it is not counted."); return; }
+      var last = sheet.getLastRow();
+      var rows = last >= 2 ? sheet.getRange(2, 1, last - 1, cols.names.length).getValues() : [];
+      rows.forEach(function (row) {
+        var get = function (name) { return cols.index[name] ? sheetText_(row[cols.index[name] - 1]).trim() : ""; };
+        var id = get(t[1]);
+        if (!t[2].test(id)) { if (row.some(function (v) { return String(v).trim() !== ""; })) skippedNoId++; return; }
+        leads.push({ kind: t[3], id: id, source: get("Source"), ref: get("Ref"), status: get(STATUS_HEADER), phone: get("Phone") });
+      });
+    });
+    var clickRefs = [];
+    var clicks = ss.getSheetByName(SHEET_NAME);
+    if (!clicks) {
+      notes.push("The " + SHEET_NAME + " tab is missing, so click counts are 0.");
+    } else {
+      var clickCols = readLeadHeaders_(clicks);
+      var refCol = clickCols.index["Ref"];
+      var lastClick = clicks.getLastRow();
+      if (refCol && lastClick >= 2) {
+        clicks.getRange(2, refCol, lastClick - 1, 1).getValues().forEach(function (r) { clickRefs.push(sheetText_(r[0]).trim()); });
+      }
+    }
+    var stats = buildConversionStats_(leads, clickRefs);
+    if (skippedNoId) notes.push(skippedNoId + " row(s) without a valid Lead/Handoff ID are not counted.");
+    if (stats.duplicates) notes.push(stats.duplicates + " row(s) repeat a Lead/Handoff ID already counted and are not counted again.");
+
+    var generated = istText_(new Date());
+    var rows = conversionReportRows_(stats, generated, notes);
+    var width = 0;
+    rows.forEach(function (r) { width = Math.max(width, r.length); });
+    var grid = rows.map(function (r) {
+      var out = [];
+      for (var i = 0; i < width; i++) out.push(i < r.length ? cell_(r[i]) : "");
+      return out;
+    });
+
+    var report = ss.getSheetByName(CONVERSION_REPORT_SHEET);
+    if (report) {
+      var a1 = report.getLastRow() > 0 ? sheetText_(report.getRange(1, 1).getValue()).trim() : "";
+      if (report.getLastRow() > 0 && a1 !== CONVERSION_REPORT_MARKER) {
+        throw new Error("A \"" + CONVERSION_REPORT_SHEET + "\" tab already exists and was not created by this script (cell A1 is not \"" +
+          CONVERSION_REPORT_MARKER + "\"). Rename or delete that tab, then run generateConversionReport again.");
+      }
+      report.clearContents();
+    } else {
+      report = ss.insertSheet(CONVERSION_REPORT_SHEET);
+    }
+    report.getRange(1, 1, grid.length, width).setValues(grid);
+    SpreadsheetApp.flush();
+
+    summary.generatedAt = generated;
+    summary.leads = stats.total.total;
+    summary.qualified = stats.total.qualified;
+    summary.handoffs = stats.total.handoffs;
+    summary.sources = Object.keys(stats.bySource).length;
+    summary.refs = Object.keys(stats.byRef).length;
+    summary.clicks = stats.total.clicks;
+    summary.skippedNoId = skippedNoId;
+    summary.duplicateIds = stats.duplicates;
+  } finally {
+    lock.releaseLock();
+  }
+  var text = "CONVERSION REPORT | " + JSON.stringify(summary);
+  console.log(text);
+  Logger.log(text);
+  return summary;
+}
+
+// ===================== Week 6, Stretch 2: automatic WhatsApp follow-ups (off / dry run / live) =====================
+//
+// sendWhatsAppFollowUps (daily trigger from setupWhatsAppFollowUps, or run by hand) selects leads that are due a
+// WhatsApp follow-up and, for each, calls the website endpoint /api/whatsapp/follow-up. The website checks the
+// guest's opt-out (STOP) and claims the lead once in Redis.
+//   WA_FOLLOW_UP_MODE = off (default) : nothing is read, nothing is contacted.
+//   WA_FOLLOW_UP_MODE = dry_run       : asks "could we send?" only. No message. (Phase A, unchanged.)
+//   WA_FOLLOW_UP_MODE = live          : the website sends ONE approved WhatsApp template per lead. Refused unless the
+//                                       second switch WA_FOLLOW_UP_LIVE_ENABLED is "true" here AND the website has
+//                                       its own live switch, the inbound bot on and the approved template configured.
+// The template (Content SID) lives only on the website (Vercel); this script never holds Twilio settings and only
+// sends the website the guest-safe fields destination, property, check-in and check-out (never score, Source, Ref,
+// notes or IDs other than the Lead ID used for the claim).
+//
+// A lead is processed only when ALL of these hold:
+//   - tab "Qualified Leads" (handoffs are never followed up automatically), valid Lead ID, first row with that ID
+//   - Status is Contacted (New, Booked, Lost, empty or anything else: never)
+//   - Source is exactly "whatsapp-bot" (sandbox, diagnostic and test rows: never); not the diagnostic Lead ID
+//   - Received (IST) on or after WA_FOLLOW_UP_START_DATE (older leads: never)
+//   - Next Follow-up is today or earlier (India), and the check-in date is today or later
+//   - Auto Follow-up is not "No" (the team's per-lead switch)
+//   - the phone is a valid number, not in WA_FOLLOW_UP_BLOCKED_PHONES, and (if WA_FOLLOW_UP_ALLOWED_PHONES is set)
+//     in that list
+//   - not already processed: WA Message ID is empty, and WA Follow-up Status is empty or a same-day-only status
+//     ("Dry run: ...", "In progress: ...", "Live: will retry ...") from an EARLIER day. Every other status (a live
+//     send, opt-out, duplicate or failed send, or text the team typed) blocks the lead permanently.
+//   - at most one lead per phone number per run, and at most WA_FOLLOW_UP_DAILY_CAP endpoint calls per day (India)
+//   - the run is between 10:00 and 19:00 India time, and no other follow-up run is in progress
+//   - live only: the website also allows one automatic follow-up per guest NUMBER per 30 days (any Lead ID)
+// A run starts no new endpoint call after 4 minutes, so its results are written before Apps Script's 6-minute limit.
+// Order: Hot, Warm, Cold, then higher Score, then the oldest follow-up date.
+// Overlapping runs: a run marker (WA_FOLLOW_UP_RUNNING, expires after 10 minutes) stops a second run, and every
+// picked lead is marked "In progress: ..." under the script lock before any endpoint call, so another run skips it.
+// The endpoint is called outside the lock; results are written under the lock to the row found again by Lead ID.
+// Only the WA Follow-up columns are written (Status, WA Follow-up Sent (IST), WA Message ID); Status, Next
+// Follow-up, Score and every other column are never changed, and no email is sent.
+// Logs and the WA_FOLLOW_UP_LAST_RUN property hold counts only (no phone numbers, secrets or lead details).
+
+var WA_FOLLOW_UP_HANDLER = "sendWhatsAppFollowUps";
+var WA_FOLLOW_UP_AUTO_HEADER = "Auto Follow-up";
+var WA_FOLLOW_UP_STATUS_HEADER = "WA Follow-up Status";
+var WA_FOLLOW_UP_SENT_HEADER = "WA Follow-up Sent (IST)";
+var WA_FOLLOW_UP_MESSAGE_ID_HEADER = "WA Message ID";
+var WA_FOLLOW_UP_HEADERS = [WA_FOLLOW_UP_AUTO_HEADER, WA_FOLLOW_UP_STATUS_HEADER, WA_FOLLOW_UP_SENT_HEADER, WA_FOLLOW_UP_MESSAGE_ID_HEADER];
+var WA_FOLLOW_UP_MODES = ["off", "dry_run", "live"];
+var WA_FOLLOW_UP_LIVE_SWITCH_PROPERTY = "WA_FOLLOW_UP_LIVE_ENABLED"; // must be "true" for mode live (second key)
+var WA_FOLLOW_UP_SOURCE = "whatsapp-bot"; // Production bot leads only
+var WA_FOLLOW_UP_DIAGNOSTIC_ID = "L-0000000000"; // diagnoseBotLead's synthetic lead
+var WA_FOLLOW_UP_DEFAULT_CAP = 10;
+var WA_FOLLOW_UP_MAX_CAP = 50;
+var WA_FOLLOW_UP_MIN_SECRET_LENGTH = 32;
+var WA_FOLLOW_UP_WINDOW_START_HOUR = 10; // India time, inclusive
+var WA_FOLLOW_UP_WINDOW_END_HOUR = 19; // India time, exclusive
+var WA_FOLLOW_UP_TRIGGER_HOUR = 11; // about 11:00 in the project's time zone
+// Status prefixes. These three only block a lead for the rest of the day they were written:
+var WA_FOLLOW_UP_DRY_RUN_PREFIX = "Dry run: ";
+var WA_FOLLOW_UP_IN_PROGRESS_PREFIX = "In progress: ";
+var WA_FOLLOW_UP_RETRY_PREFIX = "Live: will retry, ";
+var WA_FOLLOW_UP_DAY_ONLY_PREFIXES = [WA_FOLLOW_UP_DRY_RUN_PREFIX, WA_FOLLOW_UP_IN_PROGRESS_PREFIX, WA_FOLLOW_UP_RETRY_PREFIX];
+var WA_FOLLOW_UP_COUNT_PROPERTY = "WA_FOLLOW_UP_COUNT"; // "yyyy-MM-dd|n": endpoint calls made that day (India)
+var WA_FOLLOW_UP_LAST_RUN_PROPERTY = "WA_FOLLOW_UP_LAST_RUN"; // counts-only summary of the last run
+var WA_FOLLOW_UP_RUNNING_PROPERTY = "WA_FOLLOW_UP_RUNNING"; // "<runId>|<start ms>" while a run is in progress
+var WA_FOLLOW_UP_RUN_MAX_MS = 10 * 60 * 1000; // a marker older than this is stale (Apps Script stops runs at 6 min)
+// No new endpoint call starts after this much run time, so results are always written before Apps Script's 6-minute
+// limit (each call takes at most about 20 seconds).
+var WA_FOLLOW_UP_TIME_BUDGET_MS = 4 * 60 * 1000;
+var WA_FOLLOW_UP_MESSAGE_SID_RE = /^(SM|MM)[0-9a-fA-F]{32}$/;
+// Endpoint answers that mean "stop this run" (the problem is not specific to one lead).
+var WA_FOLLOW_UP_STOP_ERRORS = { "disabled": 1, "misconfigured": 1, "unauthorized": 1, "live_not_available": 1, "redis_unavailable": 1, "internal_error": 1, "unsupported_media_type": 1 };
+
+// A comma/space/semicolon-separated list of phone numbers -> { "+91...": true }. Invalid entries are counted.
+function phoneListProperty_(raw) {
+  var set = {}, count = 0, invalid = 0;
+  String(raw || "").split(/[\s,;]+/).forEach(function (p) {
+    if (!p) return;
+    if (PHONE_RE.test(p)) { set[p] = true; count++; } else invalid++;
+  });
+  return { set: set, count: count, invalid: invalid };
+}
+
+// Reads and checks the Script Properties. Never returns or logs the secret or the endpoint in a summary.
+// { ok: true, mode, endpoint, secret, startDate, cap, blocked, allowed } or { ok: false, mode, reason }.
+function waFollowUpConfig_(props) {
+  var rawMode = String(props.getProperty("WA_FOLLOW_UP_MODE") || "off").trim().toLowerCase();
+  if (WA_FOLLOW_UP_MODES.indexOf(rawMode) === -1) return { ok: false, mode: "off", reason: "WA_FOLLOW_UP_MODE is not off, dry_run or live: treated as off" };
+  if (rawMode === "off") return { ok: false, mode: "off", reason: "WA_FOLLOW_UP_MODE is off" };
+  if (rawMode === "live" && String(props.getProperty(WA_FOLLOW_UP_LIVE_SWITCH_PROPERTY) || "").trim().toLowerCase() !== "true") {
+    return { ok: false, mode: "live", reason: "live mode also needs the Script Property " + WA_FOLLOW_UP_LIVE_SWITCH_PROPERTY + "=true: nothing was sent" };
+  }
+  var endpoint = String(props.getProperty("WA_FOLLOW_UP_ENDPOINT") || "").trim();
+  if (!/^https:\/\/[A-Za-z0-9.-]+(:\d+)?\/api\/whatsapp\/follow-up$/.test(endpoint)) {
+    return { ok: false, mode: rawMode, reason: "WA_FOLLOW_UP_ENDPOINT must be https://<site>/api/whatsapp/follow-up (no query string)" };
+  }
+  var secret = String(props.getProperty("WA_FOLLOW_UP_SECRET") || "").trim();
+  if (secret.length < WA_FOLLOW_UP_MIN_SECRET_LENGTH) {
+    return { ok: false, mode: rawMode, reason: "WA_FOLLOW_UP_SECRET is missing or shorter than " + WA_FOLLOW_UP_MIN_SECRET_LENGTH + " characters" };
+  }
+  var startDate = isoDateOrNull_(props.getProperty("WA_FOLLOW_UP_START_DATE"));
+  if (!startDate) return { ok: false, mode: rawMode, reason: "WA_FOLLOW_UP_START_DATE must be set as yyyy-MM-dd" };
+  var rawCap = String(props.getProperty("WA_FOLLOW_UP_DAILY_CAP") || "").trim();
+  var cap = WA_FOLLOW_UP_DEFAULT_CAP;
+  if (rawCap) {
+    if (!/^\d{1,4}$/.test(rawCap) || +rawCap < 1) return { ok: false, mode: rawMode, reason: "WA_FOLLOW_UP_DAILY_CAP must be a whole number from 1 to " + WA_FOLLOW_UP_MAX_CAP };
+    cap = Math.min(+rawCap, WA_FOLLOW_UP_MAX_CAP);
+  }
+  var blocked = phoneListProperty_(props.getProperty("WA_FOLLOW_UP_BLOCKED_PHONES"));
+  var allowed = phoneListProperty_(props.getProperty("WA_FOLLOW_UP_ALLOWED_PHONES"));
+  if (allowed.invalid) return { ok: false, mode: rawMode, reason: "WA_FOLLOW_UP_ALLOWED_PHONES has an entry that is not a +<country><number> phone number" };
+  if (blocked.invalid) return { ok: false, mode: rawMode, reason: "WA_FOLLOW_UP_BLOCKED_PHONES has an entry that is not a +<country><number> phone number" };
+  return { ok: true, mode: rawMode, endpoint: endpoint, secret: secret, startDate: startDate, cap: cap, blocked: blocked, allowed: allowed };
+}
+
+// Endpoint calls already made on `today` (India), from WA_FOLLOW_UP_COUNT.
+function waFollowUpCountToday_(props, today) {
+  var m = String(props.getProperty(WA_FOLLOW_UP_COUNT_PROPERTY) || "").match(/^(\d{4}-\d{2}-\d{2})\|(\d+)$/);
+  return m && m[1] === today ? +m[2] : 0;
+}
+
+// Does a WA Follow-up Status value block the lead today? Empty: no. A same-day-only status ("Dry run: ",
+// "In progress: ", "Live: will retry, "): only if written today (a readable date is required to block). Anything
+// else (a live result, or text the team typed) means "already processed": blocks permanently.
+function waFollowUpStatusBlocks_(statusText, today) {
+  var s = String(statusText || "").trim();
+  if (!s) return false;
+  var dayOnly = WA_FOLLOW_UP_DAY_ONLY_PREFIXES.some(function (p) { return s.indexOf(p) === 0; });
+  if (!dayOnly) return true;
+  var m = s.match(/\((\d{4}-\d{2}-\d{2}) \d{2}:\d{2} IST\)$/);
+  return !!m && m[1] >= today;
+}
+
+// Every lead eligible for a follow-up, sorted. Read-only. Returns { candidates, skipped, missing }.
+function collectWaFollowUpCandidates_(sheet, cfg, today) {
+  var skipped = {};
+  function skip(why) { skipped[why] = (skipped[why] || 0) + 1; }
+  var cols = readLeadHeaders_(sheet);
+  var need = ["Lead ID", STATUS_HEADER, "Phone", "Source", "Received (IST)", "Check-in", NEXT_FOLLOW_UP_HEADER].concat(WA_FOLLOW_UP_HEADERS);
+  var missing = need.filter(function (h) { return !cols.index[h]; });
+  if (missing.length) return { candidates: [], skipped: skipped, missing: missing };
+  var tz = sheet.getParent().getSpreadsheetTimeZone();
+  var last = sheet.getLastRow();
+  var rows = last >= 2 ? sheet.getRange(2, 1, last - 1, cols.names.length).getValues() : [];
+  var seen = {}, candidates = [];
+  rows.forEach(function (row, i) {
+    var get = function (name) { return cols.index[name] ? row[cols.index[name] - 1] : ""; };
+    var id = sheetText_(get("Lead ID")).trim();
+    if (!/^L-[0-9A-F]{10}$/.test(id)) { skip("noLeadId"); return; }
+    if (seen[id]) { skip("duplicateRow"); return; }
+    seen[id] = true;
+    if (canonicalStatus_(get(STATUS_HEADER)) !== "Contacted") { skip("notContacted"); return; }
+    if (sheetText_(get("Source")).trim() !== WA_FOLLOW_UP_SOURCE || id === WA_FOLLOW_UP_DIAGNOSTIC_ID) { skip("testOrOtherSource"); return; }
+    var received = followUpDateText_(get("Received (IST)"), tz);
+    if (!received || received < cfg.startDate) { skip("beforeStartDate"); return; }
+    var followUp = followUpDateText_(get(NEXT_FOLLOW_UP_HEADER), tz);
+    if (!followUp || followUp > today) { skip("notDue"); return; }
+    var checkIn = sheetDateText_(get("Check-in"), tz);
+    if (!isoDateOrNull_(checkIn) || checkIn < today) { skip("checkInPassedOrMissing"); return; }
+    if (sheetText_(get(WA_FOLLOW_UP_AUTO_HEADER)).trim().toLowerCase() === "no") { skip("autoFollowUpNo"); return; }
+    var phone = sheetText_(get("Phone")).trim();
+    if (!PHONE_RE.test(phone)) { skip("invalidPhone"); return; }
+    if (cfg.blocked.set[phone]) { skip("blockedPhone"); return; }
+    if (cfg.allowed.count && !cfg.allowed.set[phone]) { skip("notAllowedPhone"); return; }
+    if (sheetText_(get(WA_FOLLOW_UP_MESSAGE_ID_HEADER)).trim() || waFollowUpStatusBlocks_(sheetText_(get(WA_FOLLOW_UP_STATUS_HEADER)), today)) {
+      skip("alreadyProcessed"); return;
+    }
+    var scoreText = sheetText_(get(SCORE_HEADER)).trim();
+    candidates.push({
+      id: id, phone: phone, followUpDate: followUp, row: i + 2,
+      priority: sheetText_(get(PRIORITY_HEADER)).trim(),
+      score: scoreText !== "" && isFinite(Number(scoreText)) ? Number(scoreText) : null,
+      overdue: false,
+      // Guest-safe fields the website may put into the approved template (live mode only).
+      guest: {
+        destination: sheetText_(get("Destination")).trim(), property: sheetText_(get("Property")).trim(),
+        checkIn: checkIn, checkOut: sheetDateText_(get("Check-out"), tz)
+      }
+    });
+  });
+  candidates.sort(compareDueFollowUps_);
+  return { candidates: candidates, skipped: skipped, missing: [] };
+}
+
+// The request body for one lead. dry_run: exactly as in Phase A. live: plus the non-empty guest-safe fields.
+function waFollowUpPayload_(mode, lead) {
+  var body = { leadId: lead.id, phone: lead.phone, mode: mode === "live" ? "live" : "dry_run" };
+  if (mode === "live") {
+    ["destination", "property", "checkIn", "checkOut"].forEach(function (f) { if (lead.guest[f]) body[f] = lead.guest[f]; });
+  }
+  return body;
+}
+
+// Calls the website endpoint for one lead. Never throws; returns { result, messageSid? } or { error, stop }.
+function callWaFollowUpEndpoint_(cfg, lead) {
+  var res;
+  try {
+    res = UrlFetchApp.fetch(cfg.endpoint, {
+      method: "post",
+      contentType: "application/json",
+      headers: { Authorization: "Bearer " + cfg.secret },
+      payload: JSON.stringify(waFollowUpPayload_(cfg.mode, lead)),
+      muteHttpExceptions: true,
+      followRedirects: false
+    });
+  } catch (err) {
+    // In live mode the website may or may not have received it; its permanent claim makes a later retry safe.
+    return { error: "network", stop: true };
+  }
+  var code = res.getResponseCode();
+  var body = null;
+  try { body = JSON.parse(res.getContentText()); } catch (e) { body = null; }
+  var known = cfg.mode === "live" ? ["sent", "duplicate", "opted_out", "send_failed"] : ["would_send", "duplicate", "opted_out"];
+  if (code === 200 && body && body.ok === true && body.leadId === lead.id && known.indexOf(body.result) !== -1 &&
+      (cfg.mode !== "live" || body.mode === "live")) {
+    if (body.result === "sent") {
+      // A send without a valid Message SID is still a send: record it, but stop and let the team check Twilio.
+      if (!WA_FOLLOW_UP_MESSAGE_SID_RE.test(String(body.messageSid || ""))) return { result: "sent", messageSid: "", stop: true, error: "no_message_sid" };
+      return { result: "sent", messageSid: String(body.messageSid) };
+    }
+    if (body.result === "send_failed") {
+      var reason = typeof body.reason === "string" && /^[a-z0-9_]{1,40}$/.test(body.reason) ? body.reason : "unknown";
+      return { result: "send_failed", reason: reason, stop: body.systemic !== false, error: "send_failed_" + reason };
+    }
+    if (body.result === "duplicate" && body.reason === "phone_recently_contacted") return { result: "duplicate", reason: "phone" };
+    return { result: body.result };
+  }
+  var error = body && typeof body.error === "string" && /^[a-z_]{1,40}$/.test(body.error) ? body.error : "http_" + code;
+  return { error: error, stop: !!WA_FOLLOW_UP_STOP_ERRORS[error] || code === 401 || code === 404 || code >= 500 || (code >= 300 && code < 400) };
+}
+
+// The WA Follow-up Status text for an endpoint answer. Every text ends with the time.
+function waFollowUpStatusText_(mode, outcome, now) {
+  var when = " (" + Utilities.formatDate(now, "Asia/Kolkata", "yyyy-MM-dd HH:mm") + " IST)";
+  if (mode !== "live") {
+    var what = outcome.result === "would_send" ? "would send"
+      : outcome.result === "duplicate" ? "already checked in the last 24 hours"
+      : outcome.result === "opted_out" ? "guest opted out, would not send"
+      : "check failed (" + outcome.error + ")";
+    return WA_FOLLOW_UP_DRY_RUN_PREFIX + what + when;
+  }
+  if (outcome.result === "sent") return "Live: sent" + when;
+  if (outcome.result === "duplicate" && outcome.reason === "phone") return "Live: not sent, this guest already got an automatic follow-up recently" + when;
+  if (outcome.result === "duplicate") return "Live: not sent, already claimed earlier" + when;
+  if (outcome.result === "opted_out") return "Live: not sent, guest opted out" + when;
+  if (outcome.result === "send_failed") return "Live: send failed (" + outcome.reason + "), not retried" + when;
+  // Rejected before the website claimed the lead (or no answer): safe to try again on a later day.
+  return WA_FOLLOW_UP_RETRY_PREFIX + "not sent (" + outcome.error + ")" + when;
+}
+
+/**
+ * Daily trigger handler (installed by setupWhatsAppFollowUps; can also be run by hand from the editor).
+ * dry_run: asks the website whether each eligible lead could get a follow-up. live (only with
+ * WA_FOLLOW_UP_LIVE_ENABLED=true): the website sends one approved template per lead. Records the result in the
+ * WA Follow-up columns only; never changes Status or any other column, never emails. Logs and returns counts only.
+ */
+function sendWhatsAppFollowUps() {
+  var props = PropertiesService.getScriptProperties();
+  var now = new Date();
+  var today = istDateText_(now);
+  var summary = { version: BOT_CODE_VERSION, today: today, mode: "off", checked: 0 };
+  var runId = "";
+  function finish(reason) {
+    if (reason) summary.reason = reason;
+    var text = "WA FOLLOW-UP | " + JSON.stringify(summary);
+    console.log(text);
+    Logger.log(text);
+    try { props.setProperty(WA_FOLLOW_UP_LAST_RUN_PROPERTY, JSON.stringify(summary).slice(0, 4000)); } catch (e) { /* diagnostics only */ }
+    return summary;
+  }
+
+  var cfg = waFollowUpConfig_(props);
+  summary.mode = cfg.mode;
+  if (!cfg.ok) return finish(cfg.reason);
+  var hour = +Utilities.formatDate(now, "Asia/Kolkata", "HH");
+  if (hour < WA_FOLLOW_UP_WINDOW_START_HOUR || hour >= WA_FOLLOW_UP_WINDOW_END_HOUR) {
+    return finish("outside the 10:00-19:00 India time window");
+  }
+
+  // 1. Under the lock: claim the run, select, mark each picked lead "In progress", and reserve the daily cap.
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return finish("busy: another request holds the script lock");
+  var picked = [], usedBefore = 0;
+  try {
+    var running = String(props.getProperty(WA_FOLLOW_UP_RUNNING_PROPERTY) || "").match(/^([A-Za-z0-9]+)\|(\d+)$/);
+    if (running && now.getTime() - +running[2] < WA_FOLLOW_UP_RUN_MAX_MS) return finish("another follow-up run is in progress");
+    usedBefore = waFollowUpCountToday_(props, today);
+    summary.cap = cfg.cap;
+    summary.usedBefore = usedBefore;
+    if (usedBefore >= cfg.cap) return finish("daily cap reached");
+    var ss = openLeadsSpreadsheet_(props, null);
+    var sheet = ss.getSheetByName(QUALIFIED_SHEET);
+    if (!sheet) return finish("missing tab " + QUALIFIED_SHEET);
+    var found = collectWaFollowUpCandidates_(sheet, cfg, today);
+    if (found.missing.length) return finish("missing columns (run setupLeadStatusTracking and setupWhatsAppFollowUps): " + found.missing.join(", "));
+    summary.skipped = found.skipped;
+    summary.eligible = found.candidates.length;
+    var phones = {};
+    found.candidates.forEach(function (c) {
+      if (phones[c.phone]) { summary.skipped.samePhoneThisRun = (summary.skipped.samePhoneThisRun || 0) + 1; return; }
+      phones[c.phone] = true;
+      picked.push(c);
+    });
+    if (picked.length > cfg.cap - usedBefore) {
+      summary.overCap = picked.length - (cfg.cap - usedBefore);
+      picked = picked.slice(0, cfg.cap - usedBefore);
+    }
+    if (picked.length) {
+      runId = Utilities.formatDate(now, "Asia/Kolkata", "HHmmss") + String(Math.floor(Math.random() * 1e6));
+      props.setProperty(WA_FOLLOW_UP_RUNNING_PROPERTY, runId + "|" + now.getTime());
+      props.setProperty(WA_FOLLOW_UP_COUNT_PROPERTY, today + "|" + (usedBefore + picked.length));
+      var statusCol = readLeadHeaders_(sheet).index[WA_FOLLOW_UP_STATUS_HEADER];
+      var marker = cell_(WA_FOLLOW_UP_IN_PROGRESS_PREFIX + cfg.mode + " run" +
+        " (" + Utilities.formatDate(now, "Asia/Kolkata", "yyyy-MM-dd HH:mm") + " IST)");
+      picked.forEach(function (c) { sheet.getRange(c.row, statusCol).setValue(marker); });
+      SpreadsheetApp.flush();
+    }
+  } finally {
+    lock.releaseLock();
+  }
+  if (!picked.length) return finish("no eligible lead");
+
+  var outcomes = [];
+  try {
+    // 2. Outside the lock: call the website for each lead. A run-wide problem stops the run.
+    summary.results = {};
+    for (var i = 0; i < picked.length; i++) {
+      if (i > 0 && new Date().getTime() - now.getTime() > WA_FOLLOW_UP_TIME_BUDGET_MS) { summary.stopped = "time_budget"; break; }
+      var outcome = callWaFollowUpEndpoint_(cfg, picked[i]);
+      outcome.id = picked[i].id;
+      outcomes.push(outcome);
+      var key = outcome.result || ("error_" + outcome.error);
+      summary.results[key] = (summary.results[key] || 0) + 1;
+      if (outcome.stop) { summary.stopped = outcome.error; break; }
+    }
+    summary.checked = outcomes.length;
+
+    // 3. Under the lock again: give back unused cap; write each result (and clear the markers of leads not called).
+    var written = 0, rowsGone = 0;
+    if (!lock.tryLock(30000)) return finish("results not written: another request held the script lock");
+    try {
+      var unused = picked.length - outcomes.length;
+      if (unused > 0) {
+        var nowUsed = waFollowUpCountToday_(props, today);
+        props.setProperty(WA_FOLLOW_UP_COUNT_PROPERTY, today + "|" + Math.max(nowUsed - unused, 0));
+      }
+      var ss2 = openLeadsSpreadsheet_(props, null);
+      var sheet2 = ss2.getSheetByName(QUALIFIED_SHEET);
+      var cols = sheet2 ? readLeadHeaders_(sheet2) : { index: {} };
+      var statusCol2 = cols.index[WA_FOLLOW_UP_STATUS_HEADER];
+      var sentCol = cols.index[WA_FOLLOW_UP_SENT_HEADER], sidCol = cols.index[WA_FOLLOW_UP_MESSAGE_ID_HEADER];
+      var writeTime = new Date();
+      outcomes.forEach(function (o) {
+        var row = sheet2 && statusCol2 ? findRowById_(sheet2, o.id) : 0;
+        if (!row) { rowsGone++; return; }
+        sheet2.getRange(row, statusCol2).setValue(cell_(waFollowUpStatusText_(cfg.mode, o, writeTime)));
+        if (cfg.mode === "live" && o.result === "sent") {
+          if (sentCol) sheet2.getRange(row, sentCol).setValue(cell_(istText_(writeTime)));
+          if (sidCol && o.messageSid) sheet2.getRange(row, sidCol).setValue(cell_(o.messageSid));
+        }
+        written++;
+      });
+      // Leads picked but not called (the run stopped early): remove our marker so a later run can pick them.
+      picked.slice(outcomes.length).forEach(function (c) {
+        var row = sheet2 && statusCol2 ? findRowById_(sheet2, c.id) : 0;
+        if (row && String(sheet2.getRange(row, statusCol2).getValue()).indexOf(WA_FOLLOW_UP_IN_PROGRESS_PREFIX) === 0) {
+          sheet2.getRange(row, statusCol2).setValue("");
+        }
+      });
+      SpreadsheetApp.flush();
+    } finally {
+      lock.releaseLock();
+    }
+    summary.written = written;
+    if (rowsGone) summary.rowsNotFound = rowsGone;
+    return finish(summary.stopped ? "stopped: " + summary.stopped : "");
+  } finally {
+    // Release the run marker only if it is still ours.
+    try {
+      if (String(props.getProperty(WA_FOLLOW_UP_RUNNING_PROPERTY) || "").indexOf(runId + "|") === 0) {
+        props.deleteProperty(WA_FOLLOW_UP_RUNNING_PROPERTY);
+      }
+    } catch (e) { /* a stale marker expires after 10 minutes */ }
+  }
+}
+
+/**
+ * Run ONCE from the Apps Script editor (safe to run again). It:
+ *   - adds the columns "Auto Follow-up", "WA Follow-up Status", "WA Follow-up Sent (IST)" and "WA Message ID" to
+ *     "Qualified Leads" if they are missing (existing columns are not moved; Handoffs is not changed),
+ *   - puts a Yes/No dropdown on "Auto Follow-up" (empty means Yes; "No" excludes that lead),
+ *   - installs the daily sendWhatsAppFollowUps trigger at about 11:00 in the project's time zone, once.
+ * It does NOT switch anything on: WA_FOLLOW_UP_MODE and WA_FOLLOW_UP_LIVE_ENABLED stay as they are.
+ * Logs and returns a summary with yes/no values only (never the secret or the endpoint).
+ */
+function setupWhatsAppFollowUps() {
+  var props = PropertiesService.getScriptProperties();
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) throw new Error("Another request holds the script lock; run this again in a minute.");
+  var summary = { version: BOT_CODE_VERSION };
+  try {
+    var ss = openLeadsSpreadsheet_(props, null);
+    var sheet = ss.getSheetByName(QUALIFIED_SHEET) || ss.insertSheet(QUALIFIED_SHEET);
+    var before = readLeadHeaders_(sheet).names.length;
+    ensureLeadHeaders_(sheet, QUALIFIED_HEADERS);
+    var cols = ensureLeadHeaders_(sheet, WA_FOLLOW_UP_HEADERS);
+    summary.columnsAdded = cols.names.length - before;
+    if (sheet.getMaxRows() > 1) {
+      var rule = SpreadsheetApp.newDataValidation()
+        .requireValueInList(["Yes", "No"], true)
+        .setAllowInvalid(false)
+        .setHelpText("No = never send this lead an automatic WhatsApp follow-up. Empty or Yes = allowed.")
+        .build();
+      sheet.getRange(2, cols.index[WA_FOLLOW_UP_AUTO_HEADER], sheet.getMaxRows() - 1, 1).setDataValidation(rule);
+    }
+    SpreadsheetApp.flush();
+  } finally {
+    lock.releaseLock();
+  }
+  var existing = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === WA_FOLLOW_UP_HANDLER; });
+  for (var i = 1; i < existing.length; i++) ScriptApp.deleteTrigger(existing[i]);
+  var projectTz = Session.getScriptTimeZone();
+  if (!existing.length) {
+    var builder = ScriptApp.newTrigger(WA_FOLLOW_UP_HANDLER).timeBased().atHour(WA_FOLLOW_UP_TRIGGER_HOUR).nearMinute(0).everyDays(1);
+    if (!projectTz) builder = builder.inTimezone(FOLLOW_UP_FALLBACK_TZ);
+    builder.create();
+  }
+  var cfg = waFollowUpConfig_(props);
+  var tz = projectTz || FOLLOW_UP_FALLBACK_TZ;
+  summary.trigger = existing.length ? "already installed" : "installed";
+  summary.duplicatesRemoved = Math.max(existing.length - 1, 0);
+  summary.runsAt = "daily, about 11:00 (" + tz + ")";
+  if (tz !== FOLLOW_UP_FALLBACK_TZ) summary.note = "The project time zone is " + tz + ". Runs only do anything between 10:00 and 19:00 India time, so set the project time zone to Asia/Kolkata.";
+  summary.mode = cfg.mode;
+  summary.ready = cfg.ok;
+  if (!cfg.ok) summary.notReady = cfg.reason;
+  summary.props = {
+    WA_FOLLOW_UP_ENDPOINT: !!props.getProperty("WA_FOLLOW_UP_ENDPOINT"),
+    WA_FOLLOW_UP_SECRET: !!props.getProperty("WA_FOLLOW_UP_SECRET"),
+    WA_FOLLOW_UP_START_DATE: !!props.getProperty("WA_FOLLOW_UP_START_DATE"),
+    WA_FOLLOW_UP_LIVE_ENABLED: String(props.getProperty(WA_FOLLOW_UP_LIVE_SWITCH_PROPERTY) || "").trim().toLowerCase() === "true"
+  };
+  var text = "WA FOLLOW-UP SETUP | " + JSON.stringify(summary);
+  console.log(text);
+  Logger.log(text);
+  return summary;
 }
 
 // ---------- Leads Sheet connection (standalone script: open by ID, never getActiveSpreadsheet) ----------
@@ -438,7 +1714,7 @@ function safeErrName_(err) {
 // Error message with anything sensitive removed: secrets, emails, URLs, long IDs, phone numbers / digit runs.
 function safeErrMsg_(err, props) {
   var m = String(err && err.message ? err.message : err);
-  ["QUALIFIED_LEAD_SINK_SECRET", "LEAD_SINK_SECRET", "DIAG_KEY", "TEAM_EMAILS", "LEADS_SHEET_ID"].forEach(function (k) {
+  ["QUALIFIED_LEAD_SINK_SECRET", "LEAD_SINK_SECRET", "DIAG_KEY", "TEAM_EMAILS", "LEADS_SHEET_ID", "WA_FOLLOW_UP_SECRET", "WA_FOLLOW_UP_ENDPOINT"].forEach(function (k) {
     var v = props && props.getProperty(k);
     if (v) v.split(",").forEach(function (part) { part = part.trim(); if (part.length >= 4) m = m.split(part).join("[redacted]"); });
   });
@@ -560,10 +1836,10 @@ function diagnoseBotLead() {
 }
 
 function sendBotLeadEmail_(item, qualified, props, sheetUrl) {
-  var to = (props.getProperty("TEAM_EMAILS") || "").split(",").map(function (s) { return s.trim(); }).filter(function (s) { return s; });
-  if (!to.length) return false;
   try {
-    if (MailApp.getRemainingDailyQuota() < to.length) return false;
+    var check = teamMailCheck_(props);
+    if (!check.send) return false;
+    var to = check.to;
     var stay = item.property ? item.property + ", " + item.destination : (item.destination || "not given");
     var lines = qualified
       ? ["Qualified WhatsApp Lead",

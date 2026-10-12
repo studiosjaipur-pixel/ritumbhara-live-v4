@@ -201,11 +201,11 @@ test("fields: invalid leadId, phone or mode is 400 naming the field (never its v
   }
 });
 
-test("live mode is refused with 409 and nothing is written", async () => {
+test("live mode is refused with 409 and nothing is written (live switch not set)", async () => {
   const t = setup({ WHATSAPP_BOT_ENABLED: "true" });
   const r = await call(t, { leadId: LEAD, phone: PHONE, mode: "live" });
   assert.equal(r.status, 409);
-  assert.deepEqual(r.body, { ok: false, error: "live_not_available" });
+  assert.deepEqual(r.body, { ok: false, error: "live_not_available", reason: "live_flag_off" });
   assert.equal(t.redisCount(), 0);
   assert.deepEqual(t.redis.keys(), []);
 });
@@ -329,14 +329,13 @@ test("no outbound network: the handler never calls fetch (no Twilio, no other se
   assert.equal(fetched, 0);
 });
 
-test("source: Phase A follow-up module and route contain no sending code", () => {
-  const src = readFileSync(new URL("../../lib/whatsapp-bot/follow-up.ts", import.meta.url), "utf8")
-    + readFileSync(new URL("../../app/api/whatsapp/follow-up/route.ts", import.meta.url), "utf8");
-  for (const banned of [/twilio/i, /ContentSid/, /\/Messages\.json/, /api\.twilio\.com/, /NEXT_PUBLIC_/, /sendWhatsApp/]) {
-    // the word "Twilio" appears only in comments explaining that nothing calls it
-    const code = src.split("\n").filter((l) => !/^\s*\/\//.test(l)).join("\n");
-    assert.ok(!banned.test(code), "banned pattern in code: " + banned);
-  }
+test("source: no NEXT_PUBLIC_ variables; the only Twilio call is the template sender (no free-form Body)", () => {
+  const strip = (src) => src.split("\n").filter((l) => !/^\s*\/\//.test(l)).join("\n");
+  const followUp = strip(readFileSync(new URL("../../lib/whatsapp-bot/follow-up.ts", import.meta.url), "utf8")
+    + readFileSync(new URL("../../app/api/whatsapp/follow-up/route.ts", import.meta.url), "utf8"));
+  assert.doesNotMatch(followUp, /NEXT_PUBLIC_|api\.twilio\.com|Messages\.json|fetch\(/, "follow-up module never calls Twilio directly");
+  const sender = strip(readFileSync(new URL("../../lib/twilio/send.ts", import.meta.url), "utf8"));
+  assert.doesNotMatch(sender, /"Body"|NEXT_PUBLIC_|process\.env/, "template-only sender, credentials passed in by the caller");
 });
 
 test("route: GET is 405 with Allow: POST; POST is OFF (404) without the env switch", async () => {

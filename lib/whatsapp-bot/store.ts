@@ -53,6 +53,9 @@ export function createStoreKeys(namespace?: RedisNamespace) {
     // dry run can never block a later real follow-up.
     followUp: function (leadId: string) { return p + "fu:" + checked(leadId, LEAD_ID, "Lead ID"); },
     followUpDryRun: function (leadId: string) { return p + "fu-dry:" + checked(leadId, LEAD_ID, "Lead ID"); },
+    // Live follow-ups also claim the guest's number for a cooldown, so one guest with several enquiries (several Lead
+    // IDs) gets at most one automatic follow-up per cooldown.
+    followUpPhone: function (phone: string) { return p + "fu-phone:" + checked(phone, E164, "phone"); },
   };
 }
 
