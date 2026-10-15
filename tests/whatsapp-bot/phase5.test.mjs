@@ -245,7 +245,7 @@ test("16. successful delivery -> success reply, HANDED_OFF, delivered flag set",
   const h = setup();
   await toConfirm(h);
   const reply = await h.send("YES");
-  assert.equal(reply, "Thanks! Your request has been shared with our team. This is not a booking yet: they'll check availability and continue with you on WhatsApp at +91 9000000009.");
+  assert.equal(reply, "Thanks! Your request has been shared with our team. This is not a booking yet. They’ll check availability and continue with you on WhatsApp at +91 9000000009. For any further queries, feel free to contact our team at +91 9000000009.");
   assert.doesNotMatch(reply, /wa\.me/);
   const c = await h.conv();
   assert.equal(c.state, "HANDED_OFF");

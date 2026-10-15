@@ -49,7 +49,7 @@ export function handoffHuman(number: string): string {
 
 // Sent only after the lead was actually delivered to the team.
 export function handoffQualified(number: string): string {
-  return "Thanks! Your request has been shared with our team. This is not a booking yet: they'll check availability and continue with you on WhatsApp at " + number + ".";
+  return "Thanks! Your request has been shared with our team. This is not a booking yet. They’ll check availability and continue with you on WhatsApp at " + number + ". For any further queries, feel free to contact our team at " + number + ".";
 }
 
 // Delivery failed: never claims the team has the request.
