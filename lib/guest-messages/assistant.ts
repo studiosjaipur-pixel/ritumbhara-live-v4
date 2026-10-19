@@ -13,17 +13,23 @@ import type { EscalationReason, GuestEscalation } from "./types";
 
 // Week 7 Stretch 1 + 2: POST /api/guest-messages/ask. SERVER-ONLY.
 //
-// Body: { question, phone?, bookingCode?, channel?, messageId? }
+// Body: { question, phone?, bookingCode?, channel?, messageId?, requireBooking? }
 //   question    the guest's message (1-500 characters)
 //   phone       the guest's number (E.164). With bookingCode, or alone when it matches exactly one current booking,
 //               it identifies the guest's Intellistay booking, so answers can use that stay's configured facts.
 //   messageId   optional ID of the incoming message (e.g. a Twilio MessageSid): makes a retried escalation idempotent.
-// Returns { outcome: "answered", reply } or { outcome: "escalated", reason, escalationId, stored, reply }.
+//   requireBooking  optional, true = only handle the message if the phone matches a current Intellistay booking.
+//               Used by the Hospitality OS WhatsApp webhook for senders it does not know, so that guests asking about
+//               their stay reach this assistant while everyone else (website leads) keeps going to the lead bot. When no
+//               booking is verified (or Intellistay cannot be read) it returns { outcome: "not_guest" }: nothing is
+//               answered, stored or emailed, and the caller continues its normal flow.
+// Returns { outcome: "answered", reply } or { outcome: "escalated", reason, escalationId, stored, reply }
+// (with bookingVerified: true when requireBooking was set), or { outcome: "not_guest" }.
 // An escalation is written to the "Guest Escalations" tab and emailed to the team. The guest is only told someone
 // will reply when the escalation was actually stored. Nothing is ever changed in Intellistay.
 //
-// Not yet wired into the live WhatsApp bot (lib/whatsapp-bot), so Week 5/6 behaviour is unchanged; the bot (or the
-// team) can call this route once it is approved.
+// Not wired into this website's own WhatsApp bot (lib/whatsapp-bot), so Week 5/6 behaviour is unchanged. The Hospitality
+// OS WhatsApp webhook calls it with requireBooking for senders it does not know (see above).
 
 if (typeof window !== "undefined") {
   throw new Error("lib/guest-messages/assistant is server-only and must not be imported in browser code.");
@@ -101,15 +107,18 @@ export function createGuestAskHandler(overrides?: Partial<AskDeps>) {
     const channel = typeof body.channel === "string" && CHANNEL.test(body.channel) ? body.channel : "api";
     if (body.messageId !== undefined && (typeof body.messageId !== "string" || !MESSAGE_ID.test(body.messageId))) return json(400, { ok: false, error: "bad_request", field: "messageId" });
     const messageId = typeof body.messageId === "string" ? body.messageId : null;
+    if (body.requireBooking !== undefined && typeof body.requireBooking !== "boolean") return json(400, { ok: false, error: "bad_request", field: "requireBooking" });
+    const requireBooking = body.requireBooking === true;
+    if (requireBooking && !phone) return json(400, { ok: false, error: "bad_request", field: "phone" });
 
     const now = deps.now();
     const today = istToday(now);
     const classification = classifyGuestMessage(question);
 
-    // Look up the guest's booking only when the answer depends on which stay it is.
+    // Look up the guest's booking when the answer depends on which stay it is, or when the caller requires one.
     let booking: NormalizedBooking | null = null;
     let lookup = "not_needed";
-    if (intentNeedsBooking(classification)) {
+    if (requireBooking || intentNeedsBooking(classification)) {
       lookup = "no_guest_details";
       if (phone) {
         const cfg = deps.getIntellistayConfig();
@@ -127,10 +136,17 @@ export function createGuestAskHandler(overrides?: Partial<AskDeps>) {
       }
     }
 
+    // Not a verified guest: hand the message back untouched (nothing answered, stored or emailed).
+    if (requireBooking && !booking) {
+      deps.log("not_guest", { lookup: lookup, channel: channel });
+      return json(200, { ok: true, outcome: "not_guest" });
+    }
+    const verified = requireBooking ? { bookingVerified: true } : {};
+
     const answer = answerFaq(classification, { facts: stayFacts(booking), booking: booking });
     if (answer.kind === "answer") {
       deps.log("answered", { intent: answer.intent, lookup: lookup, channel: channel });
-      return json(200, { ok: true, outcome: "answered", intent: answer.intent, reply: answer.text });
+      return json(200, Object.assign({ ok: true, outcome: "answered", intent: answer.intent, reply: answer.text }, verified));
     }
 
     // Escalate: minimum useful context for the team, no other guest data.
@@ -155,10 +171,10 @@ export function createGuestAskHandler(overrides?: Partial<AskDeps>) {
       failure = "network";
     }
     deps.log(stored ? "escalated" : "escalation_not_stored", { reason: reason, id: escalation.escalationId, lookup: lookup, channel: channel, failure: failure || "none" });
-    return json(200, {
+    return json(200, Object.assign({
       ok: true, outcome: "escalated", reason: reason, intent: answer.intent, escalationId: escalation.escalationId,
       stored: stored, reply: stored ? ESCALATION_ACK_STORED : ESCALATION_ACK_NOT_STORED,
-    });
+    }, verified));
   };
 }
 
