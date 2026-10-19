@@ -3,6 +3,7 @@ import { waitUntil } from "@vercel/functions";
 import { ESCALATION_ACK_NOT_STORED, ESCALATION_ACK_STORED } from "../../config/guestMessages.config";
 import { getIntellistayConfig, type IntellistayConfig, type IntellistayConfigResult } from "../intellistay/config";
 import { createIntellistayClient, IntellistayError, type IntellistayClient } from "../intellistay/client";
+import { redisTokenStoreFromEnv, type IntellistayTokenStore } from "../intellistay/token-store";
 import type { NormalizedBooking } from "../intellistay/types";
 import { normalizePhoneNumber } from "../whatsapp-bot/address";
 import { stayFacts } from "./facts";
@@ -61,10 +62,20 @@ export interface AskDeps {
 // One Intellistay client per settings, reused while this server instance is warm, so its access token (kept in the
 // client's memory, as before) is reused instead of logging in on every request. The client already refreshes the
 // token before TOKEN_TTL_MS and logs in again on a 401. Bookings are still read fresh on every request.
+//
+// The token is also cached in the production Upstash Redis (UPSTASH_REDIS_REST_URL / _TOKEN, already used by the
+// WhatsApp bot), so a new instance skips the ~6 s Intellistay login too. Token only, never bookings; when Redis is
+// not configured or fails, the client simply logs in as before. Used by this ask route only.
+export function askTokenStore(config: IntellistayConfig, env: Record<string, string | undefined> = process.env): IntellistayTokenStore | undefined {
+  return redisTokenStoreFromEnv(config, env);
+}
+
 let sharedClient: { key: string; client: IntellistayClient } | null = null;
 export function sharedIntellistayClient(config: IntellistayConfig): IntellistayClient {
   const key = createHash("sha256").update(JSON.stringify(config), "utf8").digest("hex");
-  if (!sharedClient || sharedClient.key !== key) sharedClient = { key: key, client: createIntellistayClient({ config: config }) };
+  if (!sharedClient || sharedClient.key !== key) {
+    sharedClient = { key: key, client: createIntellistayClient({ config: config, tokenStore: askTokenStore(config) }) };
+  }
   return sharedClient.client;
 }
 
