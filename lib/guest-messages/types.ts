@@ -69,4 +69,18 @@ export interface GuestEscalation {
   intent: string | null; // the FAQ topic it matched, if any
   channel: string; // where the question came from, e.g. "whatsapp"
   receivedAt: string; // ISO UTC
+  // Only for a WhatsApp escalation whose booking was VERIFIED (requireBooking): the Apps Script also creates or
+  // updates the guest's Lead on the "Handoffs" tab from these values. Never guessed; absent otherwise.
+  lead?: EscalationLead;
+}
+
+// Verified booking details for the escalation's Lead. Every value comes from the guest's Intellistay booking.
+export interface EscalationLead {
+  guestName: string | null; // the booking's guest first name (NormalizedGuest.firstName); null when not usable
+  property: string | null; // website property name, or the PMS room label when the room is not mapped
+  destination: string | null; // website destination slug of the mapped property, else null
+  checkIn: string; // YYYY-MM-DD
+  checkOut: string; // YYYY-MM-DD
+  nights: number;
+  guests: number | null; // adults + children when known
 }

@@ -281,7 +281,11 @@ var QUALIFIED_HEADERS = ["Received (IST)", "Lead ID", "Status", "Phone", "Destin
 var HANDOFF_SHEET = "Handoffs";
 var HANDOFF_HEADERS = ["Received (IST)", "Handoff ID", "Status", "Reason", "Phone", "Destination", "Property", "Check-in",
   "Check-out", "Nights", "Guests", "Requirements", "Ref", "Source", "Conversation State", "Qualification Status", "Site",
-  "Received (UTC)", "Handoff Number", "Email Status", "Status Updated (IST)", "Next Follow-up", "Score", "Priority"];
+  "Received (UTC)", "Handoff Number", "Email Status", "Status Updated (IST)", "Next Follow-up", "Score", "Priority",
+  "Guest Name", "Booking Code"];
+// "Guest Name" and "Booking Code" (Guest Escalation leads, see upsertEscalationLead_) are appended like every earlier
+// column: existing columns are never moved. Everything is placed by header NAME, so the team may drag "Guest Name"
+// next to "Phone" in the Sheet; the script and the Hospitality OS keep working.
 
 var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 var REF_RE = /^(DIRECT|W-[A-Za-z0-9-]{1,80})$/;
@@ -1986,6 +1990,98 @@ function guestEscalationProblem_(x) {
   return "";
 }
 
+// The optional verified-booking block of a WhatsApp escalation (website: escalationLeadFor). "" when valid.
+// Checked separately: a bad block only skips the Lead, it never stops the escalation from being stored.
+function escalationLeadProblem_(l) {
+  if (!l || typeof l !== "object") return "lead";
+  if (!optStr_(l.guestName, 40) || !optStr_(l.property, 100) || !optStr_(l.destination, 60)) return "text";
+  if (!ISO_DATE.test(String(l.checkIn)) || !ISO_DATE.test(String(l.checkOut))) return "dates";
+  if (typeof l.nights !== "number" || l.nights % 1 !== 0 || l.nights < 0 || l.nights > 365) return "nights";
+  if (l.guests !== null && (typeof l.guests !== "number" || l.guests % 1 !== 0 || l.guests < 0 || l.guests > 50)) return "guests";
+  return "";
+}
+
+// ---------- Guest Escalation -> Lead ("Handoffs" tab) ----------
+//
+// A WhatsApp escalation for a VERIFIED booking (the website sends escalation.lead) also creates or updates the guest's
+// Lead, so the request shows on the Hospitality OS Leads page. Handoffs, not Qualified Leads: it is a conversation
+// handed to the team, and automatic WhatsApp follow-ups never run on Handoffs.
+//   - Existing OPEN lead (Status New, Contacted or empty) on Handoffs with the same Phone AND Booking Code: that row is
+//     updated (the new message is added to Requirements; empty Guest Name / Property / dates are filled). Its Status,
+//     Score, Priority and follow-up dates are the team's and are left alone.
+//   - Otherwise a new row, Handoff ID "H-" + the escalation's 10 hex digits (so a retried escalation never adds a
+//     second row), Status New, Reason = the escalation reason, Source "guest-escalation", scored like any lead.
+// Booking values come only from the verified booking; nothing is guessed from the message.
+var ESCALATION_LEAD_SOURCE = "guest-escalation";
+var ESCALATION_LEAD_HISTORY_MAX = 1500; // Requirements keeps the newest messages up to this length
+
+function escalationLeadId_(escalationId) {
+  return "H-" + String(escalationId).slice(2);
+}
+
+// Returns { outcome: "created"|"updated"|"duplicate"|"skipped", sheet, cols, row }.
+function upsertEscalationLead_(ss, x, now, trace) {
+  var l = x.lead;
+  if (x.channel !== "whatsapp" || !x.guestPhone || !x.bookingCode || escalationLeadProblem_(l)) return { outcome: "skipped" };
+  var tab = guestTab_(ss, HANDOFF_SHEET, HANDOFF_HEADERS, trace);
+  var sheet = tab.sheet, cols = tab.cols;
+  trace.stage = "lead_find";
+  var id = escalationLeadId_(x.escalationId);
+  var own = findRowById_(sheet, id);
+  if (own > 0) return { outcome: "duplicate", sheet: sheet, cols: cols, row: own };
+
+  var istNow = istText_(now);
+  // Each message carries its escalation ID: the link to the Guest Escalations row, and what makes an update idempotent.
+  var dated = "[" + istNow + " " + x.escalationId + "] " + x.question;
+  var last = sheet.getLastRow();
+  if (last >= 2) {
+    var rows = sheet.getRange(2, 1, last - 1, cols.names.length).getValues();
+    var get = function (r, name) { return cols.index[name] ? r[cols.index[name] - 1] : ""; };
+    var code = String(x.bookingCode).trim().toLowerCase();
+    for (var i = rows.length - 1; i >= 0; i--) { // newest first
+      var r = rows[i];
+      if (sheetText_(get(r, "Phone")).trim() !== x.guestPhone) continue;
+      if (sheetText_(get(r, "Booking Code")).trim().toLowerCase() !== code) continue;
+      var statusText = sheetText_(get(r, STATUS_HEADER)).trim();
+      if (statusText && OPEN_LEAD_STATUSES.indexOf(canonicalStatus_(statusText)) === -1) continue;
+      trace.stage = "lead_update";
+      var rowIndex = i + 2;
+      var before = String(get(r, "Requirements") === undefined || get(r, "Requirements") === null ? "" : get(r, "Requirements")).replace(/^'/, "").trim();
+      if (before.indexOf(x.escalationId) !== -1) return { outcome: "duplicate", sheet: sheet, cols: cols, row: rowIndex };
+      var history = before ? before + "\n" + dated : dated;
+      if (history.length > ESCALATION_LEAD_HISTORY_MAX) history = history.slice(history.length - ESCALATION_LEAD_HISTORY_MAX);
+      sheet.getRange(rowIndex, cols.index["Requirements"]).setValue(longCell_(history, ESCALATION_LEAD_HISTORY_MAX));
+      var fill = { "Guest Name": l.guestName, "Property": l.property, "Destination": l.destination,
+        "Check-in": l.checkIn, "Check-out": l.checkOut, "Nights": l.nights, "Guests": l.guests };
+      Object.keys(fill).forEach(function (name) {
+        if (!cols.index[name] || fill[name] === null || fill[name] === undefined || fill[name] === "") return;
+        if (sheetText_(get(r, name)).trim() !== "") return; // never overwrite what is there
+        sheet.getRange(rowIndex, cols.index[name]).setValue(cell_(fill[name]));
+      });
+      return { outcome: "updated", sheet: sheet, cols: cols, row: rowIndex };
+    }
+  }
+
+  trace.stage = "lead_create";
+  var scored = scoreLead_({ qualified: false, reason: x.reason, checkIn: l.checkIn, checkOut: l.checkOut,
+    nights: l.nights, property: l.property, ref: "" }, istDateText_(now));
+  var byName = {
+    "Received (IST)": istNow, "Handoff ID": id, "Status": DEFAULT_LEAD_STATUS, "Reason": x.reason, "Phone": x.guestPhone,
+    "Destination": l.destination, "Property": l.property, "Check-in": l.checkIn, "Check-out": l.checkOut, "Nights": l.nights,
+    "Guests": l.guests, "Source": ESCALATION_LEAD_SOURCE, "Received (UTC)": x.receivedAt, "Email Status": "PENDING",
+    "Status Updated (IST)": istNow, "Next Follow-up": nextFollowUpFor_(DEFAULT_LEAD_STATUS, now),
+    "Score": scored.score, "Priority": scored.priority, "Guest Name": l.guestName, "Booking Code": x.bookingCode
+  };
+  var row = cols.names.map(function (name) {
+    if (name === "Requirements") return longCell_(dated, ESCALATION_LEAD_HISTORY_MAX);
+    return cell_(Object.prototype.hasOwnProperty.call(byName, name) && byName[name] !== null ? byName[name] : "");
+  });
+  sheet.appendRow(row);
+  var created = sheet.getLastRow();
+  applyStatusValidation_(sheet.getRange(created, cols.index[STATUS_HEADER]));
+  return { outcome: "created", sheet: sheet, cols: cols, row: created };
+}
+
 function applyListValidation_(range, list, help) {
   range.setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(list, true).setAllowInvalid(false).setHelpText(help).build());
 }
@@ -2036,7 +2132,12 @@ function handleGuestRequestInner_(body, props, trace) {
     trace.stage = "find_id";
     var existing = findRowById_(sheet, isMessage ? item.messageId : item.escalationId);
     if (existing > 0) {
-      if (!isMessage) return { ok: true, duplicate: true };
+      if (!isMessage) {
+        // A retry: the escalation row is already there. Its Lead step runs again (idempotent), so a Lead that failed
+        // the first time can still be written; nothing else changes and no email is sent.
+        var dupLead = escalationLeadStep_(ss, item, now, trace);
+        return dupLead ? { ok: true, duplicate: true, lead: dupLead.outcome } : { ok: true, duplicate: true };
+      }
       // Only allowed forward moves; the team's SENT/SKIPPED (and anything unexpected) is left exactly as it is.
       var current = sheetText_(sheet.getRange(existing, cols.index["Status"]).getValue()).trim().toUpperCase();
       var allowed = GUEST_MESSAGE_TRANSITIONS[current] || [];
@@ -2074,6 +2175,8 @@ function handleGuestRequestInner_(body, props, trace) {
     trace.stage = "status_dropdown";
     if (isMessage) applyListValidation_(sheet.getRange(rowIndex, cols.index["Status"]), GUEST_MESSAGE_STATUSES, "QUEUED, READY, SENT, SKIPPED or FAILED. Set SENT once you have sent the message.");
     else applyListValidation_(sheet.getRange(rowIndex, cols.index["Status"]), GUEST_ESCALATION_STATUSES, "Open, In progress or Resolved.");
+    // The escalation row is stored; only then the guest's Lead (verified WhatsApp escalations only).
+    var lead = isMessage ? null : escalationLeadStep_(ss, item, now, trace);
     SpreadsheetApp.flush();
   } finally {
     lock.releaseLock();
@@ -2084,7 +2187,28 @@ function handleGuestRequestInner_(body, props, trace) {
   trace.stage = "email";
   var emailStatus = sendGuestEscalationEmail_(item, props, tab.sheet.getParent().getUrl()) ? "SENT" : "FAILED";
   tab.sheet.getRange(rowIndex, tab.cols.index["Email Status"]).setValue(emailStatus);
-  return { ok: true, stored: true, emailStatus: emailStatus };
+  // A new Lead row shares the escalation's email (the team was told about this guest once).
+  if (lead && lead.outcome === "created") {
+    try { lead.sheet.getRange(lead.row, lead.cols.index[EMAIL_STATUS_HEADER]).setValue(emailStatus); } catch (err) { /* the Lead stays PENDING */ }
+  }
+  var out = { ok: true, stored: true, emailStatus: emailStatus };
+  if (lead) out.lead = lead.outcome;
+  return out;
+}
+
+// Runs upsertEscalationLead_ for an escalation that carries a verified-booking block. Never throws: a failure is
+// logged and reported as "failed" (the escalation itself is already stored). Null when there is no Lead to write.
+function escalationLeadStep_(ss, item, now, trace) {
+  if (item.lead === undefined || item.lead === null) return null;
+  var stage = trace.stage;
+  try {
+    return upsertEscalationLead_(ss, item, now, trace);
+  } catch (err) {
+    console.error("escalation lead failed at " + trace.stage + ": " + safeErrName_(err) + " " + errWhere_(err));
+    return { outcome: "failed" };
+  } finally {
+    trace.stage = stage;
+  }
 }
 
 function sendGuestEscalationEmail_(x, props, sheetUrl) {

@@ -398,6 +398,61 @@ test("one client across requests logs in once", async () => {
   assert.equal(logins, 1);
 });
 
+// ---------- Guest Escalation -> Lead (the Apps Script writes the Lead from escalation.lead) ----------
+
+test("ask requireBooking: the escalation carries the VERIFIED booking's details for the guest's Lead", async () => {
+  const x = deps();
+  const sent = [];
+  x.d.deliver = async (env, opts) => { sent.push({ env, opts }); return { ok: true, status: "stored", emailStatus: "SENT", lead: "created" }; };
+  const r = await ask(x, { question: "Hi, I have a booking. Can I extend my stay by one night?", phone: GUEST_E164, channel: "whatsapp", messageId: "SM00000000000000000000000000000003", requireBooking: true });
+  assert.equal(r.body.outcome, "escalated");
+  await Promise.all(x.deferred);
+  const e = sent[0].env.escalation;
+  assert.equal(e.bookingCode, "BK101");
+  assert.equal(e.guestPhone, GUEST_E164);
+  assert.equal(e.lead.guestName, "Asha", "the booking's guest first name, not anything from the message");
+  assert.equal(e.lead.checkIn, "2026-10-20");
+  assert.equal(e.lead.checkOut, "2026-10-22");
+  assert.equal(e.lead.nights, 2);
+  assert.equal(e.lead.guests, 2);
+  assert.equal(typeof e.lead.property, "string");
+  assert.ok(e.lead.property.length > 0);
+  assert.deepEqual(sent[0].opts, { timeoutMs: 20000 }, "the background store may take longer than the inline one");
+  assert.ok(x.logs.some((l) => l.startsWith("escalated ") && l.includes('"lead":"created"')));
+  // The guest's name and booking stay server-to-server: never in the response or the logs.
+  assertNoSecrets(r.text, "response");
+  for (const l of x.logs) assertNoSecrets(l, "log");
+});
+
+test("no Lead block without a verified WhatsApp booking (other callers and unknown bookings unchanged)", async () => {
+  const x = deps();
+  await ask(x, { question: "Can I change my dates to the 5th?", phone: GUEST_E164 }); // not requireBooking
+  assert.equal(x.sink.envelopes[0].escalation.lead, undefined);
+  assert.deepEqual(Object.keys(x.sink.envelopes[0].escalation).sort(),
+    ["bookingCode", "channel", "escalationId", "guestPhone", "intent", "question", "reason", "receivedAt"], "escalation fields exactly as before");
+  assert.ok(!x.logs.some((l) => l.includes('"lead"')), "no lead outcome logged when there is no Lead");
+  const y = deps();
+  await ask(y, { question: "Can you recommend a restaurant nearby?" }); // no phone, no booking
+  assert.equal(y.sink.envelopes[0].escalation.lead, undefined);
+});
+
+test("an older Apps Script that reports no Lead outcome is logged as unknown; the escalation is still stored", async () => {
+  const x = deps(); // fakeSink: { ok: true, status: "stored" } without "lead"
+  await ask(x, { question: "Please cancel my booking", phone: GUEST_E164, channel: "whatsapp", requireBooking: true });
+  await Promise.all(x.deferred);
+  assert.equal(x.sink.envelopes[0].escalation.lead.guestName, "Asha");
+  assert.ok(x.logs.some((l) => l.startsWith("escalated ") && l.includes('"lead":"unknown"')));
+});
+
+test("queue sink: the Lead outcome is read from the Apps Script reply; anything unexpected is dropped", async () => {
+  const env = { type: "guest_escalation", escalation: { escalationId: "E-0123456789" } };
+  const reply = (body) => async () => new Response(JSON.stringify(body), { status: 200 });
+  const url = "https://script.google.com/macros/s/x/exec";
+  assert.deepEqual(await postGuestEnvelope(env, { url, secret: "s", fetchImpl: reply({ ok: true, stored: true, emailStatus: "SENT", lead: "created" }) }), { ok: true, status: "stored", emailStatus: "SENT", lead: "created" });
+  assert.deepEqual(await postGuestEnvelope(env, { url, secret: "s", fetchImpl: reply({ ok: true, duplicate: true, lead: "duplicate" }) }), { ok: true, status: "duplicate", lead: "duplicate" });
+  assert.deepEqual(await postGuestEnvelope(env, { url, secret: "s", fetchImpl: reply({ ok: true, stored: true, lead: "<script>" }) }), { ok: true, status: "stored", emailStatus: "UNKNOWN" });
+});
+
 test("ask requireBooking: needs a phone and a boolean flag", async () => {
   const h = createGuestAskHandler(deps().d);
   assert.equal((await call(h, { question: "Can I extend?", requireBooking: true })).body.field, "phone");

@@ -9,9 +9,9 @@ import { normalizePhoneNumber } from "../whatsapp-bot/address";
 import { stayFacts } from "./facts";
 import { answerFaq, classifyGuestMessage, intentNeedsBooking } from "./faq";
 import { getGuestMessagesApiConfig, json, readAuthorizedJson, type ApiConfigResult } from "./http";
-import { postGuestEnvelope, type GuestEnvelope, type SinkResult } from "./queue";
+import { BACKGROUND_SINK_TIMEOUT_MS, postGuestEnvelope, roomLabel, type GuestEnvelope, type SinkResult } from "./queue";
 import { istToday } from "./triggers";
-import type { EscalationReason, GuestEscalation } from "./types";
+import type { EscalationLead, EscalationReason, GuestEscalation } from "./types";
 
 // Week 7 Stretch 1 + 2: POST /api/guest-messages/ask. SERVER-ONLY.
 //
@@ -51,7 +51,7 @@ export interface AskDeps {
   getApiConfig: () => ApiConfigResult;
   getIntellistayConfig: () => IntellistayConfigResult;
   createClient: (config: IntellistayConfig) => IntellistayClient;
-  deliver: (envelope: GuestEnvelope) => Promise<SinkResult>;
+  deliver: (envelope: GuestEnvelope, options?: { timeoutMs?: number }) => Promise<SinkResult>;
   // Keeps work running after the response is sent (Vercel waitUntil). Used only for requireBooking escalations.
   defer: (task: Promise<unknown>) => void;
   now: () => Date;
@@ -83,7 +83,7 @@ const defaultDeps: AskDeps = {
   getApiConfig: function () { return getGuestMessagesApiConfig(); },
   getIntellistayConfig: function () { return getIntellistayConfig(); },
   createClient: function (config) { return sharedIntellistayClient(config); },
-  deliver: function (envelope) { return postGuestEnvelope(envelope); },
+  deliver: function (envelope, options) { return postGuestEnvelope(envelope, options); },
   defer: function (task) { waitUntil(task); },
   now: function () { return new Date(); },
   elapsedMs: function () { return performance.now(); },
@@ -112,6 +112,21 @@ export function findGuestBooking(bookings: NormalizedBooking[], phone: string | 
   }
   const current = mine.filter(function (b) { return b.checkOutDate >= today; });
   return current.length === 1 ? current[0] : null;
+}
+
+// The verified booking's details for the escalation's Lead. Only booking data, never anything read from the message.
+export function escalationLeadFor(booking: NormalizedBooking): EscalationLead {
+  const facts = stayFacts(booking);
+  const guests = booking.adults === null && booking.children === null ? null : (booking.adults || 0) + (booking.children || 0);
+  return {
+    guestName: booking.guest.firstName,
+    property: facts.propertyName || roomLabel(booking),
+    destination: facts.property ? facts.property.destinationSlug : null,
+    checkIn: booking.checkInDate,
+    checkOut: booking.checkOutDate,
+    nights: booking.nights,
+    guests: guests,
+  };
 }
 
 export function createGuestAskHandler(overrides?: Partial<AskDeps>) {
@@ -193,18 +208,24 @@ export function createGuestAskHandler(overrides?: Partial<AskDeps>) {
       channel: channel,
       receivedAt: now.toISOString(),
     };
+    // Verified WhatsApp guest (the OS path): the Apps Script also creates/updates the guest's Lead from this booking.
+    if (requireBooking && booking && booking.bookingCode) escalation.lead = escalationLeadFor(booking);
     // Stores the escalation (Guest Escalations row + team email via Apps Script, ~5 s) and logs the result. Never rejects.
     const deliverAndLog = async function (mode: "inline" | "background"): Promise<boolean> {
       let ok = false;
       let failure = "";
+      let leadOutcome = "unknown"; // what the Apps Script did with the Lead (an older Apps Script reports nothing)
       try {
-        const r = await deps.deliver({ type: "guest_escalation", escalation: escalation });
+        const r = await deps.deliver({ type: "guest_escalation", escalation: escalation }, mode === "background" ? { timeoutMs: BACKGROUND_SINK_TIMEOUT_MS } : undefined);
         ok = r.ok;
         if (!r.ok) failure = r.reason;
+        else if (r.lead) leadOutcome = r.lead;
       } catch {
         failure = "network";
       }
-      deps.log(ok ? "escalated" : "escalation_not_stored", { reason: reason, id: escalation.escalationId, lookup: lookup, channel: channel, failure: failure || "none", delivery: mode, ms: ms() });
+      const meta: Record<string, string | number | boolean> = { reason: reason, id: escalation.escalationId, lookup: lookup, channel: channel, failure: failure || "none", delivery: mode, ms: ms() };
+      if (escalation.lead) meta.lead = leadOutcome;
+      deps.log(ok ? "escalated" : "escalation_not_stored", meta);
       return ok;
     };
 

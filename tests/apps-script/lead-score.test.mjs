@@ -196,7 +196,8 @@ test("existing Week 5 tab: Score and Priority are appended after the Step 1 colu
   const env = createEnv();
   const s = oldLayoutTab(env, "Handoffs", OLD_HANDOFF_HEADERS, []);
   postHandoff(env);
-  assert.equal(JSON.stringify(s.headers()), JSON.stringify(OLD_HANDOFF_HEADERS.concat(["Status Updated (IST)", "Next Follow-up", "Score", "Priority"])));
+  // + "Guest Name" and "Booking Code" (Guest Escalation leads), appended after them in the same way.
+  assert.equal(JSON.stringify(s.headers()), JSON.stringify(OLD_HANDOFF_HEADERS.concat(["Status Updated (IST)", "Next Follow-up", "Score", "Priority", "Guest Name", "Booking Code"])));
   assert.equal(rowObject(s, 2)["Score"], 25);
 });
 
