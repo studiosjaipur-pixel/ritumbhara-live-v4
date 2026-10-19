@@ -12,7 +12,8 @@ import {
 } from "../helpers/intellistay-fixtures.mjs";
 
 const { createGuestMessagesRunHandler } = await import("../../lib/guest-messages/run.ts");
-const { createGuestAskHandler, findGuestBooking } = await import("../../lib/guest-messages/assistant.ts");
+const { createGuestAskHandler, findGuestBooking, sharedIntellistayClient } = await import("../../lib/guest-messages/assistant.ts");
+const { ESCALATION_ACK_STORED } = await import("../../config/guestMessages.config.ts");
 const { postGuestEnvelope } = await import("../../lib/guest-messages/queue.ts");
 const { createIntellistayClient } = await import("../../lib/intellistay/client.ts");
 const { getGuestMessagesApiConfig } = await import("../../lib/guest-messages/http.ts");
@@ -43,9 +44,11 @@ function fakeSink({ fail = null } = {}) {
 function deps({ bookings = [rawBooking({ specialRequest: SPECIAL_REQUEST_TEXT })], login = LOGIN_OK, sink = fakeSink(), apiEnabled = true, sinkConfigured = true, isConfig } = {}) {
   const logs = [];
   const calls = [];
+  const deferred = [];
   return {
-    logs, calls, sink,
+    logs, calls, sink, deferred,
     d: {
+      defer: (p) => { deferred.push(p); },
       getApiConfig: () => getGuestMessagesApiConfig(apiEnabled ? { GUEST_MESSAGES_ENABLED: "true", GUEST_MESSAGES_API_SECRET: API_SECRET } : {}),
       getIntellistayConfig: () => isConfig || { status: "ready", config: CONFIG },
       createClient: (config) => createIntellistayClient({
@@ -307,9 +310,14 @@ test("ask requireBooking: a verified guest's booking-change question is escalate
   assert.equal(r.body.outcome, "escalated");
   assert.equal(r.body.reason, "BOOKING_CHANGE");
   assert.equal(r.body.bookingVerified, true);
-  assert.equal(r.body.stored, true);
+  assert.equal(r.body.stored, null, "stored in the background, after the reply");
+  assert.equal(r.body.delivery, "background");
+  assert.equal(r.body.reply, ESCALATION_ACK_STORED);
+  assert.equal(x.deferred.length, 1);
+  await Promise.all(x.deferred);
   assert.equal(x.sink.envelopes.length, 1);
   assert.equal(x.sink.envelopes[0].escalation.bookingCode, "BK101", "the team sees which booking it is about");
+  assert.ok(x.logs.some((l) => l.startsWith("escalated ") && l.includes('"delivery":"background"')));
   assert.ok(x.calls.length >= 1, "the booking was looked up even though the topic is an escalation");
   // Cancellations and early check-in are escalated the same way; nothing is changed in Intellistay.
   for (const q of ["Please cancel my booking", "Can I check in early tomorrow?"]) {
@@ -336,6 +344,58 @@ test("ask requireBooking: no verified current booking (a website lead) -> not_gu
   const r = await ask(old, { question: "Can I change my dates to the 5th?", phone: "+919000000009" });
   assert.equal(r.body.outcome, "escalated");
   assert.equal(r.body.bookingVerified, undefined);
+});
+
+test("ask requireBooking: the reply does not wait for the Apps Script store (it finishes in the background)", async () => {
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const envelopes = [];
+  const slowSink = { envelopes, deliver: async (env) => { envelopes.push(env); await gate; return { ok: true, status: "stored", emailStatus: "SENT" }; } };
+  const x = deps({ sink: slowSink });
+  const r = await ask(x, { question: "Hi, I have a booking for Villa 65 Sariska. Can I extend my stay by one night?", phone: GUEST_E164, channel: "whatsapp", messageId: "SM00000000000000000000000000000002", requireBooking: true });
+  // The response is already here while the store is still pending.
+  assert.equal(r.body.outcome, "escalated");
+  assert.equal(r.body.reply, ESCALATION_ACK_STORED);
+  assert.equal(envelopes.length, 1, "the store was started before replying");
+  assert.ok(!x.logs.some((l) => l.startsWith("escalated ")), "not yet confirmed");
+  assert.ok(x.logs.some((l) => l.startsWith("escalation_ack_sent ")));
+  release();
+  await Promise.all(x.deferred);
+  assert.ok(x.logs.some((l) => l.startsWith("escalated ")), "confirmed after the reply");
+});
+
+test("ask requireBooking: a background store failure is logged as escalation_not_stored", async () => {
+  const x = deps({ sink: fakeSink({ fail: "timeout" }) });
+  const r = await ask(x, { question: "Please cancel my booking", phone: GUEST_E164, channel: "whatsapp", requireBooking: true });
+  assert.equal(r.body.outcome, "escalated");
+  await Promise.all(x.deferred);
+  assert.ok(x.logs.some((l) => l.startsWith("escalation_not_stored ") && l.includes('"failure":"timeout"') && l.includes('"delivery":"background"')));
+  for (const l of x.logs) assertNoSecrets(l, "log");
+});
+
+test("ask without requireBooking: still store-first (nothing deferred, stored is known before replying)", async () => {
+  const x = deps();
+  const r = await ask(x, { question: "Can you recommend a restaurant nearby?", phone: GUEST_E164 });
+  assert.equal(r.body.outcome, "escalated");
+  assert.equal(r.body.stored, true);
+  assert.equal(r.body.delivery, undefined);
+  assert.equal(x.deferred.length, 0);
+});
+
+test("shared Intellistay client: same settings reuse one client (and its token); new settings get a new one", () => {
+  const a = sharedIntellistayClient(CONFIG);
+  assert.equal(sharedIntellistayClient({ ...CONFIG }), a);
+  assert.notEqual(sharedIntellistayClient({ ...CONFIG, password: "rotated-password" }), a);
+});
+
+test("one client across requests logs in once", async () => {
+  const calls = [];
+  const client = createIntellistayClient({ config: CONFIG, log: () => {}, fetchImpl: intellistayFetch({ login: LOGIN_OK, bookings: { status: 200, body: bookingsResponse([rawBooking()]) } }, calls) });
+  const x = deps();
+  x.d.createClient = () => client;
+  for (let i = 0; i < 3; i++) await ask(x, { question: "Can I extend my stay?", phone: GUEST_E164, requireBooking: true });
+  const logins = calls.filter((c) => String(c.url || c).includes("/api/Login/Login")).length;
+  assert.equal(logins, 1);
 });
 
 test("ask requireBooking: needs a phone and a boolean flag", async () => {

@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { waitUntil } from "@vercel/functions";
 import { ESCALATION_ACK_NOT_STORED, ESCALATION_ACK_STORED } from "../../config/guestMessages.config";
 import { getIntellistayConfig, type IntellistayConfig, type IntellistayConfigResult } from "../intellistay/config";
 import { createIntellistayClient, IntellistayError, type IntellistayClient } from "../intellistay/client";
@@ -26,7 +27,10 @@ import type { EscalationReason, GuestEscalation } from "./types";
 // Returns { outcome: "answered", reply } or { outcome: "escalated", reason, escalationId, stored, reply }
 // (with bookingVerified: true when requireBooking was set), or { outcome: "not_guest" }.
 // An escalation is written to the "Guest Escalations" tab and emailed to the team. The guest is only told someone
-// will reply when the escalation was actually stored. Nothing is ever changed in Intellistay.
+// will reply when the escalation was actually stored, EXCEPT with requireBooking (the OS WhatsApp path, 4 s budget):
+// there the booking is verified first, the reply is sent at once and the escalation is stored in the background
+// (stored: null, delivery: "background"; a failure is logged as escalation_not_stored). Nothing is ever changed in
+// Intellistay.
 //
 // Not wired into this website's own WhatsApp bot (lib/whatsapp-bot), so Week 5/6 behaviour is unchanged. The Hospitality
 // OS WhatsApp webhook calls it with requireBooking for senders it does not know (see above).
@@ -47,16 +51,31 @@ export interface AskDeps {
   getIntellistayConfig: () => IntellistayConfigResult;
   createClient: (config: IntellistayConfig) => IntellistayClient;
   deliver: (envelope: GuestEnvelope) => Promise<SinkResult>;
+  // Keeps work running after the response is sent (Vercel waitUntil). Used only for requireBooking escalations.
+  defer: (task: Promise<unknown>) => void;
   now: () => Date;
+  elapsedMs: () => number; // monotonic clock for timing logs only
   log: AskLogFn;
+}
+
+// One Intellistay client per settings, reused while this server instance is warm, so its access token (kept in the
+// client's memory, as before) is reused instead of logging in on every request. The client already refreshes the
+// token before TOKEN_TTL_MS and logs in again on a 401. Bookings are still read fresh on every request.
+let sharedClient: { key: string; client: IntellistayClient } | null = null;
+export function sharedIntellistayClient(config: IntellistayConfig): IntellistayClient {
+  const key = createHash("sha256").update(JSON.stringify(config), "utf8").digest("hex");
+  if (!sharedClient || sharedClient.key !== key) sharedClient = { key: key, client: createIntellistayClient({ config: config }) };
+  return sharedClient.client;
 }
 
 const defaultDeps: AskDeps = {
   getApiConfig: function () { return getGuestMessagesApiConfig(); },
   getIntellistayConfig: function () { return getIntellistayConfig(); },
-  createClient: function (config) { return createIntellistayClient({ config: config }); },
+  createClient: function (config) { return sharedIntellistayClient(config); },
   deliver: function (envelope) { return postGuestEnvelope(envelope); },
+  defer: function (task) { waitUntil(task); },
   now: function () { return new Date(); },
+  elapsedMs: function () { return performance.now(); },
   log: function (event, meta) { console.warn("[guest-assistant] " + event + (meta ? " " + JSON.stringify(meta) : "")); },
 };
 
@@ -88,6 +107,8 @@ export function createGuestAskHandler(overrides?: Partial<AskDeps>) {
   const deps: AskDeps = Object.assign({}, defaultDeps, overrides || {});
 
   return async function handleAskRequest(req: Request): Promise<Response> {
+    const startedMs = deps.elapsedMs();
+    const ms = function () { return Math.round(deps.elapsedMs() - startedMs); };
     const auth = await readAuthorizedJson(req, deps.getApiConfig, deps.log);
     if (!auth.ok) return auth.response;
     const body = auth.body;
@@ -138,14 +159,14 @@ export function createGuestAskHandler(overrides?: Partial<AskDeps>) {
 
     // Not a verified guest: hand the message back untouched (nothing answered, stored or emailed).
     if (requireBooking && !booking) {
-      deps.log("not_guest", { lookup: lookup, channel: channel });
+      deps.log("not_guest", { lookup: lookup, channel: channel, ms: ms() });
       return json(200, { ok: true, outcome: "not_guest" });
     }
     const verified = requireBooking ? { bookingVerified: true } : {};
 
     const answer = answerFaq(classification, { facts: stayFacts(booking), booking: booking });
     if (answer.kind === "answer") {
-      deps.log("answered", { intent: answer.intent, lookup: lookup, channel: channel });
+      deps.log("answered", { intent: answer.intent, lookup: lookup, channel: channel, ms: ms() });
       return json(200, Object.assign({ ok: true, outcome: "answered", intent: answer.intent, reply: answer.text }, verified));
     }
 
@@ -161,16 +182,35 @@ export function createGuestAskHandler(overrides?: Partial<AskDeps>) {
       channel: channel,
       receivedAt: now.toISOString(),
     };
-    let stored = false;
-    let failure = "";
-    try {
-      const r = await deps.deliver({ type: "guest_escalation", escalation: escalation });
-      stored = r.ok;
-      if (!r.ok) failure = r.reason;
-    } catch {
-      failure = "network";
+    // Stores the escalation (Guest Escalations row + team email via Apps Script, ~5 s) and logs the result. Never rejects.
+    const deliverAndLog = async function (mode: "inline" | "background"): Promise<boolean> {
+      let ok = false;
+      let failure = "";
+      try {
+        const r = await deps.deliver({ type: "guest_escalation", escalation: escalation });
+        ok = r.ok;
+        if (!r.ok) failure = r.reason;
+      } catch {
+        failure = "network";
+      }
+      deps.log(ok ? "escalated" : "escalation_not_stored", { reason: reason, id: escalation.escalationId, lookup: lookup, channel: channel, failure: failure || "none", delivery: mode, ms: ms() });
+      return ok;
+    };
+
+    // Hospitality OS WhatsApp path (requireBooking): the OS waits only 4 s, and Apps Script alone takes ~5 s, so the
+    // guest gets the "passed to our team" reply as soon as the booking is verified, and the escalation is stored and
+    // emailed in the background. The escalation ID is fixed (from messageId), so a retry cannot create a second row.
+    // A background failure is logged as escalation_not_stored. Every other caller keeps the store-first rule below.
+    if (requireBooking) {
+      deps.defer(deliverAndLog("background"));
+      deps.log("escalation_ack_sent", { reason: reason, id: escalation.escalationId, lookup: lookup, channel: channel, ms: ms() });
+      return json(200, Object.assign({
+        ok: true, outcome: "escalated", reason: reason, intent: answer.intent, escalationId: escalation.escalationId,
+        stored: null, delivery: "background", reply: ESCALATION_ACK_STORED,
+      }, verified));
     }
-    deps.log(stored ? "escalated" : "escalation_not_stored", { reason: reason, id: escalation.escalationId, lookup: lookup, channel: channel, failure: failure || "none" });
+
+    const stored = await deliverAndLog("inline");
     return json(200, Object.assign({
       ok: true, outcome: "escalated", reason: reason, intent: answer.intent, escalationId: escalation.escalationId,
       stored: stored, reply: stored ? ESCALATION_ACK_STORED : ESCALATION_ACK_NOT_STORED,
