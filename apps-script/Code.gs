@@ -46,6 +46,7 @@
  * to guests from here) and type "guest_escalation" -> "Guest Escalations" tab + team email, authenticated with
  * GUEST_MESSAGES_SINK_SECRET. runGuestMessages (daily) calls the website's /api/guest-messages/run and emails a digest
  * of due messages. OFF unless GUEST_MESSAGES_MODE is set. Run setupGuestMessages() once. See the Week 7 section below.
+ * Type "guest_message_sent" (Hospitality OS, own secret GUEST_MESSAGES_STATUS_SECRET) only marks one READY message SENT.
  */
 var SHEET_NAME = "WhatsApp Clicks";
 var HEADERS = ["Received (IST)", "Status", "Ref", "CTA", "Page", "Destination", "Check-in", "Check-out", "Guests",
@@ -68,6 +69,10 @@ function doPost(e) {
   // Week 7: guest message queue items and guest escalations (own handler and secret).
   if (body && typeof body === "object" && (body.type === "guest_message" || body.type === "guest_escalation")) {
     return handleGuestRequest_(body, props);
+  }
+  // Week 7: the Hospitality OS marks a READY guest message SENT after the team sent it by hand (own secret).
+  if (body && typeof body === "object" && body.type === "guest_message_sent") {
+    return handleGuestMessageSent_(body, props);
   }
 
   var expected = props.getProperty("LEAD_SINK_SECRET");
@@ -1726,7 +1731,7 @@ function safeErrName_(err) {
 function safeErrMsg_(err, props) {
   var m = String(err && err.message ? err.message : err);
   ["QUALIFIED_LEAD_SINK_SECRET", "LEAD_SINK_SECRET", "DIAG_KEY", "TEAM_EMAILS", "LEADS_SHEET_ID", "WA_FOLLOW_UP_SECRET", "WA_FOLLOW_UP_ENDPOINT",
-    "GUEST_MESSAGES_SINK_SECRET", "GUEST_MESSAGES_API_SECRET", "GUEST_MESSAGES_ENDPOINT"].forEach(function (k) {
+    "GUEST_MESSAGES_SINK_SECRET", "GUEST_MESSAGES_API_SECRET", "GUEST_MESSAGES_ENDPOINT", "GUEST_MESSAGES_STATUS_SECRET"].forEach(function (k) {
     var v = props && props.getProperty(k);
     if (v) v.split(",").forEach(function (part) { part = part.trim(); if (part.length >= 4) m = m.split(part).join("[redacted]"); });
   });
@@ -1915,6 +1920,8 @@ function sendBotLeadEmail_(item, qualified, props, sheetUrl) {
 //   GUEST_MESSAGES_MODE        - off (default) | dry_run (website plans only, nothing stored) | queue
 //   GUEST_MESSAGES_ENDPOINT    - https://<site>/api/guest-messages/run
 //   GUEST_MESSAGES_API_SECRET  - same value as GUEST_MESSAGES_API_SECRET in Vercel (this script -> website), 32+ chars
+//   GUEST_MESSAGES_STATUS_SECRET - optional, 32+ chars, same value as GUEST_MESSAGES_STATUS_SECRET in the Hospitality OS.
+//                                Lets the OS Leads page mark a READY message SENT (type "guest_message_sent"); nothing else.
 
 var GUEST_MESSAGES_SHEET = "Guest Messages";
 var GUEST_MESSAGE_HEADERS = ["Created (IST)", "Message ID", "Status", "Type", "Scheduled Date", "Send By", "Booking ID", "Booking Code",
@@ -2110,6 +2117,55 @@ function sendGuestEscalationEmail_(x, props, sheetUrl) {
     return true;
   } catch (err) {
     return false;
+  }
+}
+
+// Week 7: "guest_message_sent" from the Hospitality OS Leads page, after a team member sent the message by hand.
+// Deliberately narrow: its own secret (GUEST_MESSAGES_STATUS_SECRET, never the website's sink secret), one Message ID,
+// and only READY -> SENT, stamping "Status Updated (IST)" exactly like a manual edit in the Sheet. A message that is
+// already SENT is a no-op; any other status (QUEUED, SKIPPED, FAILED, expired...) is refused and its status reported.
+// Never creates a row, never changes any other column, and never contacts anyone.
+function handleGuestMessageSent_(body, props) {
+  var result;
+  try {
+    result = guestMessageSentInner_(body, props);
+  } catch (err) {
+    console.error("handleGuestMessageSent_ failed: " + safeErrName_(err) + " " + safeErrMsg_(err, props));
+    result = { ok: false, error: "server_error", code: "EXCEPTION", errName: safeErrName_(err) };
+  }
+  return json_(result);
+}
+
+function guestMessageSentInner_(body, props) {
+  var expected = String(props.getProperty("GUEST_MESSAGES_STATUS_SECRET") || "");
+  if (expected.length < GUEST_MESSAGES_MIN_SECRET_LENGTH) return { ok: false, error: "rejected", code: "NO_SECRET_PROPERTY" };
+  if (typeof body.secret !== "string" || body.secret !== expected) return { ok: false, error: "rejected", code: "AUTH" };
+  var id = String(body.messageId === undefined || body.messageId === null ? "" : body.messageId);
+  if (!GUEST_MESSAGE_ID_RE.test(id)) return { ok: false, error: "rejected", code: "INVALID", field: "messageId" };
+  leadsSheetId_(props);
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return { ok: false, error: "busy", code: "BUSY" };
+  try {
+    var sheet = openLeadsSpreadsheet_(props, null).getSheetByName(GUEST_MESSAGES_SHEET);
+    if (!sheet) return { ok: false, error: "not_found", code: "NO_TAB" };
+    var cols = readLeadHeaders_(sheet);
+    var statusCol = cols.index["Status"], updatedCol = cols.index["Status Updated (IST)"];
+    if (!statusCol || !updatedCol || cols.index["Message ID"] !== 2) return { ok: false, error: "sheet_layout", code: "LAYOUT" };
+    var row = findRowById_(sheet, id);
+    if (!row) return { ok: false, error: "not_found", code: "NOT_FOUND" };
+    var current = sheetText_(sheet.getRange(row, statusCol).getValue()).trim().toUpperCase();
+    if (current === "SENT") return { ok: true, unchanged: true, status: "SENT" };
+    if (current !== "READY") {
+      return { ok: false, error: "conflict", code: "NOT_READY", status: GUEST_MESSAGE_STATUSES.indexOf(current) !== -1 ? current : "" };
+    }
+    var stamp = istText_(new Date());
+    sheet.getRange(row, statusCol).setValue("SENT");
+    sheet.getRange(row, updatedCol).setValue(stamp);
+    SpreadsheetApp.flush();
+    return { ok: true, updated: true, status: "SENT", statusUpdated: stamp };
+  } finally {
+    lock.releaseLock();
   }
 }
 

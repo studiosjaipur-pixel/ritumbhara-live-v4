@@ -267,6 +267,16 @@ The website reads bookings from the **Intellistay test server** and works out wh
 
 To turn it off, set `GUEST_MESSAGES_MODE` to `off` (or delete it).
 
+### Hospitality OS view (optional)
+
+The Hospitality OS Leads page shows the Guest Messages tab read-only (it reads the same Sheet). Its **Mark as sent** button calls this web app with type `guest_message_sent`, which can only change one **READY** message to **SENT** and stamp "Status Updated (IST)". It has its own secret, so the OS cannot create or rewrite queue rows. To enable it:
+
+1. Script Property `GUEST_MESSAGES_STATUS_SECRET`: a new random value, at least 32 characters (not the sink secret).
+2. Deploy → Manage deployments → edit → **New version** (same `/exec` URL).
+3. In the OS (Vercel, server-side only): `GUEST_MESSAGES_STATUS_SECRET` (same value) and `GUEST_MESSAGES_SINK_URL` (this web app's `/exec` URL).
+
+Until then the button explains that it is not connected; setting Status to SENT in the Sheet works as before.
+
 ## Script Properties
 
 Set in Apps Script → Project Settings → Script Properties. Never commit the real values.
@@ -291,6 +301,7 @@ Set in Apps Script → Project Settings → Script Properties. Never commit the 
 | `GUEST_MESSAGES_MODE` | Optional. `off` (default), `dry_run` or `queue` |
 | `GUEST_MESSAGES_ENDPOINT` | `https://<site>/api/guest-messages/run` |
 | `GUEST_MESSAGES_API_SECRET` | Same value as `GUEST_MESSAGES_API_SECRET` in Vercel (at least 32 characters) |
+| `GUEST_MESSAGES_STATUS_SECRET` | Optional. Same value as `GUEST_MESSAGES_STATUS_SECRET` in the Hospitality OS (at least 32 characters). Only lets the OS mark a READY guest message SENT. |
 
 `LAST_BOT_LEAD_RESULT` and `LAST_DIAG_REPORT` are written by the script itself (diagnostics, no personal data). `LAST_FOLLOW_UP_DIGEST` holds the date of the last digest sent. `WA_FOLLOW_UP_COUNT` (today's endpoint calls), `WA_FOLLOW_UP_LAST_RUN` (counts-only summary) and `WA_FOLLOW_UP_RUNNING` (present only while a run is in progress; expires after 10 minutes) are written by the follow-up run. `LAST_GUEST_MESSAGE_DIGEST` holds the date of the last guest-message digest.
 

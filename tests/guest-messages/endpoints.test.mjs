@@ -205,6 +205,25 @@ test("ask: booking status answered only for the verified guest (phone must match
   assert.ok(!r2.text.includes("20 Oct"));
 });
 
+test("ask: check-in time is answered end to end for a verified Studio 925 guest (engine-listed, confirmed mapping)", async () => {
+  // Raw Intellistay room exactly as the confirmed mapping expects: branch 1, roomId 5, roomTypeId 2, "Studio 925".
+  const studio925 = rawBooking({ branchId: 1, branchName: "Ritumbhara",
+    roomDetails: [{ roomTypeName: "Studio", roomNo: "Studio 925", roomTypeId: 2, roomId: 5, rate: 3333 }] });
+  const x = deps({ bookings: [studio925] });
+  const r = await ask(x, { question: "What time is check-in?", phone: GUEST_E164 });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body, { ok: true, outcome: "answered", intent: "check_in_time", reply: "Check-in at Studio 925 is from 13:00 – 23:00." });
+  assert.ok(x.calls.length >= 1, "the guest's booking was looked up in Intellistay");
+  assert.equal(x.sink.envelopes.length, 0, "answered, so nothing is escalated or stored");
+  assertNoSecrets(r.text, "response");
+  // Without a phone the stay is unknown, so the same question still escalates (no guessed times).
+  const y = deps({ bookings: [studio925] });
+  const r2 = await ask(y, { question: "What time is check-in?" });
+  assert.equal(r2.body.outcome, "escalated");
+  assert.equal(r2.body.reason, "MISSING_INFORMATION");
+  assert.equal(y.calls.length, 0, "no Intellistay lookup without guest details");
+});
+
 test("ask: unknown question -> escalation stored, honest reply, minimal context", async () => {
   const x = deps();
   const r = await ask(x, { question: "Can you recommend a restaurant nearby?", phone: GUEST_E164, channel: "whatsapp", messageId: "SM0123456789" });

@@ -417,3 +417,61 @@ test("setupGuestMessages: creates both tabs and exactly one daily trigger; conta
   assert.equal(s1.mode, "off");
   assert.ok(!JSON.stringify(s1).includes(API_SECRET));
 });
+
+// ---------- guest_message_sent (Hospitality OS "Mark as sent") ----------
+
+const STATUS_SECRET = "fake-guest-status-secret-0123456789abcdef"; // fake, 41 chars
+const markSent = (env, messageId = "GM-0123456789AB", secret = STATUS_SECRET) => post(env, { secret, type: "guest_message_sent", messageId });
+
+test("guest_message_sent: off without its own secret; the website's sink secret never works for it (and vice versa)", () => {
+  const off = createEnv({ props: PROPS });
+  postMsg(off);
+  assert.deepEqual(markSent(off), { ok: false, error: "rejected", code: "NO_SECRET_PROPERTY" });
+  const short = createEnv({ props: Object.assign({}, PROPS, { GUEST_MESSAGES_STATUS_SECRET: "too-short" }) });
+  assert.equal(markSent(short, undefined, "too-short").code, "NO_SECRET_PROPERTY", "a secret under 32 characters is not accepted");
+
+  const env = createEnv({ props: Object.assign({}, PROPS, { GUEST_MESSAGES_STATUS_SECRET: STATUS_SECRET }) });
+  postMsg(env);
+  assert.equal(markSent(env, undefined, GM_SECRET).code, "AUTH", "the sink secret cannot mark messages SENT");
+  assert.equal(markSent(env, undefined, "").code, "AUTH");
+  assert.equal(postMsg(env, message({ messageId: "GM-00000000000B" }), STATUS_SECRET).code, "AUTH", "the status secret cannot create queue rows");
+  assert.deepEqual(markSent(env, "GM-bad"), { ok: false, error: "rejected", code: "INVALID", field: "messageId" });
+  assert.equal(rowObject(tab(env, "Guest Messages"), 2)["Status"], "READY", "nothing changed");
+});
+
+test("guest_message_sent: READY -> SENT stamps Status Updated only; repeat is a no-op; nobody is contacted", () => {
+  const env = createEnv({ props: Object.assign({}, PROPS, { GUEST_MESSAGES_STATUS_SECRET: STATUS_SECRET }) });
+  postMsg(env);
+  const s = tab(env, "Guest Messages");
+  const before = rowObject(s, 2);
+  env.setNow(Date.parse("2026-10-12T08:30:00Z")); // an hour later
+  assert.deepEqual(markSent(env), { ok: true, updated: true, status: "SENT", statusUpdated: "2026-10-12 14:00:00" });
+  const after = rowObject(s, 2);
+  assert.equal(after["Status"], "SENT");
+  assert.equal(after["Status Updated (IST)"], "2026-10-12 14:00:00");
+  for (const h of Object.keys(before)) {
+    if (h !== "Status" && h !== "Status Updated (IST)") assert.deepEqual(after[h], before[h], h + " unchanged");
+  }
+  assert.deepEqual(markSent(env), { ok: true, unchanged: true, status: "SENT" });
+  assert.equal(s.getLastRow(), 2, "no row created");
+  assert.equal(env.mails.length, 0);
+  assert.equal(env.fetches.length, 0);
+  // The website can no longer move it: SENT is final.
+  assert.deepEqual(postMsg(env, message({ status: "SKIPPED", reason: "status_cancelled" })), { ok: true, duplicate: true });
+  assert.equal(rowObject(s, 2)["Status"], "SENT");
+});
+
+test("guest_message_sent: only READY can be marked; other statuses, unknown IDs and a missing tab are refused unchanged", () => {
+  const env = createEnv({ props: Object.assign({}, PROPS, { GUEST_MESSAGES_STATUS_SECRET: STATUS_SECRET }) });
+  assert.deepEqual(markSent(env), { ok: false, error: "not_found", code: "NO_TAB" });
+  const ids = { QUEUED: "GM-00000000000A", FAILED: "GM-00000000000C", SKIPPED: "GM-00000000000D" };
+  for (const [status, id] of Object.entries(ids)) {
+    postMsg(env, message({ messageId: id, status, reason: status === "QUEUED" ? null : "no_guest_phone" }));
+    assert.deepEqual(markSent(env, id), { ok: false, error: "conflict", code: "NOT_READY", status }, status);
+  }
+  const s = tab(env, "Guest Messages");
+  for (let r = 2; r <= s.getLastRow(); r++) assert.notEqual(rowObject(s, r)["Status"], "SENT");
+  assert.deepEqual(markSent(env, "GM-FFFFFFFFFFFF"), { ok: false, error: "not_found", code: "NOT_FOUND" });
+  const busy = createEnv({ props: Object.assign({}, PROPS, { GUEST_MESSAGES_STATUS_SECRET: STATUS_SECRET }), tryLock: () => false });
+  assert.equal(markSent(busy).code, "BUSY");
+});
