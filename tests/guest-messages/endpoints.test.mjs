@@ -297,3 +297,49 @@ test("security: responses and logs never contain credentials, tokens or guest PI
   // Responses may echo nothing but IDs, dates, counts and reason codes (the guest's own phone is never returned).
   out.forEach((t) => assertNoSecrets(t, "response"));
 });
+
+// ---------- requireBooking (Hospitality OS WhatsApp webhook) ----------
+
+test("ask requireBooking: a verified guest's booking-change question is escalated with the booking, marked bookingVerified", async () => {
+  const x = deps();
+  const r = await ask(x, { question: "Can I extend my stay by one more night?", phone: GUEST_E164, channel: "whatsapp", messageId: "SM00000000000000000000000000000001", requireBooking: true });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.outcome, "escalated");
+  assert.equal(r.body.reason, "BOOKING_CHANGE");
+  assert.equal(r.body.bookingVerified, true);
+  assert.equal(r.body.stored, true);
+  assert.equal(x.sink.envelopes.length, 1);
+  assert.equal(x.sink.envelopes[0].escalation.bookingCode, "BK101", "the team sees which booking it is about");
+  assert.ok(x.calls.length >= 1, "the booking was looked up even though the topic is an escalation");
+  // Cancellations and early check-in are escalated the same way; nothing is changed in Intellistay.
+  for (const q of ["Please cancel my booking", "Can I check in early tomorrow?"]) {
+    const y = deps();
+    const a = await ask(y, { question: q, phone: GUEST_E164, requireBooking: true });
+    assert.equal(a.body.outcome, "escalated", q);
+    assert.equal(a.body.bookingVerified, true, q);
+  }
+});
+
+test("ask requireBooking: no verified current booking (a website lead) -> not_guest, nothing answered, stored or emailed", async () => {
+  for (const [label, over] of [
+    ["unknown phone", { phone: "+919000000009" }],
+    ["booking already ended", { phone: GUEST_E164, bookings: [rawBooking({ checkInDate: "2026-10-01", checkOutDate: "2026-10-03" })] }],
+    ["Intellistay down", { phone: GUEST_E164, bookings: () => ({ status: 500, body: {} }) }],
+  ]) {
+    const x = deps(over.bookings ? { bookings: over.bookings } : {});
+    const r = await ask(x, { question: "Can I change my dates to the 5th?", phone: over.phone, requireBooking: true });
+    assert.deepEqual(r.body, { ok: true, outcome: "not_guest" }, label);
+    assert.equal(x.sink.envelopes.length, 0, label + ": nothing stored");
+  }
+  // Without the flag the old behaviour is unchanged: a booking change always escalates.
+  const old = deps();
+  const r = await ask(old, { question: "Can I change my dates to the 5th?", phone: "+919000000009" });
+  assert.equal(r.body.outcome, "escalated");
+  assert.equal(r.body.bookingVerified, undefined);
+});
+
+test("ask requireBooking: needs a phone and a boolean flag", async () => {
+  const h = createGuestAskHandler(deps().d);
+  assert.equal((await call(h, { question: "Can I extend?", requireBooking: true })).body.field, "phone");
+  assert.equal((await call(h, { question: "Can I extend?", phone: GUEST_E164, requireBooking: "yes" })).body.field, "requireBooking");
+});
