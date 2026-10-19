@@ -1,5 +1,6 @@
 import { isAllowedIntellistayBaseUrl, type IntellistayConfig } from "./config";
 import { normalizeBookings } from "./normalize";
+import type { IntellistayTokenStore } from "./token-store";
 import type { NormalizeResult } from "./types";
 
 // Week 7: read-only Intellistay client. SERVER-ONLY.
@@ -7,7 +8,8 @@ import type { NormalizeResult } from "./types";
 // - Calls only the configured base URL, and only if it is the allowed TEST host (re-checked on every request).
 // - Two endpoints: POST /api/Login/Login and POST /api/Booking/GetAllBookingsByPagination. Nothing is ever written
 //   to Intellistay.
-// - The access token lives only in this client's memory. It is never logged, returned or put in an error.
+// - The access token lives in this client's memory and, only when a tokenStore is passed (the guest-messages ask
+//   route), in that server-side cache. It is never logged, returned or put in an error.
 // - Every request has a timeout and does not follow redirects (a redirect could lead to another host).
 // - Errors carry a short reason code only: no URL, credentials, token or response body.
 // - The booking reader is defensive: the test API ignored `limit` and returned pagination = null, so it reads the
@@ -50,6 +52,8 @@ export interface IntellistayClientOptions {
   timeoutMs?: number;
   nowMs?: () => number;
   log?: IntellistayLogFn;
+  // Optional shared token cache (Redis; see token-store.ts). Without it the token stays in memory only, as before.
+  tokenStore?: IntellistayTokenStore;
 }
 
 export interface FetchBookingsOptions {
@@ -126,6 +130,7 @@ export function createIntellistayClient(options: IntellistayClientOptions): Inte
   const doFetch = options.fetchImpl || fetch;
   const timeoutMs = options.timeoutMs || DEFAULT_TIMEOUT_MS;
   const nowMs = options.nowMs || Date.now;
+  const tokenStore = options.tokenStore;
   const log: IntellistayLogFn = options.log || function (event, meta) {
     console.warn("[intellistay] " + event + (meta ? " " + JSON.stringify(meta) : ""));
   };
@@ -183,14 +188,50 @@ export function createIntellistayClient(options: IntellistayClientOptions): Inte
     token = t;
     tokenExpiresAt = nowMs() + TOKEN_TTL_MS;
     log("login_ok");
+    if (tokenStore) {
+      try {
+        await tokenStore.set(t, tokenExpiresAt);
+      } catch {
+        log("token_cache_unavailable", { op: "set" });
+      }
+    }
+  }
+
+  // A token from the shared cache, if one is there and still valid. A cache failure is treated as a miss.
+  async function tokenFromStore(): Promise<boolean> {
+    if (!tokenStore) return false;
+    try {
+      const cached = await tokenStore.get();
+      if (!cached || nowMs() >= cached.expiresAtMs) {
+        log("token_cache_miss");
+        return false;
+      }
+      token = cached.token;
+      tokenExpiresAt = cached.expiresAtMs;
+      log("token_cache_hit");
+      return true;
+    } catch {
+      log("token_cache_unavailable", { op: "get" });
+      return false;
+    }
   }
 
   async function authorizedPost(path: string, body: unknown): Promise<unknown> {
-    if (!token || nowMs() >= tokenExpiresAt) await login();
+    if (!token || nowMs() >= tokenExpiresAt) {
+      if (!(await tokenFromStore())) await login();
+    }
     let r = await post(path, body, token);
     if (r.status === 401) {
-      // Token expired or revoked: log in again once, then retry once.
+      // Token expired or revoked: drop the cached copy, log in again once (which caches the new one), retry once.
       log("token_rejected_relogin");
+      token = null;
+      if (tokenStore) {
+        try {
+          await tokenStore.clear();
+        } catch {
+          log("token_cache_unavailable", { op: "clear" });
+        }
+      }
       await login();
       r = await post(path, body, token);
       if (r.status === 401) throw new IntellistayError("auth_failed", 401);
