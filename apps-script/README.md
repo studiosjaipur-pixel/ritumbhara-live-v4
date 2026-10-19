@@ -243,6 +243,30 @@ The website also requires `TWILIO_ACCOUNT_SID` and the **approved template's Con
 
 To turn it off, set `WA_FOLLOW_UP_MODE` to `off` (or delete it). Setting `WA_FOLLOW_UP_LIVE_ENABLED` to anything other than `true` stops live sending immediately.
 
+## Guest Messages and escalations (Week 7)
+
+The website reads bookings from the **Intellistay test server** and works out which guest messages are due. **Nothing is sent to guests.** Messages go to the team, who send them themselves.
+
+- **Guest Messages tab** (team queue): one row per Message ID (`GM-…`). Types: `PRE_ARRIVAL` (2 days before check-in), `CHECK_IN` (check-in day), `CHECKOUT` (checkout day). Timing is set in `config/guestMessages.config.ts`.
+  - `QUEUED`: created a day early so you can see what's coming.
+  - `READY`: due. Send the **Message** text to **Guest WhatsApp**, then set Status to `SENT`.
+  - `SKIPPED`: the booking is cancelled, a no-show or not eligible. Do not send.
+  - `FAILED`: can't be sent as created (Reason says why, e.g. `no_guest_phone`). Check Intellistay.
+  - **Send By**: the last day a message may still be sent. The digest only lists a message from its Scheduled Date to its Send By date. Each daily `queue` run marks QUEUED, READY or FAILED messages past Send By as `SKIPPED` with Reason `expired`, so a missed message is never sent late. Rows you set to `SENT` are never touched.
+  - When you change Status by hand, "Status Updated (IST)" is stamped automatically (the same on-edit trigger as the lead tabs; `setupGuestMessages` installs it if it is missing).
+  - The script only moves a row forward on its own (QUEUED → READY/SKIPPED/FAILED, READY → SKIPPED, FAILED → READY/SKIPPED). It never changes a row you set to `SENT` or `SKIPPED`, and never adds the same Message ID twice.
+- **Guest Escalations tab**: questions the FAQ can't answer, requests for a person, changes, cancellations, payments and urgent problems. Each one also sends a "Guest needs a team member" email. Statuses: Open, In progress, Resolved. No booking is changed automatically.
+- **Daily run**: `runGuestMessages` (installed by `setupGuestMessages`, about 09:00) calls `/api/guest-messages/run`. In `queue` mode it then emails one digest of READY/FAILED messages due today or earlier.
+
+### Setup (after deploying Week 7)
+
+1. Script Properties: `GUEST_MESSAGES_SINK_SECRET`, `GUEST_MESSAGES_ENDPOINT`, `GUEST_MESSAGES_API_SECRET`. Leave `GUEST_MESSAGES_MODE` unset (off) at first.
+2. Run `setupGuestMessages` once from the editor. It creates the two tabs and the trigger, and contacts nobody.
+3. Set `GUEST_MESSAGES_MODE` to `dry_run` and run `runGuestMessages` by hand: the website plans messages but stores nothing. Check the log line.
+4. When the team is ready, set `GUEST_MESSAGES_MODE` to `queue`.
+
+To turn it off, set `GUEST_MESSAGES_MODE` to `off` (or delete it).
+
 ## Script Properties
 
 Set in Apps Script → Project Settings → Script Properties. Never commit the real values.
@@ -263,15 +287,19 @@ Set in Apps Script → Project Settings → Script Properties. Never commit the 
 | `WA_FOLLOW_UP_DAILY_CAP` | Optional, default `10`, highest `50`: endpoint calls (checks or sends) per India day |
 | `WA_FOLLOW_UP_BLOCKED_PHONES` | Optional. Comma-separated `+<country><number>` numbers that are never followed up |
 | `WA_FOLLOW_UP_ALLOWED_PHONES` | Optional. If set, ONLY these numbers can be followed up (for testing with team phones) |
+| `GUEST_MESSAGES_SINK_SECRET` | Same value as `GUEST_MESSAGES_SINK_SECRET` in Vercel (website → this script) |
+| `GUEST_MESSAGES_MODE` | Optional. `off` (default), `dry_run` or `queue` |
+| `GUEST_MESSAGES_ENDPOINT` | `https://<site>/api/guest-messages/run` |
+| `GUEST_MESSAGES_API_SECRET` | Same value as `GUEST_MESSAGES_API_SECRET` in Vercel (at least 32 characters) |
 
-`LAST_BOT_LEAD_RESULT` and `LAST_DIAG_REPORT` are written by the script itself (diagnostics, no personal data). `LAST_FOLLOW_UP_DIGEST` holds the date of the last digest sent. `WA_FOLLOW_UP_COUNT` (today's endpoint calls), `WA_FOLLOW_UP_LAST_RUN` (counts-only summary) and `WA_FOLLOW_UP_RUNNING` (present only while a run is in progress; expires after 10 minutes) are written by the follow-up run.
+`LAST_BOT_LEAD_RESULT` and `LAST_DIAG_REPORT` are written by the script itself (diagnostics, no personal data). `LAST_FOLLOW_UP_DIGEST` holds the date of the last digest sent. `WA_FOLLOW_UP_COUNT` (today's endpoint calls), `WA_FOLLOW_UP_LAST_RUN` (counts-only summary) and `WA_FOLLOW_UP_RUNNING` (present only while a run is in progress; expires after 10 minutes) are written by the follow-up run. `LAST_GUEST_MESSAGE_DIGEST` holds the date of the last guest-message digest.
 
 ## Deploying a change
 
 1. Paste `Code.gs` into the Apps Script editor and save.
 2. If permissions changed, run `diagnoseBotLead` once from the editor and click Allow.
 3. Deploy → Manage deployments → edit the existing deployment → Version: **New version** → Deploy. This keeps the same `/exec` URL. Settings: Execute as **Me**, Who has access **Anyone**.
-4. For 6.1+: run `setupLeadStatusTracking` once, then `recalculateLeadScores` once. For 6.3: run `setupFollowUpReminders` once (see above). For 6.5/6.6: nothing is required; follow-ups stay off (and live stays off) until you follow the setup in the Stretch 2 section.
+4. For 6.1+: run `setupLeadStatusTracking` once, then `recalculateLeadScores` once. For 6.3: run `setupFollowUpReminders` once (see above). For 6.5/6.6: nothing is required; follow-ups stay off (and live stays off) until you follow the setup in the Stretch 2 section. For Week 7: run `setupGuestMessages` once (see Guest Messages).
 
 ## Diagnostics
 
@@ -279,7 +307,7 @@ Run `diagnoseBotLead` from the editor. It logs a one-line JSON report (`version`
 
 ## Tests
 
-`tests/apps-script/lead-status.test.mjs` (Step 1), `lead-score.test.mjs` (Step 2), `follow-up.test.mjs` (Step 3), `conversion-report.test.mjs` (Stretch 1), `whatsapp-follow-up.test.mjs` and `whatsapp-follow-up-live.test.mjs` (Stretch 2; the endpoint is faked, no network) run this `Code.gs` in Node, with fake Google services from `tests/helpers/apps-script-env.mjs`. They run with the rest of the suite:
+`tests/apps-script/lead-status.test.mjs` (Step 1), `lead-score.test.mjs` (Step 2), `follow-up.test.mjs` (Step 3), `conversion-report.test.mjs` (Stretch 1), `whatsapp-follow-up.test.mjs` and `whatsapp-follow-up-live.test.mjs` (Stretch 2; the endpoint is faked, no network), `guest-messages.test.mjs` (Week 7) run this `Code.gs` in Node, with fake Google services from `tests/helpers/apps-script-env.mjs`. They run with the rest of the suite:
 
 ```
 node --import ./tests/helpers/register-ts.mjs --test "tests/**/*.test.mjs"

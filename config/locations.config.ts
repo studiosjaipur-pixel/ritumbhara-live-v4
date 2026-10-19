@@ -4,7 +4,9 @@
 //
 // Sources:
 // - Jaipur: the /serviced-apartments-jaipur guide. Owner confirmed (Oct 2026) that the
-//   Karolan Ka Barh location applies to all Jaipur studios.
+//   Karolan Ka Barh location applies to all Jaipur studios, except Studio 925 (below).
+// - Studio 925: owner confirmed (Oct 2026) it is at Urban Suites by BluSalzz Jaipur, Mahal Road, Jagatpura, Jaipur.
+//   Only those words are used: no street number, PIN code, landmark, distances or map pin.
 // - Villa 65 Sariska: the /stays-in-sariska guide (Sariska has a single property).
 // - Alwar-named rooms: placement not verified (see unverifiedPlacementDestinations below).
 
@@ -44,6 +46,13 @@ export const destinationLocations: Record<string, LocationDetails> = {
 
 // Applies to a single property, and takes priority over destinationLocations.
 export const propertyLocations: Record<string, LocationDetails> = {
+  // Owner-confirmed (Oct 2026). Not in Karolan Ka Barh like the other Jaipur studios. No map or distances (unverified).
+  "studio-925": {
+    area: "Urban Suites by BluSalzz Jaipur, Mahal Road, Jagatpura, Jaipur",
+    summary: "Jagatpura, Jaipur",
+    gettingThere: [],
+    nearby: [],
+  },
   "villa-65-sariska": {
     area: "Alwar district, near Sariska Tiger Reserve",
     summary: "12 km (about 30 minutes) by road from Alwar city",

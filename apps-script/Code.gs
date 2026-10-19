@@ -41,6 +41,11 @@
  * Redis). OFF by default. WA_FOLLOW_UP_MODE "dry_run" never sends. "live" sends one approved WhatsApp template per
  * lead and also needs WA_FOLLOW_UP_LIVE_ENABLED=true here plus the website's own live configuration.
  * Run setupWhatsAppFollowUps() once to add the columns and the daily trigger.
+ *
+ * Week 7 (guest messages): type "guest_message" -> "Guest Messages" tab (team queue: the team sends, nothing is sent
+ * to guests from here) and type "guest_escalation" -> "Guest Escalations" tab + team email, authenticated with
+ * GUEST_MESSAGES_SINK_SECRET. runGuestMessages (daily) calls the website's /api/guest-messages/run and emails a digest
+ * of due messages. OFF unless GUEST_MESSAGES_MODE is set. Run setupGuestMessages() once. See the Week 7 section below.
  */
 var SHEET_NAME = "WhatsApp Clicks";
 var HEADERS = ["Received (IST)", "Status", "Ref", "CTA", "Page", "Destination", "Check-in", "Check-out", "Guests",
@@ -59,6 +64,10 @@ function doPost(e) {
   // WhatsApp bot leads have their own handler and secret; everything else is the unchanged click flow.
   if (body && typeof body === "object" && (body.type === "qualified_lead" || body.type === "lead_handoff")) {
     return handleBotLead_(body, props);
+  }
+  // Week 7: guest message queue items and guest escalations (own handler and secret).
+  if (body && typeof body === "object" && (body.type === "guest_message" || body.type === "guest_escalation")) {
+    return handleGuestRequest_(body, props);
   }
 
   var expected = props.getProperty("LEAD_SINK_SECRET");
@@ -517,6 +526,8 @@ function onLeadStatusEdit(e) {
   if (!e || !e.range) return;
   var range = e.range;
   var sheet = range.getSheet();
+  // Week 7: the same trigger also stamps manual status changes on the Guest Messages tab (own handler below).
+  if (sheet.getName() === GUEST_MESSAGES_SHEET) return guestMessageStatusEdit_(e);
   if (LEAD_TABS.indexOf(sheet.getName()) === -1) return;
   var cols = readLeadHeaders_(sheet);
   var statusCol = cols.index[STATUS_HEADER];
@@ -1714,7 +1725,8 @@ function safeErrName_(err) {
 // Error message with anything sensitive removed: secrets, emails, URLs, long IDs, phone numbers / digit runs.
 function safeErrMsg_(err, props) {
   var m = String(err && err.message ? err.message : err);
-  ["QUALIFIED_LEAD_SINK_SECRET", "LEAD_SINK_SECRET", "DIAG_KEY", "TEAM_EMAILS", "LEADS_SHEET_ID", "WA_FOLLOW_UP_SECRET", "WA_FOLLOW_UP_ENDPOINT"].forEach(function (k) {
+  ["QUALIFIED_LEAD_SINK_SECRET", "LEAD_SINK_SECRET", "DIAG_KEY", "TEAM_EMAILS", "LEADS_SHEET_ID", "WA_FOLLOW_UP_SECRET", "WA_FOLLOW_UP_ENDPOINT",
+    "GUEST_MESSAGES_SINK_SECRET", "GUEST_MESSAGES_API_SECRET", "GUEST_MESSAGES_ENDPOINT"].forEach(function (k) {
     var v = props && props.getProperty(k);
     if (v) v.split(",").forEach(function (part) { part = part.trim(); if (part.length >= 4) m = m.split(part).join("[redacted]"); });
   });
@@ -1879,4 +1891,475 @@ function sendBotLeadEmail_(item, qualified, props, sheetUrl) {
   } catch (err) {
     return false;
   }
+}
+
+// ===================== Week 7: Guest Messages (team queue) and Guest Escalations =====================
+//
+// The website (lib/guest-messages) reads bookings from the Intellistay TEST server and posts, with its own secret:
+//   type "guest_message"    -> "Guest Messages" tab: one row per Message ID (pre-arrival / check-in / checkout).
+//                              The team reviews READY rows, sends the message themselves, and sets Status to SENT.
+//                              NOTHING here contacts a guest.
+//   type "guest_escalation" -> "Guest Escalations" tab + "Guest needs a team member" email.
+// Both are idempotent: a known ID never creates a second row or email. A known message may only move forward
+// automatically (QUEUED -> READY/SKIPPED/FAILED, READY -> SKIPPED, FAILED -> READY/SKIPPED); SENT and SKIPPED rows
+// are never changed by the script.
+// Every message carries a Send By date (the last day it may still be sent). Missed messages are never sent late:
+// the digest lists a message only from its Scheduled Date to its Send By date, and each queue run marks QUEUED, READY
+// or FAILED messages past their Send By date as SKIPPED (Reason "expired"). SENT rows are never touched.
+//
+// runGuestMessages (daily trigger, installed by setupGuestMessages) calls the website's /api/guest-messages/run,
+// then emails one digest of messages that are due. OFF unless GUEST_MESSAGES_MODE is "dry_run" or "queue".
+//
+// Script Properties:
+//   GUEST_MESSAGES_SINK_SECRET - same value as GUEST_MESSAGES_SINK_SECRET in Vercel (website -> this script)
+//   GUEST_MESSAGES_MODE        - off (default) | dry_run (website plans only, nothing stored) | queue
+//   GUEST_MESSAGES_ENDPOINT    - https://<site>/api/guest-messages/run
+//   GUEST_MESSAGES_API_SECRET  - same value as GUEST_MESSAGES_API_SECRET in Vercel (this script -> website), 32+ chars
+
+var GUEST_MESSAGES_SHEET = "Guest Messages";
+var GUEST_MESSAGE_HEADERS = ["Created (IST)", "Message ID", "Status", "Type", "Scheduled Date", "Send By", "Booking ID", "Booking Code",
+  "Check-in", "Check-out", "Nights", "Guests", "Property", "Guest", "Guest WhatsApp", "Special Request", "Booking Source",
+  "Reason", "Message", "Status Updated (IST)"];
+var GUEST_MESSAGE_STATUSES = ["QUEUED", "READY", "SENT", "SKIPPED", "FAILED"];
+var GUEST_MESSAGE_TYPES = ["PRE_ARRIVAL", "CHECK_IN", "CHECKOUT"];
+var GUEST_MESSAGE_TRANSITIONS = { "QUEUED": ["READY", "SKIPPED", "FAILED"], "READY": ["SKIPPED"], "FAILED": ["READY", "SKIPPED"] };
+var GUEST_MESSAGE_TYPE_LABELS = { "PRE_ARRIVAL": "Pre-arrival", "CHECK_IN": "Check-in", "CHECKOUT": "Checkout" };
+
+var GUEST_ESCALATIONS_SHEET = "Guest Escalations";
+var GUEST_ESCALATION_HEADERS = ["Received (IST)", "Escalation ID", "Status", "Reason", "Question", "Guest WhatsApp", "Booking Code",
+  "Topic", "Channel", "Received (UTC)", "Email Status", "Status Updated (IST)"];
+var GUEST_ESCALATION_STATUSES = ["Open", "In progress", "Resolved"];
+var GUEST_ESCALATION_REASONS = ["HUMAN_REQUESTED", "BOOKING_CHANGE", "CANCELLATION", "PAYMENT", "URGENT_ISSUE", "MISSING_INFORMATION", "UNSUPPORTED_QUESTION"];
+var GUEST_ESCALATION_REASON_LABELS = {
+  "HUMAN_REQUESTED": "the guest asked for a team member",
+  "BOOKING_CHANGE": "a booking change (dates, guests, early check-in / late checkout...)",
+  "CANCELLATION": "a cancellation",
+  "PAYMENT": "a payment, refund or price question",
+  "URGENT_ISSUE": "an urgent problem or complaint",
+  "MISSING_INFORMATION": "a question the assistant has no configured answer for at this stay",
+  "UNSUPPORTED_QUESTION": "a question the assistant does not cover"
+};
+
+var GUEST_MESSAGES_HANDLER = "runGuestMessages";
+var GUEST_MESSAGES_TRIGGER_HOUR = 9; // about 09:00 in the project's time zone
+var GUEST_MESSAGES_MIN_SECRET_LENGTH = 32;
+var LAST_GUEST_DIGEST_PROPERTY = "LAST_GUEST_MESSAGE_DIGEST"; // date (India) of the last digest sent
+var GUEST_MESSAGE_ID_RE = /^GM-[0-9A-F]{12}$/;
+var GUEST_ESCALATION_ID_RE = /^E-[0-9A-F]{10}$/;
+
+// Like cell_ (formula-safe), with a configurable length: message text can be longer than 300 characters.
+function longCell_(v, max) {
+  var s = v === undefined || v === null ? "" : String(v).slice(0, max);
+  return /^[=+\-@]/.test(s) ? "'" + s : s;
+}
+
+function optStr_(v, max) {
+  return v === null || v === undefined || (typeof v === "string" && v.length <= max);
+}
+
+// Each returns the NAME of the first invalid field (never its value), or "".
+function guestMessageProblem_(m) {
+  if (!m || typeof m !== "object") return "message";
+  if (!GUEST_MESSAGE_ID_RE.test(String(m.messageId))) return "messageId";
+  if (GUEST_MESSAGE_TYPES.indexOf(m.type) === -1) return "type";
+  if (["QUEUED", "READY", "SKIPPED", "FAILED"].indexOf(m.status) === -1) return "status";
+  if (!ISO_DATE.test(String(m.scheduledDate))) return "scheduledDate";
+  if (!ISO_DATE.test(String(m.sendBy)) || String(m.sendBy) < String(m.scheduledDate)) return "sendBy";
+  if (!/^\d{1,9}$/.test(String(m.bookingId))) return "bookingId";
+  if (!ISO_DATE.test(String(m.checkIn)) || !ISO_DATE.test(String(m.checkOut))) return "dates";
+  if (typeof m.nights !== "number" || m.nights % 1 !== 0 || m.nights < 0 || m.nights > 365) return "nights";
+  if (m.guestPhone !== null && !PHONE_RE.test(String(m.guestPhone))) return "guestPhone";
+  if (m.specialRequest !== "yes" && m.specialRequest !== "no") return "specialRequest";
+  if (typeof m.message !== "string" || !m.message || m.message.length > 1500) return "message";
+  if (!optStr_(m.reason, 40) || !optStr_(m.bookingCode, 40) || !optStr_(m.guests, 60) || !optStr_(m.property, 100) ||
+      !optStr_(m.guestName, 40) || !optStr_(m.bookingSource, 60)) return "text";
+  return "";
+}
+
+function guestEscalationProblem_(x) {
+  if (!x || typeof x !== "object") return "escalation";
+  if (!GUEST_ESCALATION_ID_RE.test(String(x.escalationId))) return "escalationId";
+  if (GUEST_ESCALATION_REASONS.indexOf(x.reason) === -1) return "reason";
+  if (typeof x.question !== "string" || !x.question || x.question.length > 500) return "question";
+  if (x.guestPhone !== null && !PHONE_RE.test(String(x.guestPhone))) return "guestPhone";
+  if (!optStr_(x.bookingCode, 40) || !optStr_(x.intent, 40) || !optStr_(x.channel, 20)) return "text";
+  return "";
+}
+
+function applyListValidation_(range, list, help) {
+  range.setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(list, true).setAllowInvalid(false).setHelpText(help).build());
+}
+
+function guestTab_(ss, name, headers, trace) {
+  if (trace) trace.stage = "open_tab";
+  var sheet = ss.getSheetByName(name) || ss.insertSheet(name);
+  if (trace) trace.stage = "write_headers";
+  return { sheet: sheet, cols: ensureLeadHeaders_(sheet, headers) };
+}
+
+function handleGuestRequest_(body, props) {
+  var trace = { stage: "start" };
+  var result;
+  try {
+    result = handleGuestRequestInner_(body, props, trace);
+  } catch (err) {
+    console.error("handleGuestRequest_ failed at " + trace.stage + ": " + (err && err.stack ? err.stack : err));
+    result = { ok: false, error: "server_error", code: (err && err.diagCode) || "EXCEPTION", stage: trace.stage,
+      errName: safeErrName_(err), errMsg: safeErrMsg_(err, props), where: errWhere_(err) };
+  }
+  return json_(result);
+}
+
+function handleGuestRequestInner_(body, props, trace) {
+  trace.stage = "auth";
+  var expected = props.getProperty("GUEST_MESSAGES_SINK_SECRET");
+  if (!expected) return { ok: false, error: "rejected", code: "NO_SECRET_PROPERTY" };
+  if (body.secret !== expected) return { ok: false, error: "rejected", code: "AUTH" };
+
+  trace.stage = "validate";
+  var isMessage = body.type === "guest_message";
+  var item = isMessage ? body.message : body.escalation;
+  var problem = isMessage ? guestMessageProblem_(item) : guestEscalationProblem_(item);
+  if (problem) return { ok: false, error: "rejected", code: "INVALID", field: problem };
+  trace.stage = "config";
+  leadsSheetId_(props);
+
+  trace.stage = "lock";
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return { ok: false, error: "busy", code: "BUSY" };
+  var tab, rowIndex;
+  var now = new Date();
+  try {
+    var ss = openLeadsSpreadsheet_(props, trace);
+    tab = isMessage ? guestTab_(ss, GUEST_MESSAGES_SHEET, GUEST_MESSAGE_HEADERS, trace) : guestTab_(ss, GUEST_ESCALATIONS_SHEET, GUEST_ESCALATION_HEADERS, trace);
+    var sheet = tab.sheet, cols = tab.cols;
+    trace.stage = "find_id";
+    var existing = findRowById_(sheet, isMessage ? item.messageId : item.escalationId);
+    if (existing > 0) {
+      if (!isMessage) return { ok: true, duplicate: true };
+      // Only allowed forward moves; the team's SENT/SKIPPED (and anything unexpected) is left exactly as it is.
+      var current = sheetText_(sheet.getRange(existing, cols.index["Status"]).getValue()).trim().toUpperCase();
+      var allowed = GUEST_MESSAGE_TRANSITIONS[current] || [];
+      if (item.status === current || allowed.indexOf(item.status) === -1) return { ok: true, duplicate: true };
+      trace.stage = "update_row";
+      sheet.getRange(existing, cols.index["Status"]).setValue(item.status);
+      sheet.getRange(existing, cols.index["Reason"]).setValue(cell_(item.reason || ""));
+      sheet.getRange(existing, cols.index["Message"]).setValue(longCell_(item.message, 1500));
+      sheet.getRange(existing, cols.index["Guest WhatsApp"]).setValue(cell_(item.guestPhone || ""));
+      sheet.getRange(existing, cols.index["Send By"]).setValue(item.sendBy);
+      sheet.getRange(existing, cols.index["Status Updated (IST)"]).setValue(istText_(now));
+      return { ok: true, duplicate: true, updated: true };
+    }
+    trace.stage = "build_row";
+    var byName = isMessage ? {
+      "Created (IST)": istText_(now), "Message ID": item.messageId, "Status": item.status, "Type": item.type,
+      "Scheduled Date": item.scheduledDate, "Send By": item.sendBy, "Booking ID": String(item.bookingId), "Booking Code": item.bookingCode,
+      "Check-in": item.checkIn, "Check-out": item.checkOut, "Nights": item.nights, "Guests": item.guests,
+      "Property": item.property, "Guest": item.guestName, "Guest WhatsApp": item.guestPhone,
+      "Special Request": item.specialRequest, "Booking Source": item.bookingSource, "Reason": item.reason,
+      "Status Updated (IST)": istText_(now)
+    } : {
+      "Received (IST)": istText_(now), "Escalation ID": item.escalationId, "Status": "Open", "Reason": item.reason,
+      "Guest WhatsApp": item.guestPhone, "Booking Code": item.bookingCode, "Topic": item.intent, "Channel": item.channel,
+      "Received (UTC)": item.receivedAt, "Email Status": "PENDING", "Status Updated (IST)": istText_(now)
+    };
+    var row = cols.names.map(function (name) {
+      if (isMessage && name === "Message") return longCell_(item.message, 1500);
+      if (!isMessage && name === "Question") return longCell_(item.question, 500);
+      return cell_(Object.prototype.hasOwnProperty.call(byName, name) ? byName[name] : "");
+    });
+    trace.stage = "append_row";
+    sheet.appendRow(row);
+    rowIndex = sheet.getLastRow();
+    trace.stage = "status_dropdown";
+    if (isMessage) applyListValidation_(sheet.getRange(rowIndex, cols.index["Status"]), GUEST_MESSAGE_STATUSES, "QUEUED, READY, SENT, SKIPPED or FAILED. Set SENT once you have sent the message.");
+    else applyListValidation_(sheet.getRange(rowIndex, cols.index["Status"]), GUEST_ESCALATION_STATUSES, "Open, In progress or Resolved.");
+    SpreadsheetApp.flush();
+  } finally {
+    lock.releaseLock();
+  }
+  if (isMessage) return { ok: true, stored: true };
+
+  // Escalation email after the lock is released. Its failure never undoes the stored row.
+  trace.stage = "email";
+  var emailStatus = sendGuestEscalationEmail_(item, props, tab.sheet.getParent().getUrl()) ? "SENT" : "FAILED";
+  tab.sheet.getRange(rowIndex, tab.cols.index["Email Status"]).setValue(emailStatus);
+  return { ok: true, stored: true, emailStatus: emailStatus };
+}
+
+function sendGuestEscalationEmail_(x, props, sheetUrl) {
+  try {
+    var check = teamMailCheck_(props);
+    if (!check.send) return false;
+    MailApp.sendEmail({
+      to: check.to.join(","),
+      subject: "Guest needs a team member" + (x.reason === "URGENT_ISSUE" ? " (urgent)" : ""),
+      body: [
+        "A guest message needs a team member.",
+        "",
+        "Why: " + (GUEST_ESCALATION_REASON_LABELS[x.reason] || x.reason),
+        "Guest WhatsApp: " + (x.guestPhone || "not known"),
+        "Booking: " + (x.bookingCode || "not identified"),
+        "Message: " + x.question,
+        "",
+        "No booking has been changed. Reply to the guest yourself, then set Status on the Guest Escalations tab.",
+        "Escalation ID: " + x.escalationId,
+        "Sheet: " + String(sheetUrl).replace(/[?#].*$/, "")
+      ].join("\n")
+    });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+function guestMessagesConfig_(props) {
+  var mode = String(props.getProperty("GUEST_MESSAGES_MODE") || "off").trim().toLowerCase();
+  if (mode !== "dry_run" && mode !== "queue") return { ok: false, mode: "off", reason: "GUEST_MESSAGES_MODE is off" };
+  var endpoint = String(props.getProperty("GUEST_MESSAGES_ENDPOINT") || "").trim();
+  if (!/^https:\/\/[^\s]+\/api\/guest-messages\/run$/.test(endpoint)) return { ok: false, mode: mode, reason: "GUEST_MESSAGES_ENDPOINT must be https://<site>/api/guest-messages/run" };
+  var secret = String(props.getProperty("GUEST_MESSAGES_API_SECRET") || "").trim();
+  if (secret.length < GUEST_MESSAGES_MIN_SECRET_LENGTH) return { ok: false, mode: mode, reason: "GUEST_MESSAGES_API_SECRET must be at least " + GUEST_MESSAGES_MIN_SECRET_LENGTH + " characters" };
+  return { ok: true, mode: mode, endpoint: endpoint, secret: secret };
+}
+
+// Due messages for the digest: READY or FAILED, not yet handled, with Scheduled Date <= today (India) <= Send By.
+// A message past its Send By date is never listed (it has lapsed; expireGuestMessages_ marks it SKIPPED/expired), and
+// a row without a valid Send By is not listed either.
+function collectDueGuestMessages_(ss, today) {
+  var sheet = ss.getSheetByName(GUEST_MESSAGES_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  var h = readLeadHeaders_(sheet);
+  var tz = ss.getSpreadsheetTimeZone();
+  var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, h.names.length).getValues();
+  var out = [];
+  rows.forEach(function (r) {
+    function v(name) { return h.index[name] ? r[h.index[name] - 1] : ""; }
+    var status = sheetText_(v("Status")).trim().toUpperCase();
+    if (status !== "READY" && status !== "FAILED") return;
+    if (!GUEST_MESSAGE_ID_RE.test(sheetText_(v("Message ID")))) return;
+    var scheduled = sheetDateText_(v("Scheduled Date"), tz);
+    if (!ISO_DATE.test(scheduled) || scheduled > today) return;
+    var sendBy = sheetDateText_(v("Send By"), tz);
+    if (!ISO_DATE.test(sendBy) || sendBy < today) return;
+    out.push({
+      status: status, type: sheetText_(v("Type")), scheduled: scheduled, bookingCode: sheetText_(v("Booking Code")),
+      guest: sheetText_(v("Guest")), phone: sheetText_(v("Guest WhatsApp")), property: sheetText_(v("Property")),
+      reason: sheetText_(v("Reason")), message: sheetText_(v("Message"))
+    });
+  });
+  out.sort(function (a, b) { return a.scheduled < b.scheduled ? -1 : a.scheduled > b.scheduled ? 1 : 0; });
+  return out;
+}
+
+function guestDigestEmail_(items, today, sheetUrl) {
+  var lines = ["Guest messages to send today (" + today + "). Nothing has been sent to any guest.", "",
+    "Send each READY message to the guest yourself, then set its Status to SENT on the Guest Messages tab.", ""];
+  items.forEach(function (it, i) {
+    lines.push((i + 1) + ". " + (GUEST_MESSAGE_TYPE_LABELS[it.type] || it.type) + " - " + it.status + (it.scheduled < today ? " (scheduled " + it.scheduled + ")" : ""));
+    lines.push("   Guest: " + (it.guest || "(name not available)") + ", WhatsApp: " + (it.phone || "not available - check Intellistay"));
+    lines.push("   Booking: " + (it.bookingCode || "-") + (it.property ? ", " + it.property : ""));
+    if (it.status === "FAILED") lines.push("   Problem: " + (it.reason || "see Sheet"));
+    lines.push("   Message:");
+    it.message.split("\n").forEach(function (l) { lines.push("   " + l); });
+    lines.push("");
+  });
+  lines.push("Sheet: " + sheetUrl);
+  return { subject: "Guest messages to send (" + items.length + ")", body: lines.join("\n") };
+}
+
+/**
+ * Daily trigger (installed by setupGuestMessages). In queue mode it first expires messages whose Send By date has
+ * passed (SKIPPED, reason "expired"). It then calls the website's /api/guest-messages/run in GUEST_MESSAGES_MODE
+ * (dry_run or queue) and, in queue mode, emails one digest of due messages (once a day). Dry run changes nothing.
+ * Never contacts a guest. Logs and returns counts and status codes only (no names, phones or message text).
+ */
+function runGuestMessages() {
+  var props = PropertiesService.getScriptProperties();
+  var now = new Date();
+  var today = istDateText_(now);
+  var result = { today: today };
+  var cfg = guestMessagesConfig_(props);
+  result.mode = cfg.mode;
+  if (!cfg.ok) {
+    result.ran = false;
+    result.reason = cfg.reason;
+  } else {
+    result.ran = true;
+    // Queue mode: first expire messages whose Send By date has passed, so a lapsed message is never sent late.
+    if (cfg.mode === "queue") {
+      try {
+        result.expired = expireGuestMessages_(openLeadsSpreadsheet_(props, null), today, now);
+      } catch (err) {
+        result.expired = "failed: " + safeErrName_(err);
+      }
+    }
+    try {
+      var res = UrlFetchApp.fetch(cfg.endpoint, {
+        method: "post", contentType: "application/json", muteHttpExceptions: true, followRedirects: false,
+        headers: { Authorization: "Bearer " + cfg.secret }, payload: JSON.stringify({ mode: cfg.mode })
+      });
+      result.http = res.getResponseCode();
+      var reply = null;
+      try { reply = JSON.parse(res.getContentText()); } catch (e) { reply = null; }
+      if (reply && typeof reply === "object") {
+        result.ok = reply.ok === true;
+        if (reply.error) result.error = String(reply.error).slice(0, 40);
+        if (reply.reason) result.errorReason = String(reply.reason).slice(0, 40);
+        if (typeof reply.bookings === "number") result.bookings = reply.bookings;
+        if (typeof reply.planned === "number") result.planned = reply.planned;
+        if (reply.byStatus && typeof reply.byStatus === "object") result.byStatus = reply.byStatus;
+        if (reply.deliveries && typeof reply.deliveries === "object") result.deliveries = reply.deliveries;
+      } else {
+        result.ok = false;
+        result.error = "bad_response";
+      }
+    } catch (err) {
+      result.ok = false;
+      result.error = "fetch_failed: " + safeErrName_(err);
+    }
+    if (cfg.mode === "queue") result.digest = sendGuestMessageDigest_(props, now);
+  }
+  var text = "GUEST MESSAGES RUN | " + JSON.stringify(result);
+  console.log(text);
+  Logger.log(text);
+  return result;
+}
+
+// Week 7: manual Status changes on the Guest Messages tab (called from onLeadStatusEdit, the existing installable
+// "on edit" trigger). Stamps "Status Updated (IST)" for each edited row that has a Message ID and a valid status, and
+// normalises the status's case ("sent" -> "SENT"). Ignores the header row, other columns, invalid values and
+// re-selecting the value a cell already had. Never changes Reason, Send By, Message or any other column.
+function guestMessageStatusEdit_(e) {
+  var range = e.range;
+  var sheet = range.getSheet();
+  var cols = readLeadHeaders_(sheet);
+  var statusCol = cols.index["Status"];
+  var updatedCol = cols.index["Status Updated (IST)"];
+  var idCol = cols.index["Message ID"];
+  if (!statusCol || !updatedCol || !idCol) return;
+  if (statusCol < range.getColumn() || statusCol > range.getLastColumn()) return;
+  var first = Math.max(range.getRow(), 2);
+  var last = range.getLastRow();
+  if (last < first) return;
+  var n = last - first + 1;
+  var singleCell = range.getNumRows() === 1 && range.getNumColumns() === 1;
+  var ids = sheet.getRange(first, idCol, n, 1).getValues();
+  var statuses = sheet.getRange(first, statusCol, n, 1).getValues();
+  var updated = sheet.getRange(first, updatedCol, n, 1).getValues();
+  var stamp = istText_(new Date());
+  var changed = false, recased = false;
+  for (var i = 0; i < n; i++) {
+    if (!GUEST_MESSAGE_ID_RE.test(sheetText_(ids[i][0]))) continue;
+    var status = String(statuses[i][0] === null || statuses[i][0] === undefined ? "" : statuses[i][0]).trim().toUpperCase();
+    if (GUEST_MESSAGE_STATUSES.indexOf(status) === -1) continue;
+    if (singleCell && e.oldValue !== undefined && String(e.oldValue).trim().toUpperCase() === status) continue;
+    if (statuses[i][0] !== status) { statuses[i][0] = status; recased = true; }
+    updated[i][0] = stamp;
+    changed = true;
+  }
+  if (!changed) return;
+  if (recased) sheet.getRange(first, statusCol, n, 1).setValues(statuses);
+  sheet.getRange(first, updatedCol, n, 1).setValues(updated);
+}
+
+// Marks every QUEUED, READY or FAILED message whose Send By date is before today (India) as SKIPPED with Reason
+// "expired", and stamps Status Updated. Rows the team set to SENT or SKIPPED, rows of any other status and rows without
+// a valid Send By date are never changed. Returns the number of rows expired (or a reason string).
+var GUEST_MESSAGE_EXPIRABLE = ["QUEUED", "READY", "FAILED"];
+
+function expireGuestMessages_(ss, today, now) {
+  var sheet = ss.getSheetByName(GUEST_MESSAGES_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return 0;
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return "busy";
+  try {
+    var h = readLeadHeaders_(sheet);
+    if (!h.index["Status"] || !h.index["Send By"] || !h.index["Reason"]) return 0;
+    var tz = ss.getSpreadsheetTimeZone();
+    var last = sheet.getLastRow();
+    var rows = sheet.getRange(2, 1, last - 1, h.names.length).getValues();
+    var expired = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (!GUEST_MESSAGE_ID_RE.test(sheetText_(r[h.index["Message ID"] - 1]))) continue;
+      var status = sheetText_(r[h.index["Status"] - 1]).trim().toUpperCase();
+      if (GUEST_MESSAGE_EXPIRABLE.indexOf(status) === -1) continue;
+      var sendBy = sheetDateText_(r[h.index["Send By"] - 1], tz);
+      if (!ISO_DATE.test(sendBy) || sendBy >= today) continue;
+      var row = i + 2;
+      sheet.getRange(row, h.index["Status"]).setValue("SKIPPED");
+      sheet.getRange(row, h.index["Reason"]).setValue("expired");
+      if (h.index["Status Updated (IST)"]) sheet.getRange(row, h.index["Status Updated (IST)"]).setValue(istText_(now));
+      expired++;
+    }
+    if (expired) SpreadsheetApp.flush();
+    return expired;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function sendGuestMessageDigest_(props, now) {
+  var today = istDateText_(now);
+  if (props.getProperty(LAST_GUEST_DIGEST_PROPERTY) === today) return { sent: false, reason: "already sent today" };
+  var ss = openLeadsSpreadsheet_(props, null);
+  var items = collectDueGuestMessages_(ss, today);
+  if (!items.length) return { sent: false, reason: "nothing due", due: 0 };
+  var check = teamMailCheck_(props);
+  if (!check.send) return { sent: false, reason: check.reason, due: items.length };
+  var email = guestDigestEmail_(items, today, String(ss.getUrl()).replace(/[?#].*$/, ""));
+  try {
+    MailApp.sendEmail({ to: check.to.join(","), subject: email.subject, body: email.body });
+    props.setProperty(LAST_GUEST_DIGEST_PROPERTY, today);
+    return { sent: true, due: items.length, recipients: check.to.length };
+  } catch (err) {
+    return { sent: false, reason: "send failed: " + safeErrName_(err), due: items.length };
+  }
+}
+
+/**
+ * Run ONCE from the Apps Script editor after deploying Week 7 (safe to run again). Creates the Guest Messages and
+ * Guest Escalations tabs (headers only) and installs the daily runGuestMessages trigger at about 09:00. Never
+ * creates a second trigger. Does not call the website and contacts nobody. Logs and returns a summary.
+ */
+function setupGuestMessages() {
+  var props = PropertiesService.getScriptProperties();
+  var ss = openLeadsSpreadsheet_(props, null);
+  guestTab_(ss, GUEST_MESSAGES_SHEET, GUEST_MESSAGE_HEADERS, null);
+  guestTab_(ss, GUEST_ESCALATIONS_SHEET, GUEST_ESCALATION_HEADERS, null);
+  // Manual status changes are stamped by the existing Week 6 on-edit trigger (onLeadStatusEdit). Install it for the
+  // leads Sheet only if setupLeadStatusTracking has not already done so (never a second copy).
+  var hasEditTrigger = ScriptApp.getProjectTriggers().some(function (t) {
+    return t.getHandlerFunction() === STATUS_EDIT_HANDLER && t.getTriggerSourceId() === ss.getId();
+  });
+  if (!hasEditTrigger) ScriptApp.newTrigger(STATUS_EDIT_HANDLER).forSpreadsheet(ss).onEdit().create();
+  var existing = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === GUEST_MESSAGES_HANDLER; });
+  for (var i = 1; i < existing.length; i++) ScriptApp.deleteTrigger(existing[i]);
+  var projectTz = Session.getScriptTimeZone();
+  if (!existing.length) {
+    var builder = ScriptApp.newTrigger(GUEST_MESSAGES_HANDLER).timeBased().atHour(GUEST_MESSAGES_TRIGGER_HOUR).nearMinute(0).everyDays(1);
+    if (!projectTz) builder = builder.inTimezone(FOLLOW_UP_FALLBACK_TZ);
+    builder.create();
+  }
+  var cfg = guestMessagesConfig_(props);
+  var summary = {
+    tabs: [GUEST_MESSAGES_SHEET, GUEST_ESCALATIONS_SHEET],
+    trigger: existing.length ? "already installed" : "installed",
+    duplicatesRemoved: Math.max(existing.length - 1, 0),
+    runsAt: "daily, about 09:00 (" + (projectTz || FOLLOW_UP_FALLBACK_TZ) + ")",
+    statusEditTrigger: hasEditTrigger ? "already installed" : "installed",
+    mode: cfg.mode, ready: cfg.ok,
+    props: {
+      GUEST_MESSAGES_SINK_SECRET: !!props.getProperty("GUEST_MESSAGES_SINK_SECRET"),
+      GUEST_MESSAGES_ENDPOINT: !!props.getProperty("GUEST_MESSAGES_ENDPOINT"),
+      GUEST_MESSAGES_API_SECRET: !!props.getProperty("GUEST_MESSAGES_API_SECRET"),
+      TEAM_EMAILS: !!String(props.getProperty("TEAM_EMAILS") || "").trim()
+    }
+  };
+  if (!cfg.ok) summary.notReady = cfg.reason;
+  var text = "GUEST MESSAGES SETUP | " + JSON.stringify(summary);
+  console.log(text);
+  Logger.log(text);
+  return summary;
 }
