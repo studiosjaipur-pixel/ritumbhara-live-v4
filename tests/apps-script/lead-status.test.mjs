@@ -14,8 +14,11 @@ import {
 
 test("headers: Status stays in column C; Email Status stays in column T; the two new columns follow it", () => {
   const { gs } = createEnv();
+  assert.equal(gs.QUALIFIED_HEADERS.length, 24); // + Score and Priority (Step 2, see lead-score.test.mjs)
+  // Handoffs: + Guest Name and Booking Code (Guest Escalation leads), appended at the end.
+  assert.equal(gs.HANDOFF_HEADERS.length, 26);
+  assert.equal(JSON.stringify(gs.HANDOFF_HEADERS.slice(24)), JSON.stringify(["Guest Name", "Booking Code"]));
   for (const headers of [gs.QUALIFIED_HEADERS, gs.HANDOFF_HEADERS]) {
-    assert.equal(headers.length, 24); // + Score and Priority (Step 2, see lead-score.test.mjs)
     assert.equal(headers[2], "Status");
     assert.equal(headers[19], "Email Status");
     assert.equal(headers[20], "Status Updated (IST)");
@@ -119,7 +122,7 @@ test("team-added column after Email Status is respected: nothing is written into
   const env = createEnv();
   const s = oldLayoutTab(env, "Handoffs", OLD_HANDOFF_HEADERS.concat(["Team Notes"]), []);
   postHandoff(env);
-  assert.equal(JSON.stringify(s.headers()), JSON.stringify(OLD_HANDOFF_HEADERS.concat(["Team Notes", "Status Updated (IST)", "Next Follow-up", "Score", "Priority"])));
+  assert.equal(JSON.stringify(s.headers()), JSON.stringify(OLD_HANDOFF_HEADERS.concat(["Team Notes", "Status Updated (IST)", "Next Follow-up", "Score", "Priority", "Guest Name", "Booking Code"])));
   const row = rowObject(s, 2);
   assert.equal(row["Team Notes"], "");
   assert.equal(row["Email Status"], "SENT");

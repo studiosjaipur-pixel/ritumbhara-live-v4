@@ -294,6 +294,20 @@ Set in Apps Script → Project Settings → Script Properties. Never commit the 
 
 `LAST_BOT_LEAD_RESULT` and `LAST_DIAG_REPORT` are written by the script itself (diagnostics, no personal data). `LAST_FOLLOW_UP_DIGEST` holds the date of the last digest sent. `WA_FOLLOW_UP_COUNT` (today's endpoint calls), `WA_FOLLOW_UP_LAST_RUN` (counts-only summary) and `WA_FOLLOW_UP_RUNNING` (present only while a run is in progress; expires after 10 minutes) are written by the follow-up run. `LAST_GUEST_MESSAGE_DIGEST` holds the date of the last guest-message digest.
 
+### Guest Escalations → Leads (Handoffs)
+
+A WhatsApp guest escalation for a **verified** booking (the website sends `escalation.lead`) also creates or updates
+the guest's Lead on **Handoffs**, so it shows on the Hospitality OS Leads page. The Guest Escalations row and email
+are unchanged.
+
+- New row: Handoff ID `H-` + the escalation's 10 hex digits, Status New, Reason = escalation reason,
+  Source `guest-escalation`, Requirements = `[time E-…] message`, plus **Guest Name** and **Booking Code**.
+- Same Phone + Booking Code with an open lead (New, Contacted or empty Status): that row is updated instead (message
+  added to Requirements, empty fields filled; Status, Score and follow-up dates left to the team).
+- **Guest Name** and **Booking Code** are appended at the end of Handoffs the first time a handoff is written
+  (existing columns never move). You can drag them next to Phone; everything is read by header name.
+- Nothing changes until this `Code.gs` is deployed. The website keeps working with the old script (no Lead is written).
+
 ## Deploying a change
 
 1. Paste `Code.gs` into the Apps Script editor and save.

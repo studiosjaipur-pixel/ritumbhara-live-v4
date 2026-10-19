@@ -22,12 +22,19 @@ if (typeof window !== "undefined") {
 }
 
 export const SINK_ATTEMPT_TIMEOUT_MS = 8000;
+// A background escalation (after the guest already has the reply) also writes the guest's Lead, and Apps Script
+// has been seen taking over 8 s; this is how long that one call may wait. Within the ask route's maxDuration (30 s).
+export const BACKGROUND_SINK_TIMEOUT_MS = 20000;
+
+// What the Apps Script did with an escalation's Lead (only present for verified WhatsApp escalations).
+export type SinkLeadOutcome = "created" | "updated" | "duplicate" | "skipped" | "failed";
+const SINK_LEAD_OUTCOMES: SinkLeadOutcome[] = ["created", "updated", "duplicate", "skipped", "failed"];
 const ALLOWED_PREFIX = "https://script.google.com/";
 
 export type SinkFailure = "not_configured" | "timeout" | "network" | "http_4xx" | "http_5xx" | "busy" | "rejected" | "bad_response";
 
 export type SinkResult =
-  | { ok: true; status: "stored" | "duplicate" | "updated"; emailStatus?: "SENT" | "FAILED" | "UNKNOWN" }
+  | { ok: true; status: "stored" | "duplicate" | "updated"; emailStatus?: "SENT" | "FAILED" | "UNKNOWN"; lead?: SinkLeadOutcome }
   | { ok: false; reason: SinkFailure };
 
 export type GuestEnvelope =
@@ -42,7 +49,7 @@ export interface SinkOptions {
 }
 
 // The PMS room label shown to the TEAM when the room is not mapped to a website property.
-function roomLabel(booking: NormalizedBooking): string | null {
+export function roomLabel(booking: NormalizedBooking): string | null {
   const r = booking.rooms[0];
   if (!r) return null;
   const parts = [r.roomTypeName, r.roomNo ? "room " + r.roomNo : null].filter(Boolean);
@@ -98,16 +105,22 @@ export async function postGuestEnvelope(envelope: GuestEnvelope, options?: SinkO
     }
     if (res.status >= 500) return { ok: false, reason: "http_5xx" };
     if (!res.ok) return { ok: false, reason: "http_4xx" };
-    let reply: { ok?: unknown; stored?: unknown; duplicate?: unknown; updated?: unknown; emailStatus?: unknown; error?: unknown };
+    let reply: { ok?: unknown; stored?: unknown; duplicate?: unknown; updated?: unknown; emailStatus?: unknown; error?: unknown; lead?: unknown };
     try {
       reply = JSON.parse(await res.text());
     } catch (err) {
       return { ok: false, reason: err instanceof Error && err.name === "AbortError" ? "timeout" : "bad_response" };
     }
     if (!reply || typeof reply !== "object") return { ok: false, reason: "bad_response" };
-    const emailStatus = reply.emailStatus === "SENT" ? "SENT" : reply.emailStatus === "FAILED" ? "FAILED" : "UNKNOWN";
-    if (reply.ok === true && reply.stored === true) return { ok: true, status: "stored", emailStatus: emailStatus };
-    if (reply.ok === true && reply.duplicate === true) return { ok: true, status: reply.updated === true ? "updated" : "duplicate" };
+    const emailStatus: "SENT" | "FAILED" | "UNKNOWN" = reply.emailStatus === "SENT" ? "SENT" : reply.emailStatus === "FAILED" ? "FAILED" : "UNKNOWN";
+    const lead = SINK_LEAD_OUTCOMES.indexOf(reply.lead as SinkLeadOutcome) !== -1 ? (reply.lead as SinkLeadOutcome) : null;
+    if (reply.ok === true && (reply.stored === true || reply.duplicate === true)) {
+      const out: SinkResult = reply.stored === true
+        ? { ok: true, status: "stored", emailStatus: emailStatus }
+        : { ok: true, status: reply.updated === true ? "updated" : "duplicate" };
+      if (lead) out.lead = lead;
+      return out;
+    }
     if (reply.ok === false && reply.error === "busy") return { ok: false, reason: "busy" };
     return { ok: false, reason: reply.ok === false ? "rejected" : "bad_response" };
   } finally {
