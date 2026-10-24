@@ -90,6 +90,7 @@ async function qualify(h) {
   await h.send("2 guests");
   await h.send("Jaipur");
   await h.send("airport pickup");
+  await h.send("Asha Verma");
   const reply = await h.send("YES");
   assert.match(reply, /This is not a booking yet/);
   assert.equal((await h.conv()).state, "HANDED_OFF");

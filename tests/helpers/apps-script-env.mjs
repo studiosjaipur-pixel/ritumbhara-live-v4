@@ -59,6 +59,21 @@ export function createSheet(name, spreadsheet, sheetId = 0) {
     cell(r, c) { const row = data[r - 1]; const v = row ? row[c - 1] : undefined; return v === undefined ? "" : v; },
     setCell(r, c, v) { while (data.length < r) data.push([]); const row = data[r - 1]; while (row.length < c) row.push(""); row[c - 1] = v; },
     headers() { return (data[0] || []).slice(); },
+    // Like Sheet.moveColumns: whole columns (values and data validation) move; destination is the 1-based index
+    // before the move.
+    moveColumns(range, destinationIndex) {
+      const from = range.getColumn() - 1, n = range.getNumColumns();
+      const width = Math.max(sheet.getLastColumn(), from + n);
+      const order = Array.from({ length: width }, (_, i) => i);
+      const moving = order.splice(from, n);
+      const at = destinationIndex - 1 > from ? destinationIndex - 1 - n : destinationIndex - 1;
+      order.splice(at, 0, ...moving);
+      data.forEach((row, r) => { const old = row.slice(); data[r] = order.map((c) => (old[c] === undefined ? "" : old[c])); });
+      const moved = new Map();
+      validations.forEach((rule, key) => { const [r, c] = key.split(",").map(Number); moved.set(r + "," + (order.indexOf(c - 1) + 1), rule); });
+      validations.clear();
+      moved.forEach((rule, key) => validations.set(key, rule));
+    },
     getRange(row, col, numRows = 1, numCols = 1) {
       const range = {
         getSheet: () => sheet,

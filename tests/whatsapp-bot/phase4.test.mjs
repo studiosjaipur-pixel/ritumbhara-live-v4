@@ -90,6 +90,7 @@ test("1. a simple message the parser understands never reaches Groq", async () =
   await h.send("2 guests");
   await h.send("Jaipur");
   await h.send("no");
+  await h.send("Asha");
   assert.equal(h.groq.calls.length, 0);
   assert.equal((await h.conv()).state, "CONFIRM");
 });

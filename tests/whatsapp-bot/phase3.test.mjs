@@ -279,12 +279,14 @@ test("18. requirements are optional free text, capped at 300 characters", async 
   const h = setup();
   await h.send("Hi");
   await h.send("12 Nov to 15 Nov, 2 guests, Jaipur");
-  const reply = await h.send("Need airport pickup");
+  await h.send("Need airport pickup");
+  const reply = await h.send("Asha");
   assert.match(reply, /Requirements: Need airport pickup/);
   const h2 = setup();
   await h2.send("Hi");
   await h2.send("12 Nov to 15 Nov, 2 guests, Jaipur");
-  assert.match(await h2.send("No"), /Requirements: None/);
+  await h2.send("No");
+  assert.match(await h2.send("skip"), /Requirements: None/);
   assert.equal((await h2.conv()).fields.requirements, "");
   const h3 = setup();
   await h3.send("Hi");
@@ -315,7 +317,8 @@ test("19. multiple fields in one message skip straight to what is missing", asyn
 async function toConfirm(h) {
   await h.send("Hi");
   await h.send("10 Dec to 13 Dec, 2 guests, Jaipur");
-  return h.send("Airport pickup");
+  await h.send("Airport pickup");
+  return h.send("Asha Verma");
 }
 
 test("20. confirmation summary lists the details and asks YES/NO", async () => {
@@ -323,6 +326,7 @@ test("20. confirmation summary lists the details and asks YES/NO", async () => {
   const reply = await toConfirm(h);
   assert.equal(reply, [
     "Please confirm your request:",
+    "Name: Asha Verma",
     "Stay: Jaipur",
     "Check-in: Thu 10 Dec 2026",
     "Check-out: Sun 13 Dec 2026 (3 nights)",
@@ -525,7 +529,8 @@ test("31. unknown property asks for clarification and invents nothing", async ()
   const h2 = setup();
   await h2.send("Hi");
   await h2.send("12 Nov to 15 Nov, 2 guests, Agra");
-  assert.match(await h2.send("no"), /Agra is listed as coming soon on our website/);
+  await h2.send("no");
+  assert.match(await h2.send("skip"), /Agra is listed as coming soon on our website/);
 });
 
 test("32. missing ref -> DIRECT", async () => {
@@ -580,9 +585,9 @@ test("34. Redis failure: fixed message with the team number, nothing pretends to
 test("state machine: no reply ever claims availability, prices or a confirmed booking", async () => {
   const h = setup();
   const replies = [];
-  for (const t of ["Hi", "Studio 925 10 Dec to 13 Dec", "3 guests", "airport pickup", "no", "guests 2", "YES"]) replies.push(await h.send(t));
+  for (const t of ["Hi", "Studio 925 10 Dec to 13 Dec", "3 guests", "airport pickup", "Asha", "no", "guests 2", "YES"]) replies.push(await h.send(t));
   for (const r of replies) assert.doesNotMatch(r || "", FORBIDDEN);
-  assert.match(replies[3], /Studio 925 is listed for up to 2 guests\. Our team will advise\./); // capacity noted, not rejected
+  assert.match(replies[4], /Studio 925 is listed for up to 2 guests\. Our team will advise\./); // capacity noted, not rejected
 });
 
 test("dates: day-first numeric dates, ranges, and year roll-over", () => {
