@@ -18,6 +18,12 @@ export const MAX_GUEST_NAME_CHARS = 60;
 const NAME_CHARS = /^[A-Za-zÀ-ɏऀ-ॿ][A-Za-zÀ-ɏऀ-ॿ .'’-]*$/;
 const NOT_A_NAME = /^(ok|okay|k|thanks|thank you|thx|hi|hello|hey|yes|yeah|yep|sure|no|nope|skip|none|na|n\/a|why|what|later|human|agent|stop|start|restart)$/;
 
+const SENTENCE_WORDS = ["a", "an", "the", "and", "or", "to", "for", "in", "at", "on", "of", "with", "from", "is", "are",
+  "am", "was", "be", "we", "us", "our", "you", "your", "me", "my", "want", "wants", "would", "like", "looking", "need",
+  "please", "book", "booking", "stay", "room", "rooms", "studio", "available", "availability", "price", "check",
+  "can", "could", "will", "how", "much", "some", "somewhere", "nice", "quiet", "guests", "people", "night", "nights",
+  "next", "tomorrow", "today", "weekend"];
+
 // The guest's own answer to "May I have your name?". Returns the name as typed (prefixes like "my name is" removed),
 // or null when the reply does not look like a name. Never guesses or completes a name.
 export function parseGuestName(text: string): string | null {
@@ -28,6 +34,9 @@ export function parseGuestName(text: string): string | null {
   if (!t || t.length > MAX_GUEST_NAME_CHARS) return null;
   if (!NAME_CHARS.test(t) || t.split(" ").length > 5) return null;
   if (NOT_A_NAME.test(t.toLowerCase())) return null;
+  // Asked first, so a guest may answer with their enquiry instead ("looking for a stay"): ordinary sentence words
+  // mean it is not a name.
+  if (t.toLowerCase().split(" ").some(function (w) { return SENTENCE_WORDS.indexOf(w) !== -1; })) return null;
   return t;
 }
 

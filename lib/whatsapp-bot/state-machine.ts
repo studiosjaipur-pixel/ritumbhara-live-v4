@@ -115,12 +115,12 @@ export function handoffIdFor(conv: ConversationState): string {
 
 // The first required field still missing decides the next state.
 export function nextState(fields: LeadFields): ConversationStateName {
+  if (typeof fields.guestName !== "string") return "ASK_NAME"; // the name is asked first
   if (!fields.checkIn) return "ASK_DATES";
   if (!fields.checkOut) return "ASK_CHECKOUT";
   if (fields.guests === null) return "ASK_GUESTS";
   if (!fields.destination) return "ASK_STAY";
   if (fields.requirements === null) return "ASK_REQUIREMENTS";
-  if (typeof fields.guestName !== "string") return "ASK_NAME";
   return "CONFIRM";
 }
 
@@ -476,11 +476,11 @@ export function runStateMachine(existing: ConversationState | null, optedOut: bo
 
   if (conv.state === "CONFIRM") return handleConfirm(conv, text, parsed, today, ctx);
 
-  // Asked for the name: a reply that reads as a name is taken as typed (before the date/stay parser, so a name like
-  // "May Sharma" is not read as a date). SKIP/NO leaves it blank. Anything else goes through the normal parsing
-  // (e.g. a correction) and the name is asked again.
+  // Asked for the name: a reply that reads as a name is taken as typed. A reply the parser reads as stay details
+  // (e.g. "Jaipur", "two guests") is not a name: those details are kept and the name is asked again. SKIP/NO leaves
+  // it blank.
   if (conv.state === "ASK_NAME") {
-    const name = parseGuestName(text);
+    const name = parsed.foundAny ? null : parseGuestName(text);
     if (name || isNoneAnswer(text)) {
       conv.fields.guestName = name || "";
       return askNext(conv, [], true, ctx);

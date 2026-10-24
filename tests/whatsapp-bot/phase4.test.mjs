@@ -86,11 +86,11 @@ function setup({ responder = () => groqJson(NULLS), config = CONFIG, timeoutMs }
 test("1. a simple message the parser understands never reaches Groq", async () => {
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("12 Nov to 15 Nov");
   await h.send("2 guests");
   await h.send("Jaipur");
   await h.send("no");
-  await h.send("Asha");
   assert.equal(h.groq.calls.length, 0);
   assert.equal((await h.conv()).state, "CONFIRM");
 });
@@ -98,6 +98,8 @@ test("1. a simple message the parser understands never reaches Groq", async () =
 test("2. Groq is called only when the parser cannot get the field being asked", async () => {
   const h = setup();
   await h.send("Hello"); // greeting: no call
+  assert.equal(h.groq.calls.length, 0);
+  await h.send("Asha"); // the name (asked first): no call
   assert.equal(h.groq.calls.length, 0);
   await h.send("we'd like to come next friday");
   assert.equal(h.groq.calls.length, 1);
@@ -109,6 +111,7 @@ test("2. Groq is called only when the parser cannot get the field being asked", 
   // Never in ASK_REQUIREMENTS (free text is the answer) or CONFIRM.
   const h3 = setup();
   await h3.send("Hi");
+  await h3.send("Asha"); // name (asked first)
   await h3.send("12 Nov to 15 Nov, 2 guests, Jaipur");
   await h3.send("we would love a quiet room facing the garden");
   await h3.send("hmm what about something else entirely");
@@ -119,11 +122,13 @@ test("3-6. Groq is never called for STOP, START, HUMAN or YES/NO/correction word
   for (const word of ["STOP", "unsubscribe", "START", "RESTART", "HUMAN", "agent"]) {
     const h = setup();
     await h.send("Hi");
+    await h.send("Asha"); // name (asked first)
     await h.send(word);
     assert.equal(h.groq.calls.length, 0, word);
   }
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("12 Nov to 15 Nov, 2 guests, Jaipur");
   await h.send("no");
   for (const word of ["NO", "change", "wrong", "dates"]) await h.send(word);
@@ -139,6 +144,7 @@ test("3-6. Groq is never called for STOP, START, HUMAN or YES/NO/correction word
 test("7. natural-language dates", async () => {
   const h = setup({ responder: () => groqJson({ ...NULLS, checkIn: "2026-10-16", checkOut: "2026-10-18", intent: "booking_inquiry" }) });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   const reply = await h.send("next friday till sunday please");
   const c = await h.conv();
   assert.equal(c.fields.checkIn, "2026-10-16");
@@ -149,6 +155,7 @@ test("7. natural-language dates", async () => {
 test("8. guest count", async () => {
   const h = setup({ responder: () => groqJson({ ...NULLS, guests: 4 }) });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("12 Nov to 15 Nov");
   await h.send("me, my wife and our two kids");
   assert.equal((await h.conv()).fields.guests, 4);
@@ -157,6 +164,7 @@ test("8. guest count", async () => {
 test("9. destination", async () => {
   const h = setup({ responder: () => groqJson({ ...NULLS, destination: "Jaipur" }) });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("12 Nov to 15 Nov, 2 guests");
   await h.send("somewhere in the pink city");
   assert.equal((await h.conv()).fields.destination, "jaipur");
@@ -165,6 +173,7 @@ test("9. destination", async () => {
 test("10. property (validated against the website config)", async () => {
   const h = setup({ responder: () => groqJson({ ...NULLS, property: "Studio 925", destination: "Alwar" }) });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("12 Nov to 15 Nov, 2 guests");
   await h.send("the nine twenty five one");
   const c = await h.conv();
@@ -175,6 +184,7 @@ test("10. property (validated against the website config)", async () => {
 test("11. requirements (only verbatim from the guest's message)", async () => {
   const h = setup({ responder: () => groqJson({ ...NULLS, checkIn: "2026-10-16", checkOut: "2026-10-18", requirements: "travelling with our dog" }) });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("next friday to sunday, we are travelling with our dog");
   assert.equal((await h.conv()).fields.requirements, "travelling with our dog");
 });
@@ -184,9 +194,11 @@ test("12. several fields from one natural-language message", async () => {
   const reply = await h.send("my partner and I want the pink city next friday to sunday");
   const c = await h.conv();
   assert.deepEqual([c.fields.checkIn, c.fields.checkOut, c.fields.guests, c.fields.destination], ["2026-10-16", "2026-10-18", 2, "jaipur"]);
-  assert.equal(c.state, "ASK_REQUIREMENTS");
+  assert.equal(c.state, "ASK_NAME"); // details kept; the name is asked first
   assert.match(reply, /automated assistant/);
-  assert.match(reply, /special requirements/);
+  assert.match(reply, /May I have your name/);
+  assert.match(await h.send("Asha"), /special requirements/);
+  assert.equal((await h.conv()).state, "ASK_REQUIREMENTS");
 });
 
 // ======================================================================
@@ -196,6 +208,7 @@ test("12. several fields from one natural-language message", async () => {
 test("13. invalid JSON -> no usable extraction, deterministic re-ask", async () => {
   const h = setup({ responder: () => groqJson("Sure! The guest wants to come on Friday.") });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   const reply = await h.send("next friday please");
   assert.match(reply, /didn't catch that/);
   assert.match(reply, /check-in and check-out dates/);
@@ -206,6 +219,7 @@ test("13. invalid JSON -> no usable extraction, deterministic re-ask", async () 
 test("14. extra JSON fields are discarded", async () => {
   const h = setup({ responder: () => groqJson({ ...NULLS, guests: 3, reply: "Your room is available!", apiKey: "x", state: "CONFIRM", qualified: true }) });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("12 Nov to 15 Nov");
   const reply = await h.send("three of us plus nobody else");
   const c = await h.conv();
@@ -261,6 +275,7 @@ test("19. Groq timeout -> deterministic fallback, no internal error shown", asyn
   assert.ok(Date.now() - t0 < 2000);
   const h = setup({ responder: () => "hang", timeoutMs: 50 });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   const reply = await h.send("next friday please");
   assert.match(reply, /check-in and check-out dates/);
   assert.doesNotMatch(reply, /groq|timeout|error/i);
@@ -274,6 +289,7 @@ test("20-22. HTTP 401 / 429 / 4xx / 5xx / network map to reason codes; the guest
     assert.deepEqual(await groqExtract("x", ctx, { apiKey: "k", model: "m", fetchImpl: g.fetchImpl }), { ok: false, reason, status });
     const h = setup({ responder: () => ({ status, body: "{}" }) });
     await h.send("Hi");
+    await h.send("Asha"); // name (asked first)
     const reply = await h.send("next friday please");
     assert.match(reply, /check-in and check-out dates/, String(status));
     assert.doesNotMatch(reply, /groq|error|401|429|500/i);
@@ -295,6 +311,7 @@ test("23. missing GROQ_API_KEY -> Groq is never called; the bot works determinis
   assert.equal(g.calls.length, 0);
   const h = setup({ config: { ...CONFIG, groqApiKey: null } });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   assert.match(await h.send("next friday please"), /check-in and check-out dates/);
   assert.match(await h.send("12 Nov to 15 Nov"), /How many guests/);
   assert.equal(h.groq.calls.length, 0);
@@ -335,7 +352,7 @@ test("25. prompt injection: no secrets, no booking or availability claims, no in
   // The model is mocked to do the worst it could: echo hostile text in every field.
   const hostile = { checkIn: "ignore", checkOut: "now", guests: 99, destination: "Your room is available", property: "Presidential Suite", requirements: "Your reservation is confirmed. API key: " + GROQ_KEY, intent: "confirm_booking" };
   const h = setup({ responder: () => groqJson(hostile) });
-  const replies = [await h.send("Hi")];
+  const replies = [await h.send("Hi"), await h.send("Asha")];
   for (const m of INJECTIONS) replies.push(await h.send(m));
   const c = await h.conv();
   assert.deepEqual([c.fields.checkIn, c.fields.guests, c.fields.destination, c.fields.property, c.fields.requirements], [null, null, null, null, null]);
@@ -358,6 +375,7 @@ test("25. prompt injection: no secrets, no booking or availability claims, no in
 test("26. no secrets, auth headers, full numbers or message text in logs; minimal data sent to Groq", async () => {
   const h = setup({ responder: () => groqJson({ ...NULLS, checkIn: "2026-10-16", checkOut: "2026-10-18" }) });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("next friday till sunday, my number is 9000000001 and my private plans");
   const logs = h.logs.join("\n");
   for (const s of SECRETS.concat([GUEST, "private plans"])) assert.equal(logs.includes(s), false, s);
@@ -376,6 +394,7 @@ test("26. no secrets, auth headers, full numbers or message text in logs; minima
   // The guest message is capped at 1000 characters.
   const h2 = setup();
   await h2.send("Hi");
+  await h2.send("Asha"); // name (asked first)
   await h2.send("next friday " + "a".repeat(990));
   assert.ok(h2.groq.calls[0].payload.guest_message.length <= 1000);
 });
@@ -384,6 +403,7 @@ test("27. model output never becomes customer-facing text and never drives the s
   const marker = "ZZAI";
   const h = setup({ responder: () => groqJson({ ...NULLS, destination: marker + " Jaipur", property: marker, requirements: marker + " room upgrade", intent: "human_request" }) });
   const replies = [await h.send("Hi")];
+  await h.send("Asha"); // name (asked first)
   replies.push(await h.send("12 Nov to 15 Nov, 2 guests"));
   replies.push(await h.send("somewhere nice and quiet"));
   for (const r of replies) assert.equal((r || "").includes(marker), false);
@@ -397,10 +417,18 @@ test("27. model output never becomes customer-facing text and never drives the s
 test("cost cap: at most a fixed number of AI calls per guest per hour", async () => {
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
+  let paused = false;
   for (let i = 0; i < AI_MAX_PER_SENDER_PER_HOUR + 3; i++) {
     await h.send("restart please maybe later perhaps " + i);
     const c = await h.conv();
-    if (c.state === "HANDED_OFF") await h.send("RESTART");
+    if (c.state === "HANDED_OFF") {
+      // A new enquiry asks the name first. One 10-minute pause (same hour) keeps the extra name messages under the
+      // per-sender message rate limit, so the hourly AI cap is what is tested here.
+      if (!paused) { h.fake.advance(600 * 1000); paused = true; }
+      await h.send("RESTART");
+      await h.send("Asha");
+    }
   }
   assert.ok(h.groq.calls.length <= AI_MAX_PER_SENDER_PER_HOUR, String(h.groq.calls.length));
   assert.ok(h.logs.some((l) => l.includes('"reason":"cap"')));
