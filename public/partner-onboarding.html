@@ -116,6 +116,27 @@
 
   .ref{font-size:11.5px;color:#8a8378;text-align:center;margin-top:10px;}
 
+  .agreement-doc{max-height:520px;overflow-y:auto;background:var(--ivory);border:1px solid var(--sand-line);border-radius:2px;padding:26px 28px;margin:0 0 24px;font-size:13px;line-height:1.75;color:var(--ink);}
+  .agreement-doc h3{font-family:'Italiana',serif;font-weight:400;font-size:19px;margin:22px 0 8px;color:var(--crimson);}
+  .agreement-doc h4{font-size:13.5px;font-weight:600;margin:18px 0 6px;}
+  .agreement-doc p{margin:0 0 10px;}
+  .agreement-doc p.c{text-align:center;}
+  .agreement-doc ul{margin:0 0 12px;padding-left:20px;}
+  .agreement-doc table{width:100%;border-collapse:collapse;margin:8px 0 16px;font-size:12.5px;}
+  .agreement-doc td{border:1px solid var(--sand-line);padding:8px 10px;vertical-align:top;background:var(--white);}
+  .agreement-doc b{font-weight:600;}
+  .agreement-doc .sig-line,.agreement-doc .date-line{display:inline-block;border-bottom:1px solid var(--ink-soft);width:150px;height:14px;vertical-align:bottom;}
+  .agreement-doc .date-line{width:90px;}
+  .agreement-state{font-size:13px;color:var(--ink-soft);text-align:center;padding:30px 10px;}
+  .agreement-state .err-text{color:var(--danger);display:block;margin-bottom:12px;}
+  .sign-block{border-top:1px solid var(--sand-line);padding-top:24px;}
+  .sign-block h4{font-family:'Italiana',serif;font-weight:400;font-size:19px;margin:0 0 6px;}
+  .sign-block .step-sub{margin-bottom:18px;}
+  .sig-pad{width:100%;height:170px;display:block;background:var(--ivory);border:1px dashed #cbbda6;border-radius:2px;touch-action:none;cursor:crosshair;}
+  .sig-tools{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-size:11.5px;color:#8a8378;}
+  .btn-small{padding:6px 12px;font-size:12px;}
+  .submit-err{font-size:12.5px;color:var(--danger);margin-top:14px;text-align:right;display:none;}
+
   .site-footer{border-top:1px solid var(--sand-line);padding:28px 24px 40px;text-align:center;margin-top:16px;}
   .site-footer p{font-size:11.5px;color:#8a8378;margin:0;letter-spacing:.01em;}
 </style>
@@ -142,7 +163,7 @@
 <script>
 const SUBMIT_URL = "https://script.google.com/macros/s/AKfycbyU_UAwyUYqfbbrEVED_hbP2uzovPpZKpDBNLbvAbgAa2x4W3MyyBT3HPUlIu1FZ-msLg/exec";
 
-const steps = ['Owner details','Property details','Payout details','Documents','Agreement','Review'];
+const steps = ['Owner details','Property details','Payout details','Documents','Agreement & signing','Review'];
 let current = 0;
 let submitting = false;
 const data = {
@@ -150,8 +171,13 @@ const data = {
   ownerName:'', ownerPhone:'', ownerEmail:'', ownerAddress:'', ownerPan:'',
   propName:'', propCity:'', propCityOther:'', propAddress:'', propType:'', propRooms:'', propAmenities:'', propStatus:'',
   bankName:'', bankAccName:'', bankAccNo:'', bankIfsc:'', bankUpi:'',
-  consent:false
+  consent:false,
+  signName:'', signImage:'', signConsent:false, signedAt:'',
+  reference:''
 };
+// Agreement preview (FOCO): the filled agreement comes from the onboarding web app, built from the same
+// Google Doc template that the signed copy is generated from.
+const agreement = {key:'', html:'', loading:false, error:'', signMode:''};
 
 const partnershipModels = [
   {value:'FOCO', title:'FOCO — Franchise-Owned, Company-Operated', desc:'You own the property. Ritumbhara manages day-to-day operations, guest experience, and distribution.'},
@@ -280,33 +306,33 @@ function stepBody(i){
 
   if(i===4){
     const isFofo = String(data.partnershipModel||'').startsWith('FOFO');
-    const termsHeading = isFofo ? 'Ritumbhara Standard — FOFO terms' : 'Ritumbhara Standard — FOCO terms';
-    const termsSub = isFofo ? 'The FOFO terms that will govern our partnership.' : 'The FOCO terms that will govern our partnership.';
-    const termsList = isFofo ? `
-        <li><b>Model:</b> Franchise-Owned, Franchise-Operated — you own and operate the property yourself, under the Ritumbhara brand, SOPs, and design standards, with access to our booking distribution and marketing.</li>
-        <li><b>Standards:</b> Property is operated to the Ritumbhara Standard, with periodic quality audits.</li>
-        <li><b>Detailed terms:</b> Term length, fees, and other commercials will be shared with you in the comprehensive partnership agreement.</li>` : `
-        <li><b>Model:</b> Franchise-Owned, Company-Operated — you own the property; Ritumbhara manages day-to-day operations, guest experience, and distribution.</li>
-        <li><b>Standards:</b> Property is maintained and operated to the Ritumbhara Standard.</li>
-        <li><b>Detailed terms:</b> Term length, profit-share, and other commercials will be shared with you in the comprehensive partnership agreement.</li>`;
-    const agreeBox = data.partnershipModel ? `
-    <div class="agree-box">
-      <h4>${termsHeading}</h4>
-      <ul>${termsList}
-      </ul>
-    </div>` : '';
-    return `
+    const isFoco = data.partnershipModel === 'FOCO';
+    const head = `
     <p class="step-eyebrow">Step 05</p>
     <h2 class="step-title">Partnership agreement</h2>
-    <p class="step-sub">${data.partnershipModel ? termsSub : 'Choose your preferred partnership model to see the terms that will govern our partnership.'}</p>
+    <p class="step-sub">${isFoco ? 'Please read your agreement below. It has been filled in with the details you gave us.' : (isFofo ? 'The FOFO terms that will govern our partnership.' : 'Choose your preferred partnership model to see the agreement that will govern our partnership.')}</p>
     <div class="field-row single">
       ${modelField()}
+    </div>`;
+
+    if(isFoco) return head + `
+    <div class="agreement-doc" id="agreementDoc">${agreementBoxHtml()}</div>
+    <div id="signBlock">${signBlockHtml()}</div>`;
+
+    const agreeBox = isFofo ? `
+    <div class="agree-box">
+      <h4>Ritumbhara Standard — FOFO terms</h4>
+      <ul>
+        <li><b>Model:</b> Franchise-Owned, Franchise-Operated — you own and operate the property yourself, under the Ritumbhara brand, SOPs, and design standards, with access to our booking distribution and marketing.</li>
+        <li><b>Standards:</b> Property is operated to the Ritumbhara Standard, with periodic quality audits.</li>
+        <li><b>Detailed terms:</b> Term length, fees, and other commercials will be shared with you in the comprehensive partnership agreement.</li>
+      </ul>
     </div>
-    ${agreeBox}
     <div class="consent">
       <input type="checkbox" id="consentBox" ${data.consent?'checked':''}>
       <label for="consentBox">I understand these are indicative terms. A detailed partner prospectus and formal agreement will follow before anything is binding, and I consent to Ritumbhara contacting me to proceed.</label>
-    </div>`;
+    </div>` : '';
+    return head + agreeBox;
   }
 
   if(i===5) return renderReview();
@@ -323,6 +349,134 @@ function docItem(d){
     <input type="file" accept="image/*,application/pdf" multiple data-doc="${d.key}">
     ${fileNames}
   </div>`;
+}
+
+function previewPayload(){
+  return {
+    partnershipModel: data.partnershipModel,
+    ownerName: data.ownerName, phone: data.ownerPhone, email: data.ownerEmail, pan: data.ownerPan, ownerAddress: data.ownerAddress,
+    propertyName: data.propName, city: (data.propCity==='Other'?data.propCityOther:data.propCity), propertyType: data.propType, bedrooms: data.propRooms,
+    status: data.propStatus, amenities: data.propAmenities, propertyAddress: data.propAddress,
+    accountHolder: data.bankAccName, bank: data.bankName, accountNumber: data.bankAccNo, ifsc: data.bankIfsc, upi: data.bankUpi
+  };
+}
+
+function agreementReady(){ return agreement.key===JSON.stringify(previewPayload()) && !!agreement.html; }
+function isAadhaar(){ return agreementReady() && agreement.signMode==='aadhaar'; }
+
+function signBlockHtml(){
+  if(!agreementReady()) return '';
+  if(agreement.signMode==='aadhaar') return `
+    <div class="sign-block">
+      <h4>Sign with Aadhaar</h4>
+      <p class="step-sub">After you submit, you'll sign this agreement with Aadhaar eSign through Digio, a government-licensed eSign provider. Keep your Aadhaar-linked mobile handy for the OTP. Ritumbhara then signs the same way, and we'll email the final signed copy to ${data.ownerEmail || 'you'}.</p>
+      <div class="consent">
+        <input type="checkbox" id="signConsentBox" ${data.signConsent?'checked':''}>
+        <label for="signConsentBox">I have read this agreement and agree to its terms. I'll sign it with Aadhaar eSign, and I understand it becomes binding once both parties have signed.</label>
+      </div>
+    </div>`;
+  return `
+    <div class="sign-block">
+      <h4>Sign the agreement</h4>
+      <p class="step-sub">Ritumbhara will countersign, and we'll email the final signed copy to ${data.ownerEmail || 'you'}.</p>
+      <div class="field-row single">
+        ${field('signName','Type your full name',{required:true,placeholder:data.ownerName||'Full name'})}
+      </div>
+      <div class="field" id="f_signImage">
+        <label>Draw your signature<span class="req"> *</span></label>
+        <canvas class="sig-pad" id="sigPad"></canvas>
+        <div class="sig-tools"><span>Use your mouse, or your finger on a phone</span><button type="button" class="btn-ghost btn-small" id="sigClear">Clear</button></div>
+        <div class="err">Please draw your signature.</div>
+      </div>
+      <div class="consent">
+        <input type="checkbox" id="signConsentBox" ${data.signConsent?'checked':''}>
+        <label for="signConsentBox">I have read this agreement and agree to its terms. I'm signing it electronically, and I understand it becomes binding once Ritumbhara countersigns it.</label>
+      </div>
+    </div>`;
+}
+
+function bindSignBlock(){
+  const sc = document.getElementById('signConsentBox');
+  if(sc) sc.addEventListener('change', ()=>{ data.signConsent = sc.checked; });
+  const sn = document.querySelector('[data-field="signName"]');
+  if(sn) sn.addEventListener('input', ()=>{ data.signName = sn.value; clearError('signName'); });
+  setupSignaturePad();
+}
+
+function agreementBoxHtml(){
+  const key = JSON.stringify(previewPayload());
+  if(agreement.key===key && agreement.html) return agreement.html;
+  if(agreement.error && agreement.key===key) return `<div class="agreement-state"><span class="err-text">${agreement.error}</span><button type="button" class="btn-ghost btn-small" id="agreementRetry">Try again</button></div>`;
+  return '<div class="agreement-state">Preparing your agreement&hellip;</div>';
+}
+
+async function loadAgreement(){
+  const key = JSON.stringify(previewPayload());
+  if(agreement.loading || (agreement.key===key && (agreement.html || agreement.error))) return;
+  agreement.loading = true; agreement.key = key; agreement.html = ''; agreement.error = '';
+  try{
+    const r = await fetch(SUBMIT_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({action:'preview', data: previewPayload()})});
+    const res = await r.json();
+    if(res && res.ok && res.html){ agreement.html = res.html; agreement.signMode = res.signMode==='aadhaar' ? 'aadhaar' : 'drawn'; }
+    else agreement.error = 'We couldn’t load your agreement just now.';
+  }catch(err){
+    agreement.error = 'We couldn’t load your agreement. Please check your connection.';
+  }
+  agreement.loading = false;
+  const box = document.getElementById('agreementDoc');
+  if(box && current===4){
+    box.innerHTML = agreementBoxHtml(); bindAgreementRetry();
+    const sb = document.getElementById('signBlock');
+    if(sb){ sb.innerHTML = signBlockHtml(); bindSignBlock(); }
+  }
+}
+
+function bindAgreementRetry(){
+  document.getElementById('agreementRetry')?.addEventListener('click', ()=>{
+    agreement.error=''; agreement.key=''; document.getElementById('agreementDoc').innerHTML = agreementBoxHtml(); loadAgreement();
+  });
+}
+
+// Any change to the details the agreement is built from voids an existing signature.
+function resetSignature(){
+  if(data.signImage || data.signConsent){ data.signImage=''; data.signConsent=false; data.signedAt=''; }
+}
+
+function setupSignaturePad(){
+  const c = document.getElementById('sigPad');
+  if(!c) return;
+  const ctx = c.getContext('2d');
+  const ratio = window.devicePixelRatio || 1;
+  const rect = c.getBoundingClientRect();
+  c.width = Math.round(rect.width * ratio); c.height = Math.round(rect.height * ratio);
+  ctx.scale(ratio, ratio);
+  ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1d1a17';
+  if(data.signImage){
+    const img = new Image();
+    img.onload = ()=> ctx.drawImage(img, 0, 0, rect.width, rect.height);
+    img.src = data.signImage;
+  }
+  let drawing = false, last = null;
+  const pos = (e)=>{ const r = c.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; };
+  c.addEventListener('pointerdown', (e)=>{ drawing = true; last = pos(e); c.setPointerCapture(e.pointerId); e.preventDefault(); });
+  c.addEventListener('pointermove', (e)=>{
+    if(!drawing) return;
+    const p = pos(e);
+    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    last = p; data.signImage = 'pending';
+  });
+  const end = ()=>{
+    if(!drawing) return;
+    drawing = false;
+    data.signImage = c.toDataURL('image/png');
+    data.signedAt = new Date().toISOString();
+    clearError('signImage');
+  };
+  c.addEventListener('pointerup', end);
+  c.addEventListener('pointercancel', end);
+  document.getElementById('sigClear')?.addEventListener('click', ()=>{
+    ctx.clearRect(0, 0, c.width, c.height); data.signImage = ''; data.signedAt = '';
+  });
 }
 
 function renderReview(){
@@ -344,14 +498,22 @@ function renderReview(){
     <div class="review-block"><h4>Payout</h4><div class="review-grid">
       ${rows([['Account holder',data.bankAccName],['Bank',data.bankName],['Account no.',data.bankAccNo],['IFSC',data.bankIfsc],['UPI',data.bankUpi]])}
     </div></div>
-    <div class="review-block"><h4>Documents</h4><div class="review-grid">${rows([['Uploaded',docSummary]])}</div></div>`;
+    <div class="review-block"><h4>Documents</h4><div class="review-grid">${rows([['Uploaded',docSummary]])}</div></div>
+    <div class="review-block"><h4>Agreement</h4><div class="review-grid">
+      ${data.partnershipModel==='FOCO' && isAadhaar()
+        ? rows([['Status','Accepted by you &mdash; you\u2019ll sign with Aadhaar right after you submit']])
+        : data.partnershipModel==='FOCO'
+        ? rows([['Status','Signed by you &mdash; awaiting Ritumbhara’s countersignature'],['Signed as',data.signName]])
+        : rows([['Status','Indicative terms accepted &mdash; formal agreement to follow']])}
+    </div></div>`;
 }
 
 function bindInputs(){
   document.querySelectorAll('[data-field]').forEach(el=>{
-    el.addEventListener('input', ()=>{ data[el.dataset.field]=el.value; clearError(el.dataset.field); });
+    el.addEventListener('input', ()=>{ data[el.dataset.field]=el.value; clearError(el.dataset.field); if(current<4) resetSignature(); });
     el.addEventListener('change', ()=>{
       data[el.dataset.field]=el.value; clearError(el.dataset.field);
+      if(current<4) resetSignature();
       if(el.dataset.field==='propCity' || el.dataset.field==='partnershipModel') renderCard();
     });
   });
@@ -372,6 +534,7 @@ function bindInputs(){
   });
   const cb = document.getElementById('consentBox');
   if(cb) cb.addEventListener('change', ()=>{ data.consent = cb.checked; });
+  if(current===4 && data.partnershipModel==='FOCO'){ bindSignBlock(); bindAgreementRetry(); loadAgreement(); }
 }
 
 function fileToBase64(file){
@@ -409,7 +572,16 @@ function validateStep(i){
       ok = false;
     }
   });
-  if(i===4 && !data.consent){ ok = false; alert('Please confirm you understand the indicative terms to continue.'); }
+  if(i===4 && data.partnershipModel==='FOCO'){
+    if(!agreementReady()){ ok = false; alert('Your agreement is still loading. Please wait a moment and try again.'); return ok; }
+    if(isAadhaar()){
+      if(!data.signConsent){ ok = false; alert('Please confirm you have read and agree to the agreement to continue.'); }
+      return ok;
+    }
+    if(!String(data.signName||'').trim()){ document.getElementById('f_signName')?.classList.add('invalid'); ok = false; }
+    if(!data.signImage || data.signImage==='pending'){ document.getElementById('f_signImage')?.classList.add('invalid'); ok = false; }
+    if(ok && !data.signConsent){ ok = false; alert('Please confirm you have read and agree to the agreement to continue.'); }
+  } else if(i===4 && data.partnershipModel && !data.consent){ ok = false; alert('Please confirm you understand the indicative terms to continue.'); }
   if(i===1 && data.propCity==='Other' && !String(data.propCityOther||'').trim()){
     const wrap = document.getElementById('f_propCityOther');
     if(wrap) wrap.classList.add('invalid');
@@ -425,8 +597,9 @@ function renderCard(){
       <button class="btn-ghost" id="backBtn" ${current===0?'style="visibility:hidden"':''}>Back</button>
       ${current < steps.length-1
         ? `<button class="btn-primary" id="nextBtn">Continue</button>`
-        : `<button class="btn-primary" id="submitBtn">Submit application</button>`}
-    </div>`;
+        : `<button class="btn-primary" id="submitBtn">${data.partnershipModel==='FOCO' ? (isAadhaar() ? 'Submit and sign with Aadhaar' : 'Submit signed agreement') : 'Submit application'}</button>`}
+    </div>
+    <div class="submit-err" id="submitErr"></div>`;
   bindInputs();
   document.getElementById('backBtn')?.addEventListener('click', ()=>{ current--; renderAll(); });
   document.getElementById('nextBtn')?.addEventListener('click', ()=>{
@@ -449,52 +622,79 @@ async function submitForm(){
   if(submitting) return;
   submitting = true;
   const btn = document.getElementById('submitBtn');
+  const label = btn ? btn.textContent : '';
+  const errBox = document.getElementById('submitErr');
+  if(errBox) errBox.style.display = 'none';
   if(btn){ btn.disabled = true; btn.textContent = 'Submitting…'; }
 
-  const ref = 'RTB-' + Date.now().toString().slice(-8);
-  const payload = {
-    reference: ref,
-    partnershipModel: data.partnershipModel,
-    ownerName: data.ownerName, phone: data.ownerPhone, email: data.ownerEmail, pan: data.ownerPan, ownerAddress: data.ownerAddress,
-    propertyName: data.propName, city: (data.propCity==='Other'?data.propCityOther:data.propCity), propertyType: data.propType, bedrooms: data.propRooms,
-    status: data.propStatus, amenities: data.propAmenities, propertyAddress: data.propAddress,
-    accountHolder: data.bankAccName, bank: data.bankName, accountNumber: data.bankAccNo, ifsc: data.bankIfsc, upi: data.bankUpi,
+  // One reference per application, so a retry never creates a duplicate.
+  if(!data.reference) data.reference = 'RTB-' + Date.now().toString().slice(-8);
+  const ref = data.reference;
+  const payload = Object.assign({ reference: ref }, previewPayload(), {
     documents: Object.keys(docFiles).filter(k=>docFiles[k]&&docFiles[k].length).join(', '),
     files: collectFilesArray()
-  };
+  });
+  if(data.partnershipModel==='FOCO' && isAadhaar()){
+    payload.agreementAccepted = true;
+    payload.acceptedAt = new Date().toISOString();
+    payload.userAgent = navigator.userAgent;
+  } else if(data.partnershipModel==='FOCO' && data.signImage){
+    payload.signature = {
+      name: String(data.signName||'').trim(),
+      image: String(data.signImage).split(',')[1] || '',
+      signedAt: data.signedAt,
+      userAgent: navigator.userAgent
+    };
+  }
 
+  let res = null;
   try{
-    await fetch(SUBMIT_URL, {
+    const r = await fetch(SUBMIT_URL, {
       method: 'POST',
-      mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     });
+    res = await r.json();
   }catch(err){
-    // no-cors gives no readable response either way; never block the success screen
+    res = null;
   }
+  submitting = false;
 
-  showSuccess(ref);
+  if(res && res.ok){ showSuccess(ref, res); return; }
+  if(btn){ btn.disabled = false; btn.textContent = label; }
+  if(errBox){
+    errBox.textContent = 'We couldn’t confirm your submission. Please try again — submitting again won’t create a duplicate.';
+    errBox.style.display = 'block';
+  }
 }
 
-function showSuccess(ref){
+function showSuccess(ref, res){
   const card = document.getElementById('card');
+  const first = (data.ownerName||'partner').split(' ')[0];
   document.getElementById('rail').innerHTML = steps.map((s)=>`<div class="rail-item done"><div class="tag">&#10003;</div><div class="rail-label">${s}</div></div>`).join('');
+  const status = (res && res.agreementStatus) || '';
+  let title = 'Application received';
+  let text = `Thank you, ${first}. Our partnerships team will review your property and reach out within 2&ndash;3 business days to schedule a site visit.`;
+  const signUrl = res && /^https:\/\/[a-z0-9.-]*digio\.in[:\/]/i.test(String(res.signUrl||'')) ? String(res.signUrl) : '';
+  if(status==='awaiting_owner_esign'){
+    title = 'One last step: sign with Aadhaar';
+    text = signUrl
+      ? `Thank you, ${first}. Your application is in. Please sign the agreement with Aadhaar now &mdash; you'll get an OTP on your Aadhaar-linked mobile. We've also emailed this link to ${data.ownerEmail}.`
+      : `Thank you, ${first}. Your application is in. Our eSign provider, Digio, will email you a link to sign the agreement with Aadhaar.`;
+  } else if(status==='awaiting_countersignature'){
+    title = 'Agreement signed';
+    text = `Thank you, ${first}. We've received your application and your signed agreement. Once Ritumbhara countersigns, we'll email the final signed copy to ${data.ownerEmail}.`;
+  } else if(data.partnershipModel==='FOCO'){
+    text = `Thank you, ${first}. We've received your application. Our partnerships team will send your agreement for signature and reach out within 2&ndash;3 business days.`;
+  }
   card.innerHTML = `
     <div class="success">
       <div class="stamp">R</div>
-      <h2>Application received</h2>
-      <p>Thank you, ${(data.ownerName||'partner').split(' ')[0]}. Our partnerships team will review your property and reach out within 2&ndash;3 business days to schedule a site visit.</p>
-      <div class="actions">
-        <button class="btn-ghost" id="emailBtn">Email a copy to yourself</button>
-      </div>
+      <h2>${title}</h2>
+      <p>${text}</p>
+      ${status==='awaiting_owner_esign' && signUrl ? `<div class="actions"><a class="btn-primary" id="aadhaarBtn" style="text-decoration:none;padding:13px 26px;border-radius:2px;font-size:13.5px" href="${signUrl.replace(/"/g,'&quot;')}">Sign with Aadhaar</a></div>` : ''}
       <p class="ref">Reference: ${ref}</p>
     </div>`;
-  document.getElementById('emailBtn').addEventListener('click', ()=>{
-    const subject = encodeURIComponent('Your Ritumbhara application — ' + ref);
-    const body = encodeURIComponent('Your onboarding application (' + ref + ') has been submitted. Our partnerships team will be in touch within 2-3 business days.');
-    window.location.href = `mailto:${data.ownerEmail || ''}?subject=${subject}&body=${body}`;
-  });
   window.scrollTo({top:0,behavior:'smooth'});
 }
 

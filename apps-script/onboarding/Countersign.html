@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<style>
+  body{margin:0;background:#FBF7F1;color:#241F1C;font-family:Poppins,Arial,sans-serif;}
+  .wrap{max-width:640px;margin:0 auto;padding:40px 20px;}
+  .brand{font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:#BF2542;margin:0 0 14px;}
+  h1{font-weight:400;font-size:26px;margin:0 0 20px;}
+  .card{background:#fff;border:1px solid #e3d7c3;padding:28px;border-radius:2px;}
+  .grid{display:grid;grid-template-columns:140px 1fr;gap:8px 16px;font-size:14px;margin-bottom:20px;}
+  .grid div:nth-child(odd){color:#8a8378;font-size:12.5px;padding-top:2px;}
+  a{color:#BF2542;}
+  label{display:block;font-size:12.5px;color:#5b544e;margin:18px 0 7px;}
+  input[type=text]{width:100%;box-sizing:border-box;font-size:14.5px;padding:11px 13px;border:1px solid #e3d7c3;background:#FBF7F1;border-radius:2px;}
+  canvas{width:100%;height:160px;background:#FBF7F1;border:1px dashed #cbbda6;border-radius:2px;touch-action:none;display:block;}
+  .row{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:12px;color:#8a8378;}
+  .consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#5b544e;margin-top:18px;line-height:1.6;}
+  button{font-family:inherit;font-size:13.5px;cursor:pointer;border-radius:2px;padding:12px 24px;}
+  .primary{background:#BF2542;color:#fff;border:1px solid #BF2542;margin-top:22px;}
+  .primary:disabled{opacity:.6;cursor:wait;}
+  .ghost{background:transparent;border:1px solid #e3d7c3;color:#5b544e;padding:6px 12px;font-size:12px;}
+  .msg{margin-top:14px;font-size:13.5px;}
+  .err{color:#B3261E;}
+  .ok{color:#2e6b3a;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="brand">Ritumbhara &mdash; Countersign</p>
+  <h1>Partnership agreement</h1>
+  <div class="card" id="card"></div>
+</div>
+<script>
+  var INFO = <?!= JSON.stringify(info).replace(/</g, '\\u003c') ?>;
+  var REF = <?!= JSON.stringify(ref).replace(/</g, '\\u003c') ?>;
+  var TOKEN = <?!= JSON.stringify(token).replace(/</g, '\\u003c') ?>;
+
+  function esc(s){ return String(s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  var card = document.getElementById('card');
+
+  if(!INFO.ok){
+    card.innerHTML = '<p class="err">' + esc(INFO.error) + '</p>';
+  } else {
+    var details = '<div class="grid">' +
+      '<div>Reference</div><div>' + esc(INFO.ref) + '</div>' +
+      '<div>Asset owner</div><div>' + esc(INFO.ownerName) + ' (' + esc(INFO.ownerEmail) + ')</div>' +
+      '<div>Property</div><div>' + esc(INFO.propertyName) + (INFO.city ? ', ' + esc(INFO.city) : '') + '</div>' +
+      '<div>Owner signed</div><div>' + esc(INFO.signedAt) + ' IST, as &ldquo;' + esc(INFO.typedName) + '&rdquo;</div>' +
+      '<div>Status</div><div>' + esc(INFO.status) + '</div>' +
+      '</div>' +
+      '<p style="font-size:14px"><a href="' + esc(INFO.pdfUrl) + '" target="_blank">Read the owner-signed PDF</a> &middot; <a href="' + esc(INFO.docUrl) + '" target="_blank">Open the doc</a></p>';
+
+    if(INFO.status === 'Executed'){
+      card.innerHTML = details + '<p class="ok">Already countersigned. <a href="' + esc(INFO.executedUrl) + '" target="_blank">Executed PDF</a></p>';
+    } else if(INFO.status !== 'Awaiting countersignature'){
+      card.innerHTML = details + '<p class="err">This agreement is not awaiting countersignature.</p>';
+    } else {
+      card.innerHTML = details +
+        '<label for="name">Signing for LilacMosaic Technologies Pvt. Ltd.</label>' +
+        '<input type="text" id="name" value="Shivam Lohiya">' +
+        '<label>Signature</label><canvas id="pad"></canvas>' +
+        '<div class="row"><span>Sign with your mouse or finger</span><button class="ghost" id="clear" type="button">Clear</button></div>' +
+        '<div class="consent"><input type="checkbox" id="agree"><span>I have reviewed the owner-signed agreement and countersign it on behalf of the Management Entity. The executed copy will be emailed to the asset owner.</span></div>' +
+        '<button class="primary" id="go" type="button">Countersign and send to owner</button>' +
+        '<div class="msg" id="msg"></div>';
+      setupPad();
+    }
+  }
+
+  function setupPad(){
+    var c = document.getElementById('pad'), ctx = c.getContext('2d'), drawing = false, inked = false, last = null;
+    function size(){ var r = c.getBoundingClientRect(), d = window.devicePixelRatio||1; c.width = r.width*d; c.height = r.height*d; ctx.scale(d,d); ctx.lineWidth = 2.2; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#1d1a17'; inked=false; }
+    size();
+    function pos(e){ var r = c.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; }
+    c.addEventListener('pointerdown', function(e){ drawing=true; last=pos(e); c.setPointerCapture(e.pointerId); });
+    c.addEventListener('pointermove', function(e){ if(!drawing) return; var p=pos(e); ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke(); last=p; inked=true; });
+    c.addEventListener('pointerup', function(){ drawing=false; });
+    document.getElementById('clear').onclick = function(){ ctx.clearRect(0,0,c.width,c.height); inked=false; };
+    document.getElementById('go').onclick = function(){
+      var msg = document.getElementById('msg'), btn = this;
+      var name = document.getElementById('name').value.trim();
+      if(!name){ msg.className='msg err'; msg.textContent='Please type your name.'; return; }
+      if(!inked){ msg.className='msg err'; msg.textContent='Please draw your signature.'; return; }
+      if(!document.getElementById('agree').checked){ msg.className='msg err'; msg.textContent='Please tick the confirmation box.'; return; }
+      btn.disabled = true; btn.textContent = 'Signing…'; msg.textContent='';
+      google.script.run
+        .withSuccessHandler(function(res){
+          if(res && res.ok){
+            card.innerHTML = '<p class="ok">Done. The agreement is executed and the copy has been emailed to ' + esc(INFO.ownerEmail) + '.</p>' +
+              (res.pdfUrl ? '<p><a href="' + esc(res.pdfUrl) + '" target="_blank">Open the executed PDF</a></p>' : '');
+          } else {
+            btn.disabled=false; btn.textContent='Countersign and send to owner';
+            msg.className='msg err'; msg.textContent=(res && res.error) || 'Something went wrong.';
+          }
+        })
+        .withFailureHandler(function(err){
+          btn.disabled=false; btn.textContent='Countersign and send to owner';
+          msg.className='msg err'; msg.textContent='Something went wrong: ' + (err && err.message || err);
+        })
+        .countersign(REF, TOKEN, c.toDataURL('image/png').split(',')[1], name);
+    };
+  }
+</script>
+</body>
+</html>
