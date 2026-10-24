@@ -14,7 +14,8 @@ import {
 
 test("headers: Status stays in column C; Email Status stays in column T; the two new columns follow it", () => {
   const { gs } = createEnv();
-  assert.equal(gs.QUALIFIED_HEADERS.length, 24); // + Score and Priority (Step 2, see lead-score.test.mjs)
+  assert.equal(gs.QUALIFIED_HEADERS.length, 25); // + Score and Priority (Step 2, see lead-score.test.mjs) + Guest Name
+  assert.equal(gs.QUALIFIED_HEADERS[24], "Guest Name"); // the name the guest typed, appended at the end
   // Handoffs: + Guest Name and Booking Code (Guest Escalation leads), appended at the end.
   assert.equal(gs.HANDOFF_HEADERS.length, 26);
   assert.equal(JSON.stringify(gs.HANDOFF_HEADERS.slice(24)), JSON.stringify(["Guest Name", "Booking Code"]));
@@ -315,7 +316,7 @@ test("setupLeadStatusTracking is safe to re-run: no duplicate trigger or column,
   const second = env.gs.setupLeadStatusTracking();
   assert.equal(second.trigger, "already installed");
   assert.equal(env.triggers.length, 1);
-  assert.equal(q.headers().length, 24);
+  assert.equal(q.headers().length, 25);
   assert.equal(q.cell(2, nxt), "2026-10-20 10:00:00");
   assert.equal(q.cell(3, nxt), "");
   assert.equal(second.tabs["Qualified Leads"].followUpsCleared, 1);

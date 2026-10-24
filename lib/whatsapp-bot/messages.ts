@@ -15,9 +15,11 @@ export const MESSAGES = {
   askGuests: "How many guests will be staying?",
   askGuestsExact: "How many guests exactly?",
   askRequirements: "Any special requirements or preferences? For example: airport pickup or travelling with kids. Reply NO if none.",
+  askName: "May I have your name, please? Reply SKIP if you'd rather not share it.",
+  invalidName: "Sorry, I couldn't read that as a name.",
   didNotUnderstand: "Sorry, I didn't catch that.",
   askCorrection:
-    "No problem. What should I change? For example: \"guests 3\", \"check-in 12 Dec\", \"check-out 15 Dec\", \"stay Alwar\" or \"requirements: late arrival\".",
+    "No problem. What should I change? For example: \"guests 3\", \"check-in 12 Dec\", \"check-out 15 Dec\", \"stay Alwar\", \"requirements: late arrival\" or \"name\".",
   ambiguousDate: "Is that your check-in or check-out date? For example: \"check-in 12 Dec\".",
   unknownProperty: "I couldn't find that property on our website.",
   invalidGuests: "Please send a number of guests between 1 and 20.",

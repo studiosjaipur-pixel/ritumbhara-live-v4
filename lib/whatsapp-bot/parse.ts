@@ -11,7 +11,34 @@ export const MAX_GUESTS = 20;
 
 export type ControlKeyword = "STOP" | "START" | "AGENT";
 export type ConfirmAnswer = "YES" | "NO";
-export type CorrectionTarget = "dates" | "checkIn" | "checkOut" | "guests" | "stay" | "requirements";
+export type CorrectionTarget = "dates" | "checkIn" | "checkOut" | "guests" | "stay" | "requirements" | "name";
+
+export const MAX_GUEST_NAME_CHARS = 60;
+// Letters (Latin incl. accents, Devanagari), spaces, dots, apostrophes and hyphens; must start with a letter.
+const NAME_CHARS = /^[A-Za-zÀ-ɏऀ-ॿ][A-Za-zÀ-ɏऀ-ॿ .'’-]*$/;
+const NOT_A_NAME = /^(ok|okay|k|thanks|thank you|thx|hi|hello|hey|yes|yeah|yep|sure|no|nope|skip|none|na|n\/a|why|what|later|human|agent|stop|start|restart)$/;
+
+const SENTENCE_WORDS = ["a", "an", "the", "and", "or", "to", "for", "in", "at", "on", "of", "with", "from", "is", "are",
+  "am", "was", "be", "we", "us", "our", "you", "your", "me", "my", "want", "wants", "would", "like", "looking", "need",
+  "please", "book", "booking", "stay", "room", "rooms", "studio", "available", "availability", "price", "check",
+  "can", "could", "will", "how", "much", "some", "somewhere", "nice", "quiet", "guests", "people", "night", "nights",
+  "next", "tomorrow", "today", "weekend"];
+
+// The guest's own answer to "May I have your name?". Returns the name as typed (prefixes like "my name is" removed),
+// or null when the reply does not look like a name. Never guesses or completes a name.
+export function parseGuestName(text: string): string | null {
+  let t = String(text || "").replace(/[\u0000-\u001F\u007F]/g, " ").replace(/\s+/g, " ").trim();
+  t = t.replace(/^(?:hi|hello|hey)\b[\s,!.]*/i, "");
+  t = t.replace(/^(?:my name is|my name's|name is|name|i am|i'm|im|this is|it's|its|call me)\b\s*[:\-]?\s*/i, "");
+  t = t.replace(/[\s.!,]+$/, "").trim();
+  if (!t || t.length > MAX_GUEST_NAME_CHARS) return null;
+  if (!NAME_CHARS.test(t) || t.split(" ").length > 5) return null;
+  if (NOT_A_NAME.test(t.toLowerCase())) return null;
+  // Asked first, so a guest may answer with their enquiry instead ("looking for a stay"): ordinary sentence words
+  // mean it is not a name.
+  if (t.toLowerCase().split(" ").some(function (w) { return SENTENCE_WORDS.indexOf(w) !== -1; })) return null;
+  return t;
+}
 
 // Lower-case, single spaces, without trailing punctuation: how whole-message keywords are compared.
 export function normalizeForKeywords(text: string): string {
@@ -36,9 +63,10 @@ export function detectConfirmAnswer(text: string): ConfirmAnswer | null {
 
 // "dates", "change guests", "check-in" ... as a whole message (used after the guest says NO).
 export function detectCorrectionTarget(text: string): CorrectionTarget | null {
-  const m = /^(?:change\s+(?:the\s+)?|edit\s+(?:the\s+)?)?(dates?|check[\s-]?in(?: date)?|check[\s-]?out(?: date)?|guests?|people|number of guests|stay|destination|property|location|requirements?|notes?|preferences?)$/.exec(normalizeForKeywords(text));
+  const m = /^(?:change\s+(?:the\s+)?(?:my\s+)?|edit\s+(?:the\s+)?(?:my\s+)?)?(dates?|check[\s-]?in(?: date)?|check[\s-]?out(?: date)?|guests?|people|number of guests|stay|destination|property|location|requirements?|notes?|preferences?|name)$/.exec(normalizeForKeywords(text));
   if (!m) return null;
   const w = m[1];
+  if (w === "name") return "name";
   if (/^dates?$/.test(w)) return "dates";
   if (/^check[\s-]?in/.test(w)) return "checkIn";
   if (/^check[\s-]?out/.test(w)) return "checkOut";

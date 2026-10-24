@@ -531,7 +531,7 @@ test("existing features: the digest, scoring, status edit and report never call 
 
 test("version is bumped for live follow-ups", () => {
   const env = createEnv();
-  assert.equal(env.gs.BOT_CODE_VERSION, "bot-v6.6-follow-up-live");
+  assert.equal(env.gs.BOT_CODE_VERSION, "bot-v6.8-guest-name-columns");
 });
 
 test("source: the Apps Script never talks to Twilio or emails; the dry-run payload is exactly Phase A's", () => {

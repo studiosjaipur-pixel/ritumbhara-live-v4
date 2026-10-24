@@ -9,6 +9,7 @@ export const CONVERSATION_STATES = [
   "ASK_GUESTS",
   "ASK_STAY",
   "ASK_REQUIREMENTS",
+  "ASK_NAME",
   "CONFIRM",
   "QUALIFIED",
   "HANDED_OFF",
@@ -33,11 +34,14 @@ export interface LeadFields {
   destination: string | null; // destination slug from config/destinations.config.ts
   property: string | null; // property slug from config/properties.config.ts
   requirements: string | null; // free text, length-capped; "" = guest said none; null = not answered yet
+  // The name the guest typed when asked; "" = not given (declined or not understood); null/absent = not asked yet
+  // (conversations stored before this field existed have no key). Never taken from the WhatsApp profile.
+  guestName?: string | null;
 }
 
 // Fields the bot asks for, used for per-field retry counters.
 // "confirm" counts confirmation replies the bot could not understand.
-export type AskableField = "dates" | "checkOut" | "guests" | "stay" | "requirements" | "confirm";
+export type AskableField = "dates" | "checkOut" | "guests" | "stay" | "requirements" | "name" | "confirm";
 
 // Where pre-filled values came from (attribution only; pre-filled values are still validated and confirmed).
 export type PrefillSource = "none" | "website-availability" | "property-ref" | "destination-ref";

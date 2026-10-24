@@ -218,6 +218,6 @@ test("store: key layout only accepts validated senders and MessageSids", () => {
 test("types: conversation states match the agreed architecture", () => {
   assert.deepEqual([...CONVERSATION_STATES], [
     "NEW", "ASK_DATES", "ASK_CHECKOUT", "ASK_GUESTS", "ASK_STAY", "ASK_REQUIREMENTS",
-    "CONFIRM", "QUALIFIED", "HANDED_OFF", "OPTED_OUT",
+    "ASK_NAME", "CONFIRM", "QUALIFIED", "HANDED_OFF", "OPTED_OUT",
   ]);
 });

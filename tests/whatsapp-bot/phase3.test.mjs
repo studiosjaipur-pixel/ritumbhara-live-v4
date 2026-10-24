@@ -206,21 +206,26 @@ test("upstash client: request format, pipeline, and errors without secrets", asy
 // STATE MACHINE (through the conversation handler and the real store)
 // ======================================================================
 
-test("13. NEW greeting introduces an automated assistant, STOP and HUMAN, and asks for dates", async () => {
+test("13. NEW greeting introduces an automated assistant, STOP and HUMAN, asks the name first, then the dates", async () => {
   const h = setup();
   const reply = await h.send("Hi");
   assert.match(reply, /automated assistant/);
   assert.match(reply, /STOP/);
   assert.match(reply, /HUMAN/);
   assert.match(reply, /can't check availability or make bookings/);
-  assert.match(reply, /check-in and check-out dates/);
+  assert.match(reply, /May I have your name/);
   assert.doesNotMatch(reply, FORBIDDEN);
+  assert.equal((await h.conv()).state, "ASK_NAME");
+  const next = await h.send("Asha");
+  assert.match(next, /check-in and check-out dates/);
+  assert.doesNotMatch(next, FORBIDDEN);
   assert.equal((await h.conv()).state, "ASK_DATES");
 });
 
 test("14. date collection: both dates in one reply", async () => {
   const h = setup();
   await h.send("Hello");
+  await h.send("Asha"); // name (asked first)
   const reply = await h.send("12 Nov to 15 Nov");
   assert.equal(reply, MESSAGES.askGuests);
   const c = await h.conv();
@@ -232,12 +237,14 @@ test("14. date collection: both dates in one reply", async () => {
 test("15. check-out collection, including 'N nights'", async () => {
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   assert.equal(await h.send("arriving 12 Nov"), MESSAGES.askCheckOut);
   assert.equal((await h.conv()).state, "ASK_CHECKOUT");
   assert.equal(await h.send("15th November"), MESSAGES.askGuests);
   assert.equal((await h.conv()).fields.checkOut, "2026-11-15");
   const h2 = setup();
   await h2.send("Hi");
+  await h2.send("Asha"); // name (asked first)
   await h2.send("checking in 10/12");
   await h2.send("3 nights");
   const c = await h2.conv();
@@ -249,6 +256,7 @@ test("16. guest count in several forms", async () => {
   for (const [text, n] of [["two people", 2], ["we are 4", 4], ["3", 3], ["2 adults and 1 child", 3], ["just me", 1], ["6 guests", 6]]) {
     const h = setup();
     await h.send("Hi");
+    await h.send("Asha"); // name (asked first)
     await h.send("12 Nov to 15 Nov");
     await h.send(text);
     assert.equal((await h.conv()).fields.guests, n, text);
@@ -258,6 +266,7 @@ test("16. guest count in several forms", async () => {
 test("17. property / destination collection from the website configuration", async () => {
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("12 Nov to 15 Nov, 2 guests");
   const ask = (await h.conv()).state;
   assert.equal(ask, "ASK_STAY");
@@ -267,6 +276,7 @@ test("17. property / destination collection from the website configuration", asy
   for (const [text, prop, dest] of [["Studio 925", "studio-925", "jaipur"], ["studio 502", "studio-502-alwar", "alwar"], ["Villa 65", "villa-65-sariska", "sariska"], ["apartment 813", "apartment-813", "alwar"]]) {
     const h2 = setup();
     await h2.send("Hi");
+    await h2.send("Asha"); // name (asked first)
     await h2.send("12 Nov to 15 Nov, 2 guests");
     await h2.send(text);
     const c = await h2.conv();
@@ -278,16 +288,19 @@ test("17. property / destination collection from the website configuration", asy
 test("18. requirements are optional free text, capped at 300 characters", async () => {
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("12 Nov to 15 Nov, 2 guests, Jaipur");
   const reply = await h.send("Need airport pickup");
   assert.match(reply, /Requirements: Need airport pickup/);
   const h2 = setup();
   await h2.send("Hi");
+  await h2.send("Asha"); // name (asked first)
   await h2.send("12 Nov to 15 Nov, 2 guests, Jaipur");
   assert.match(await h2.send("No"), /Requirements: None/);
   assert.equal((await h2.conv()).fields.requirements, "");
   const h3 = setup();
   await h3.send("Hi");
+  await h3.send("Asha"); // name (asked first)
   await h3.send("12 Nov to 15 Nov, 2 guests, Jaipur");
   await h3.send("x".repeat(400));
   assert.equal((await h3.conv()).fields.requirements.length, 300);
@@ -296,6 +309,7 @@ test("18. requirements are optional free text, capped at 300 characters", async 
 test("19. multiple fields in one message skip straight to what is missing", async () => {
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   const reply = await h.send("2 guests, checking in Dec 10 and leaving Dec 13");
   const c = await h.conv();
   assert.equal(c.fields.guests, 2);
@@ -303,17 +317,20 @@ test("19. multiple fields in one message skip straight to what is missing", asyn
   assert.equal(c.fields.checkOut, "2026-12-13");
   assert.equal(c.state, "ASK_STAY");
   assert.match(reply, /Which destination/);
-  // Everything at once on the first message goes straight to requirements.
+  // Everything at once on the first message: the details are kept, the name is asked, then straight to requirements.
   const h2 = setup();
   const r2 = await h2.send("Hi, Studio 925 from 10 Dec to 13 Dec for 2 guests");
   assert.match(r2, /automated assistant/);
   assert.match(r2, /noted the details/);
-  assert.match(r2, /special requirements/);
+  assert.match(r2, /May I have your name/);
+  assert.equal((await h2.conv()).state, "ASK_NAME");
+  assert.match(await h2.send("Asha"), /special requirements/);
   assert.equal((await h2.conv()).state, "ASK_REQUIREMENTS");
 });
 
 async function toConfirm(h) {
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("10 Dec to 13 Dec, 2 guests, Jaipur");
   return h.send("Airport pickup");
 }
@@ -323,6 +340,7 @@ test("20. confirmation summary lists the details and asks YES/NO", async () => {
   const reply = await toConfirm(h);
   assert.equal(reply, [
     "Please confirm your request:",
+    "Name: Asha",
     "Stay: Jaipur",
     "Check-in: Thu 10 Dec 2026",
     "Check-out: Sun 13 Dec 2026 (3 nights)",
@@ -387,6 +405,7 @@ test("22. NO -> correction without losing the other details", async () => {
 test("23. STOP opts out, clears the conversation and silences the bot", async () => {
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("12 Nov to 15 Nov");
   for (const stop of ["STOP"]) assert.equal(await h.send(stop), MESSAGES.optedOut);
   assert.equal(h.fake.get("wa:optout:" + GUEST), "1");
@@ -396,26 +415,31 @@ test("23. STOP opts out, clears the conversation and silences the bot", async ()
   assert.equal(await h.send("unsubscribe"), null);
   const h2 = setup();
   await h2.send("Hi");
+  await h2.send("Asha"); // name (asked first)
   assert.equal(await h2.send("  unsubscribe "), MESSAGES.optedOut);
   // "stop" inside a sentence is not an opt-out.
   const h3 = setup();
   await h3.send("Hi");
+  await h3.send("Asha"); // name (asked first)
   assert.notEqual(await h3.send("please don't stop, 2 guests"), MESSAGES.optedOut);
 });
 
 test("24. START / RESTART after STOP clears the opt-out and starts fresh", async () => {
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("12 Nov to 15 Nov");
   await h.send("STOP");
   const reply = await h.send("start");
   assert.match(reply, /automated assistant/);
   assert.equal(h.fake.get("wa:optout:" + GUEST), null);
   const c = await h.conv();
-  assert.equal(c.state, "ASK_DATES");
+  assert.equal(c.state, "ASK_NAME");
   assert.equal(c.fields.checkIn, null); // no stale fields
+  assert.equal(c.fields.guestName, null); // the name is asked again
+  await h.send("Asha");
   await h.send("12 Nov to 15 Nov");
-  assert.equal(await h.send("RESTART"), MESSAGES.greeting + "\n\n" + MESSAGES.askDates);
+  assert.equal(await h.send("RESTART"), MESSAGES.greeting + "\n\n" + MESSAGES.askName);
   assert.equal((await h.conv()).fields.checkIn, null);
 });
 
@@ -423,6 +447,7 @@ test("25. HUMAN / AGENT hands off with the configured team number (no wa.me link
   for (const word of ["HUMAN", "agent", "Human!"]) {
     const h = setup();
     await h.send("Hi");
+    await h.send("Asha"); // name (asked first)
     const reply = await h.send(word);
     assert.equal(reply, "Sure. Our team will continue with you on WhatsApp at " + HANDOFF_DISPLAY + ".");
     const c = await h.conv();
@@ -435,6 +460,7 @@ test("25. HUMAN / AGENT hands off with the configured team number (no wa.me link
 test("26. HANDED_OFF: one acknowledgement, then silent; only START/RESTART resets; HUMAN repeats the number", async () => {
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("HUMAN");
   assert.match(await h.send("Hello?"), /Our team already has your request/); // first normal message: acknowledged
   assert.equal(await h.send("12 Nov to 15 Nov"), null); // within 24 hours: silent
@@ -442,12 +468,13 @@ test("26. HANDED_OFF: one acknowledgement, then silent; only START/RESTART reset
   assert.match(await h.send("human"), /9000000009/);
   assert.equal((await h.conv()).state, "HANDED_OFF");
   assert.match(await h.send("RESTART"), /automated assistant/);
-  assert.equal((await h.conv()).state, "ASK_DATES");
+  assert.equal((await h.conv()).state, "ASK_NAME");
 });
 
 test("27. a required field is asked at most twice, then the guest is handed to the team", async () => {
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("12 Nov to 15 Nov");
   const r1 = await h.send("hmm, not sure");
   assert.match(r1, /didn't catch that/);
@@ -489,6 +516,7 @@ test("29. invalid dates are rejected with a reason and asked again", async () =>
   for (const [text, err] of cases) {
     const h = setup();
     await h.send("Hi");
+    await h.send("Asha"); // name (asked first)
     const reply = await h.send(text);
     assert.match(reply, err, text);
     assert.notEqual((await h.conv()).state, "ASK_GUESTS", text);
@@ -496,6 +524,7 @@ test("29. invalid dates are rejected with a reason and asked again", async () =>
   // Ambiguous input is not guessed.
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   assert.match(await h.send("the 12th"), /didn't catch that/);
   assert.equal((await h.conv()).fields.checkIn, null);
 });
@@ -504,6 +533,7 @@ test("30. invalid guest counts are rejected, not converted", async () => {
   for (const text of ["0 guests", "25 guests", "we are 40"]) {
     const h = setup();
     await h.send("Hi");
+    await h.send("Asha"); // name (asked first)
     await h.send("12 Nov to 15 Nov");
     const reply = await h.send(text);
     assert.match(reply, /between 1 and 20/, text);
@@ -514,6 +544,7 @@ test("30. invalid guest counts are rejected, not converted", async () => {
 test("31. unknown property asks for clarification and invents nothing", async () => {
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("12 Nov to 15 Nov, 2 guests");
   const reply = await h.send("Studio 999");
   assert.match(reply, /couldn't find that property/);
@@ -524,6 +555,7 @@ test("31. unknown property asks for clarification and invents nothing", async ()
   // Agra is accepted but flagged as coming soon (website status).
   const h2 = setup();
   await h2.send("Hi");
+  await h2.send("Asha"); // name (asked first)
   await h2.send("12 Nov to 15 Nov, 2 guests, Agra");
   assert.match(await h2.send("no"), /Agra is listed as coming soon on our website/);
 });
@@ -541,7 +573,8 @@ test("33. ref extraction and safe pre-fill from the website message", async () =
   assert.equal(c.ref, "W-DEST-jaipur-AVAILABILITY");
   assert.equal(c.prefillSource, "destination-ref");
   assert.deepEqual([c.fields.destination, c.fields.checkIn, c.fields.checkOut, c.fields.guests], ["jaipur", "2026-11-12", "2026-11-15", 3]);
-  assert.match(reply, /special requirements/);
+  assert.match(reply, /May I have your name/); // the name first, the pre-filled details are kept
+  assert.match(await h.send("Asha"), /special requirements/);
   // Property CTA
   const h2 = setup();
   await h2.send("Hi, I'd like to check availability for Studio 925\n\nRef: W-PROP-studio-925");
@@ -556,7 +589,8 @@ test("33. ref extraction and safe pre-fill from the website message", async () =
   assert.equal(c3.prefillSource, "website-availability");
   assert.equal(c3.fields.guestsHint, "6+");
   assert.equal(c3.fields.guests, null);
-  assert.match(r3, /How many guests exactly/);
+  assert.match(r3, /May I have your name/);
+  assert.match(await h3.send("Asha"), /How many guests exactly/);
   // An invalid ref is not stored; the ref's digits are never read as guests.
   const h4 = setup();
   await h4.send("Hi Ref: W-<script>");
@@ -569,6 +603,7 @@ test("33. ref extraction and safe pre-fill from the website message", async () =
 test("34. Redis failure: fixed message with the team number, nothing pretends to be saved", async () => {
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   h.fake.state.down = true;
   const reply = await h.send("12 Nov to 15 Nov");
   assert.equal(reply, "We're having trouble processing your request right now. Please contact our team on " + HANDOFF_DISPLAY + ".");
@@ -580,9 +615,9 @@ test("34. Redis failure: fixed message with the team number, nothing pretends to
 test("state machine: no reply ever claims availability, prices or a confirmed booking", async () => {
   const h = setup();
   const replies = [];
-  for (const t of ["Hi", "Studio 925 10 Dec to 13 Dec", "3 guests", "airport pickup", "no", "guests 2", "YES"]) replies.push(await h.send(t));
+  for (const t of ["Hi", "Asha", "Studio 925 10 Dec to 13 Dec", "3 guests", "airport pickup", "no", "guests 2", "YES"]) replies.push(await h.send(t));
   for (const r of replies) assert.doesNotMatch(r || "", FORBIDDEN);
-  assert.match(replies[3], /Studio 925 is listed for up to 2 guests\. Our team will advise\./); // capacity noted, not rejected
+  assert.match(replies[4], /Studio 925 is listed for up to 2 guests\. Our team will advise\./); // capacity noted, not rejected
 });
 
 test("dates: day-first numeric dates, ranges, and year roll-over", () => {
@@ -668,6 +703,7 @@ test("37. rate limiting: one warning, then silence, for the rest of the window",
 test("38. the per-sender lock prevents concurrent processing of one conversation", async () => {
   const w = webhookSetup();
   await w.webhook(w.request("Hi"));
+  await w.webhook(w.request("Asha", "SM" + "a".repeat(32))); // name (asked first)
   // Another request is mid-way through this guest's conversation.
   await w.fake.client.command(["SET", "wa:lock:" + GUEST, "other-request", "PX", 8000]);
   const sid = "SM" + "e".repeat(32);

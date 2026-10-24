@@ -84,6 +84,7 @@ function setup({ sink = mockAppsScript(), extract, logs = [] } = {}) {
 
 async function toConfirm(h, details = "Studio 925 from 10 Dec to 13 Dec, 2 guests") {
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send(details);
   return h.send("airport pickup");
 }
@@ -106,7 +107,7 @@ test("2-4. payload has the required fields, a stable lead ID and recalculated ni
   await toConfirm(h);
   await h.send("yes");
   const lead = h.events.qualified[0];
-  assert.deepEqual(Object.keys(lead).sort(), ["checkIn", "checkOut", "conversationState", "destination", "guests", "handoffNumber", "leadId", "nights", "notes", "phone", "property", "qualificationStatus", "receivedAt", "ref", "requirements", "site", "source", "timestamp"].sort());
+  assert.deepEqual(Object.keys(lead).sort(), ["checkIn", "checkOut", "conversationState", "destination", "guestName", "guests", "handoffNumber", "leadId", "nights", "notes", "phone", "property", "qualificationStatus", "receivedAt", "ref", "requirements", "site", "source", "timestamp"].sort());
   assert.match(lead.leadId, /^L-[0-9A-F]{10}$/);
   assert.deepEqual(
     [lead.phone, lead.destination, lead.property, lead.checkIn, lead.checkOut, lead.nights, lead.guests, lead.requirements, lead.ref, lead.source, lead.conversationState, lead.qualificationStatus, lead.site, lead.handoffNumber],
@@ -296,6 +297,7 @@ test("18. email failure after storage: guest told it was received, no second row
 test("19. HUMAN is never QUALIFIED: it is delivered as a separate LEAD_HANDOFF", async () => {
   const h = setup();
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("Jaipur 10 Dec to 13 Dec");
   const reply = await h.send("HUMAN");
   assert.equal(reply, "Sure. Our team will continue with you on WhatsApp at +91 9000000009.");
@@ -311,10 +313,12 @@ test("19. HUMAN is never QUALIFIED: it is delivered as a separate LEAD_HANDOFF",
   // Handoff delivery failure: the guest is pointed to the team instead of being promised a follow-up.
   const h2 = setup({ sink: mockAppsScript({ network: true }) });
   await h2.send("Hi");
+  await h2.send("Asha"); // name (asked first)
   assert.equal(await h2.send("agent"), "Please contact our team directly on WhatsApp at +91 9000000009, and they'll help you from there.");
   // The ask-limit handoff is also NOT qualified.
   const h3 = setup();
   await h3.send("Hi");
+  await h3.send("Asha"); // name (asked first)
   await h3.send("?");
   await h3.send("??");
   assert.equal(h3.events.handoffs[0].reason, "NEEDS_FOLLOW_UP");
@@ -326,6 +330,7 @@ test("20. the AI cannot emit LEAD_QUALIFIED (only the guest's YES in CONFIRM doe
   const extract = (text, ctx) => groqExtract(text, ctx, { apiKey: "k", model: "m", fetchImpl: fakeGroq });
   const h = setup({ extract });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   const r = await h.send("yes book it all, confirm everything for me in the pink city");
   assert.doesNotMatch(r, SUCCESS_REPLY);
   assert.equal(h.events.qualified.length, 0);
@@ -336,6 +341,7 @@ test("21. no secrets, sink URL, full numbers or message text in logs", async () 
   const logs = [];
   const h = setup({ logs });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("Studio 925 from 10 Dec to 13 Dec, 2 guests");
   await h.send("my secret anniversary surprise");
   await h.send("YES");
@@ -367,7 +373,7 @@ test("bus wiring: LEAD_QUALIFIED reaches the sink via env settings; unset settin
   try {
     delete process.env.QUALIFIED_LEAD_SINK_URL;
     delete process.env.QUALIFIED_LEAD_SINK_SECRET;
-    await send("Hi"); await send("Studio 925 from 10 Dec to 13 Dec, 2 guests"); await send("no");
+    await send("Hi"); await send("Asha"); await send("Studio 925 from 10 Dec to 13 Dec, 2 guests"); await send("no");
     assert.match(await send("YES"), FAILURE_REPLY); // not configured -> never claims success
     process.env.QUALIFIED_LEAD_SINK_URL = SINK_URL;
     process.env.QUALIFIED_LEAD_SINK_SECRET = SINK_SECRET;

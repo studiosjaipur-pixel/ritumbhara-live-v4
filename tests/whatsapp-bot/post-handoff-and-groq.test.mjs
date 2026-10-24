@@ -86,6 +86,7 @@ function setup({ deliver = true, responder = () => groqJson(NULLS), config = CON
 // Qualifies a lead the same way as the Production test: website message, answers, YES.
 async function qualify(h) {
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   await h.send("10 Dec to 13 Dec");
   await h.send("2 guests");
   await h.send("Jaipur");
@@ -157,9 +158,10 @@ test("post-handoff 5: RESTART still starts a new enquiry", async () => {
     const h = setup();
     await qualify(h);
     await h.send("hello?");
-    assert.equal(await h.send(word), MESSAGES.greeting + "\n\n" + MESSAGES.askDates);
+    assert.equal(await h.send(word), MESSAGES.greeting + "\n\n" + MESSAGES.askName); // a new enquiry asks the name first
     const c = await h.conv();
-    assert.equal(c.state, "ASK_DATES");
+    assert.equal(c.state, "ASK_NAME");
+    assert.equal(c.fields.guestName, null);
     assert.equal(c.fields.checkIn, null);
     assert.equal(c.lastReminderAt, null);
     assert.ok(Math.abs(h.fake.ttlSeconds(h.key) - STORE_TTL.conversation) <= 10);
@@ -198,6 +200,7 @@ test("post-handoff 7: no duplicate lead or handoff event after handoff, whatever
 test("post-handoff 8: if the team was never notified, the guest is pointed at the team number instead", async () => {
   const h = setup({ deliver: false });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   assert.equal(await h.send("HUMAN"), handoffDeliveryFailed(HANDOFF_DISPLAY));
   const c = await h.conv();
   assert.equal(c.state, "HANDED_OFF");
@@ -259,6 +262,7 @@ test("groq 2: request format for reasoning (gpt-oss) and other models", () => {
 test("groq 3: works end to end through the existing provider abstraction (default extract -> groqExtract)", async () => {
   const h = setup({ responder: () => groqJson({ ...NULLS, checkIn: "2026-10-16", checkOut: "2026-10-18" }) });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   const reply = await h.send("next friday till sunday please");
   assert.match(reply, /How many guests/);
   const c = await h.conv();
@@ -275,6 +279,7 @@ test("groq 4: a provider error is logged with status and error code only (never 
     responder: () => ({ status: 404, body: JSON.stringify({ error: { message: "The model `x` does not exist. " + GROQ_KEY + " next friday", type: "invalid_request_error", code: "model_not_found" } }) }),
   });
   await h.send("Hi");
+  await h.send("Asha"); // name (asked first)
   const reply = await h.send("next friday till sunday please");
   assert.match(reply, /check-in and check-out dates/); // deterministic flow carries on
   assert.doesNotMatch(reply, /groq|model|error|404/i);

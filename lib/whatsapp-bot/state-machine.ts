@@ -7,8 +7,8 @@ import {
   qualifiedDeliveryFailed,
 } from "./messages";
 import {
-  MAX_REQUIREMENTS_CHARS, detectConfirmAnswer, detectControlKeyword, detectCorrectionTarget, isNoneAnswer, parseMessage,
-  type MessageParse,
+  MAX_REQUIREMENTS_CHARS, detectConfirmAnswer, detectControlKeyword, detectCorrectionTarget, isNoneAnswer, parseGuestName,
+  parseMessage, type MessageParse,
 } from "./parse";
 import { CONVERSATION_SCHEMA_VERSION, STORE_TTL } from "./store";
 import type {
@@ -56,7 +56,12 @@ export interface MachineResult {
 // ---------- helpers ----------
 
 function emptyFields(): LeadFields {
-  return { checkIn: null, checkOut: null, guests: null, guestsHint: null, destination: null, property: null, requirements: null };
+  return { checkIn: null, checkOut: null, guests: null, guestsHint: null, destination: null, property: null, requirements: null, guestName: null };
+}
+
+// The name the guest gave, or null when none was given. Only ever what the guest typed.
+export function guestNameOf(fields: LeadFields): string | null {
+  return typeof fields.guestName === "string" && fields.guestName.trim() ? fields.guestName.trim() : null;
 }
 
 function freshConversation(input: MachineInput, ctx: MachineContext): ConversationState {
@@ -110,6 +115,7 @@ export function handoffIdFor(conv: ConversationState): string {
 
 // The first required field still missing decides the next state.
 export function nextState(fields: LeadFields): ConversationStateName {
+  if (typeof fields.guestName !== "string") return "ASK_NAME"; // the name is asked first
   if (!fields.checkIn) return "ASK_DATES";
   if (!fields.checkOut) return "ASK_CHECKOUT";
   if (fields.guests === null) return "ASK_GUESTS";
@@ -120,6 +126,7 @@ export function nextState(fields: LeadFields): ConversationStateName {
 
 const FIELD_FOR_STATE: Partial<Record<ConversationStateName, AskableField>> = {
   ASK_DATES: "dates", ASK_CHECKOUT: "checkOut", ASK_GUESTS: "guests", ASK_STAY: "stay", ASK_REQUIREMENTS: "requirements",
+  ASK_NAME: "name",
 };
 
 function question(state: ConversationStateName, fields: LeadFields, ctx: MachineContext): string {
@@ -129,6 +136,7 @@ function question(state: ConversationStateName, fields: LeadFields, ctx: Machine
     case "ASK_GUESTS": return fields.guestsHint ? MESSAGES.askGuestsExact : MESSAGES.askGuests;
     case "ASK_STAY": return askStay(ctx.catalog);
     case "ASK_REQUIREMENTS": return MESSAGES.askRequirements;
+    case "ASK_NAME": return MESSAGES.askName;
     default: return "";
   }
 }
@@ -154,14 +162,14 @@ function stayLabel(fields: LeadFields, catalog: Catalog): string {
 
 export function summary(fields: LeadFields, catalog: Catalog): string {
   const nights = fields.checkIn && fields.checkOut ? daysBetween(fields.checkIn, fields.checkOut) : 0;
-  const lines = [
-    "Please confirm your request:",
+  const name = guestNameOf(fields);
+  const lines = ["Please confirm your request:"].concat(name ? ["Name: " + name] : []).concat([
     "Stay: " + stayLabel(fields, catalog),
     "Check-in: " + (fields.checkIn ? formatDisplayDate(fields.checkIn) : ""),
     "Check-out: " + (fields.checkOut ? formatDisplayDate(fields.checkOut) : "") + " (" + nights + (nights === 1 ? " night)" : " nights)"),
     "Guests: " + fields.guests,
     "Requirements: " + (fields.requirements ? fields.requirements : "None"),
-  ];
+  ]);
   const notes = leadNotes(fields, catalog);
   return lines.join("\n") + (notes.length ? "\n\nNote: " + notes.join(" ") : "") + "\n\nIs this correct? Reply YES to confirm or NO to change something.";
 }
@@ -333,6 +341,12 @@ function askNext(conv: ConversationState, prefix: string[], madeProgress: boolea
   const asked = conv.attempts[field] || 0;
   const repeat = conv.state === target && !madeProgress;
   if (repeat || conv.state !== target) {
+    if (asked >= MAX_ASKS_PER_FIELD && field === "name") {
+      // The name is optional: after two unclear answers it is left blank (never guessed) and the guest goes on to
+      // the summary instead of being handed off.
+      conv.fields.guestName = "";
+      return askNext(conv, prefix, true, ctx);
+    }
     if (asked >= MAX_ASKS_PER_FIELD) return handoff(conv, "NEEDS_FOLLOW_UP", handoffLimit(ctx.handoffNumber), ctx);
     conv.attempts[field] = asked + 1;
   }
@@ -350,6 +364,7 @@ function resetFor(conv: ConversationState, target: ReturnType<typeof detectCorre
     case "guests": f.guests = null; f.guestsHint = null; conv.attempts.guests = 0; break;
     case "stay": f.destination = null; f.property = null; conv.attempts.stay = 0; break;
     case "requirements": f.requirements = null; conv.attempts.requirements = 0; break;
+    case "name": f.guestName = null; conv.attempts.name = 0; break;
   }
 }
 
@@ -460,7 +475,19 @@ export function runStateMachine(existing: ConversationState | null, optedOut: bo
   }
 
   if (conv.state === "CONFIRM") return handleConfirm(conv, text, parsed, today, ctx);
-  if (input.extraction && conv.state !== "ASK_REQUIREMENTS") parsed = mergeExtraction(parsed, input.extraction, conv.fields);
+
+  // Asked for the name: a reply that reads as a name is taken as typed. A reply the parser reads as stay details
+  // (e.g. "Jaipur", "two guests") is not a name: those details are kept and the name is asked again. SKIP/NO leaves
+  // it blank.
+  if (conv.state === "ASK_NAME") {
+    const name = parsed.foundAny ? null : parseGuestName(text);
+    if (name || isNoneAnswer(text)) {
+      conv.fields.guestName = name || "";
+      return askNext(conv, [], true, ctx);
+    }
+    if (!parsed.foundAny) return askNext(conv, [MESSAGES.invalidName], false, ctx);
+  }
+  if (input.extraction && conv.state !== "ASK_REQUIREMENTS" && conv.state !== "ASK_NAME") parsed = mergeExtraction(parsed, input.extraction, conv.fields);
 
   const applied = applyParsed(conv, parsed, today, ctx.catalog);
   let progress = applied.changed;

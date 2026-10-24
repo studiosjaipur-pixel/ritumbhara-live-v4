@@ -1,6 +1,7 @@
 import { WHATSAPP_REF_PATTERN } from "../whatsapp";
 import { findDestination, findProperty, type Catalog } from "../whatsapp-bot/catalog";
 import { daysBetween, isoFromParts, MAX_NIGHTS } from "../whatsapp-bot/dates";
+import { MAX_GUEST_NAME_CHARS } from "../whatsapp-bot/parse";
 import type { BotChannel, HandoffLead, LeadFields, QualifiedLead } from "../whatsapp-bot/types";
 
 // Wire payloads for WhatsApp-bot leads (Week 5 stretch, Phase 5) and their validation. Pure functions, no I/O.
@@ -41,6 +42,7 @@ export interface QualifiedLeadPayload {
   receivedAt: string; // when the website sent it (ISO)
   handoffNumber: string;
   notes: string[]; // deterministic notes from the website config (capacity, coming-soon destination)
+  guestName: string | null; // the name the guest typed when the bot asked; null when not given (never guessed)
 }
 
 export interface HandoffPayload {
@@ -62,6 +64,7 @@ export interface HandoffPayload {
   site: string;
   receivedAt: string;
   handoffNumber: string;
+  guestName: string | null; // the name the guest typed, if they got that far; null otherwise
 }
 
 export type BuildResult<T> = { ok: true; payload: T } | { ok: false; problems: string[] };
@@ -82,6 +85,14 @@ function sourceFor(channel: BotChannel): LeadSource {
 function cleanRequirements(value: string | null): string | null {
   if (value === null || value === undefined) return null;
   return String(value).replace(/[\u0000-\u001F\u007F]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// Only the guest's own answer, re-checked; anything else (including the WhatsApp profile name) is never used.
+function cleanGuestName(fields: LeadFields): string | null {
+  const v = fields.guestName;
+  if (typeof v !== "string") return null;
+  const name = v.replace(/[\u0000-\u001F\u007F]/g, " ").replace(/\s+/g, " ").trim();
+  return name && name.length <= MAX_GUEST_NAME_CHARS ? name : null;
 }
 
 function capacityNotes(fields: LeadFields, catalog: Catalog): string[] {
@@ -137,6 +148,7 @@ export function buildQualifiedLeadPayload(lead: QualifiedLead, ctx: LeadContext)
       receivedAt: ctx.now.toISOString(),
       handoffNumber: ctx.handoffNumber,
       notes: capacityNotes(f, ctx.catalog),
+      guestName: cleanGuestName(f),
     },
   };
 }
@@ -176,6 +188,7 @@ export function buildHandoffPayload(h: HandoffLead, ctx: LeadContext): BuildResu
       site: ctx.site,
       receivedAt: ctx.now.toISOString(),
       handoffNumber: ctx.handoffNumber,
+      guestName: cleanGuestName(f),
     },
   };
 }
