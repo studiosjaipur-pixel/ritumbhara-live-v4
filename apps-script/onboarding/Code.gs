@@ -604,6 +604,7 @@ function buildValues_(d, date) {
     'Currently listed elsewhere': 'listed on other platforms',
     'Under construction': 'under construction'
   }[String(d.status || '')] || trim(d.status).toLowerCase() || 'ready to operate';
+  var type = propertyTypeWords_(d.propertyType);
   var day = Number(fmt_(date, 'd'));
   var endDay = Number(fmt_(end, 'd'));
   return {
@@ -615,6 +616,8 @@ function buildValues_(d, date) {
     PROPERTY_NAME: trim(d.propertyName),
     PROPERTY_ADDRESS: addr,
     PROPERTY_STATUS: statusText,
+    PROPERTY_TYPE: type.lower,
+    PROPERTY_TYPE_TITLE: type.title,
     AMENITIES: trim(d.amenities) || 'those described in the Asset Owner’s onboarding application',
     ACCOUNT_HOLDER: trim(d.accountHolder),
     BANK_NAME: trim(d.bank),
@@ -746,6 +749,8 @@ function setupAgreementTemplate() {
     ['9829455833', '{{OWNER_PHONE}}'],
     [lit_('amarbagh86@gmail.com'), '{{OWNER_EMAIL}}'],
     ['AJXPS1040A', '{{OWNER_PAN}}'],
+    ['farmhouse unit known as', '{{PROPERTY_TYPE}} known as'],
+    ['\u201cFarmhouse\u201d', '\u201c{{PROPERTY_TYPE_TITLE}}\u201d'],
     ['currently self-managed,\\s*and features amenities including\\s*Pool,\\s*lawn,\\s*parking\\.?',
       'currently {{PROPERTY_STATUS}}, and features amenities including {{AMENITIES}}.'],
     ['25th\\s*day of\\s*Oct\\s*,\\s*2026\\s*', '{{START_DAY}} day of {{START_MONTH_YEAR}} '],
@@ -770,7 +775,7 @@ function setupAgreementTemplate() {
   // 5. Checks.
   var text = body.getText();
   ['OWNER_NAME', 'OWNER_PHONE', 'OWNER_EMAIL', 'OWNER_PAN', 'OWNER_ADDRESS', 'PROPERTY_NAME', 'PROPERTY_ADDRESS',
-    'PROPERTY_STATUS', 'AMENITIES', 'ACCOUNT_HOLDER', 'BANK_NAME', 'ACCOUNT_NUMBER', 'IFSC', 'UPI', 'START_DATE',
+    'PROPERTY_STATUS', 'PROPERTY_TYPE', 'PROPERTY_TYPE_TITLE', 'AMENITIES', 'ACCOUNT_HOLDER', 'BANK_NAME', 'ACCOUNT_NUMBER', 'IFSC', 'UPI', 'START_DATE',
     'END_DATE', 'START_DAY', 'START_MONTH_YEAR', 'END_DATE_LONG', 'OWNER_SIGNATURE', 'OWNER_SIGN_DATE',
     'COMPANY_SIGNATURE', 'COMPANY_SIGN_DATE'].forEach(function (k) {
     if (text.indexOf('{{' + k + '}}') === -1) warnings.push('Missing placeholder {{' + k + '}}');
@@ -784,6 +789,41 @@ function setupAgreementTemplate() {
   console.log('Template created: ' + copy.getUrl());
   console.log(warnings.length ? 'CHECK THESE:\n- ' + warnings.join('\n- ') : 'All placeholders in place.');
   return copy.getUrl();
+}
+
+/** Words used for the property in the agreement ("the villa known as ...", the "Villa"). */
+function propertyTypeWords_(t) {
+  var map = {
+    'Villa': ['villa', 'Villa'],
+    'Farmhouse': ['farmhouse', 'Farmhouse'],
+    'Homestay': ['homestay', 'Homestay'],
+    'Boutique hotel': ['boutique hotel', 'Hotel'],
+    'Serviced apartment': ['serviced apartment', 'Apartment']
+  }[String(t || '').trim()] || ['property', 'Premises'];
+  return { lower: map[0], title: map[1] };
+}
+
+/**
+ * Run once on the template made before property types were supported: swaps the fixed "farmhouse" wording
+ * in Clause 1 for {{PROPERTY_TYPE}} / {{PROPERTY_TYPE_TITLE}}. Safe to run again.
+ */
+function updateTemplatePropertyType() {
+  var doc = DocumentApp.openById(templateId_());
+  var body = doc.getBody();
+  var swaps = [
+    ['farmhouse unit known as', '{{PROPERTY_TYPE}} known as'],
+    ['\u201cFarmhouse\u201d', '\u201c{{PROPERTY_TYPE_TITLE}}\u201d']
+  ];
+  var done = [];
+  swaps.forEach(function (s) {
+    if (body.findText(s[0])) { body.replaceText(s[0], s[1]); done.push(s[1]); }
+  });
+  doc.saveAndClose();
+  var text = DocumentApp.openById(templateId_()).getBody().getText();
+  console.log('Replaced: ' + (done.join(', ') || 'nothing (already done?)'));
+  console.log('Template now has {{PROPERTY_TYPE}}: ' + (text.indexOf('{{PROPERTY_TYPE}}') > -1) +
+    ', {{PROPERTY_TYPE_TITLE}}: ' + (text.indexOf('{{PROPERTY_TYPE_TITLE}}') > -1) +
+    ', leftover "farmhouse": ' + /farmhouse/i.test(text));
 }
 
 /** Optional: run from the editor to send yourself a test agreement end to end (uses your own email). */
