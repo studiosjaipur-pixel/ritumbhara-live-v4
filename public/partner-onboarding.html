@@ -32,6 +32,7 @@
   @media(max-width:760px){.layout{grid-template-columns:1fr;}}
 
   .rail{position:sticky;top:24px;}
+  @media(max-width:760px){.rail{position:static;}}
   .rail-item{display:flex;gap:12px;align-items:flex-start;padding:14px 0;border-left:1px solid var(--sand-line);padding-left:20px;position:relative;}
   .rail-item:before{content:'';position:absolute;left:-6.5px;top:20px;width:12px;height:12px;border-radius:50%;background:var(--white);border:1px solid var(--sand-line);}
   .rail-item.active:before{background:var(--crimson);border-color:var(--crimson);}
@@ -135,6 +136,10 @@
   .sig-pad{width:100%;height:170px;display:block;background:var(--ivory);border:1px dashed #cbbda6;border-radius:2px;touch-action:none;cursor:crosshair;}
   .sig-tools{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-size:11.5px;color:#8a8378;}
   .btn-small{padding:6px 12px;font-size:12px;}
+  .otp-row{display:flex;gap:10px;align-items:stretch;}
+  .otp-row input{flex:1;min-width:0;letter-spacing:.2em;}
+  .otp-row button{white-space:nowrap;}
+  .otp-ok{font-size:13.5px;color:#2e6b3a;padding:10px 0 2px;}
   .submit-err{font-size:12.5px;color:var(--danger);margin-top:14px;text-align:right;display:none;}
 
   .site-footer{border-top:1px solid var(--sand-line);padding:28px 24px 40px;text-align:center;margin-top:16px;}
@@ -172,7 +177,7 @@ const data = {
   propName:'', propCity:'', propCityOther:'', propAddress:'', propType:'', propRooms:'', propAmenities:'', propStatus:'',
   bankName:'', bankAccName:'', bankAccNo:'', bankIfsc:'', bankUpi:'',
   consent:false,
-  signName:'', signImage:'', signConsent:false, signedAt:'',
+  signName:'', signImage:'', signConsent:false, signedAt:'', otpToken:'', otpEmail:'',
   reference:''
 };
 // Agreement preview (FOCO): the filled agreement comes from the onboarding web app, built from the same
@@ -388,6 +393,17 @@ function signBlockHtml(){
         <div class="sig-tools"><span>Use your mouse, or your finger on a phone</span><button type="button" class="btn-ghost btn-small" id="sigClear">Clear</button></div>
         <div class="err">Please draw your signature.</div>
       </div>
+      <div class="field" id="f_otp" style="margin-top:20px">
+        <label>Verify your email<span class="req"> *</span></label>
+        ${otpVerified() ? `<div class="otp-ok">&#10003; ${data.ownerEmail} verified</div>` : `
+        <div class="otp-row">
+          <input id="otpCode" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit code" autocomplete="one-time-code">
+          <button type="button" class="btn-ghost btn-small" id="otpSend">Email me a code</button>
+          <button type="button" class="btn-ghost btn-small" id="otpVerify">Verify</button>
+        </div>
+        <div class="hint" id="otpMsg">We'll email a one-time code to ${data.ownerEmail || 'your email'}. It confirms it's you signing.</div>`}
+        <div class="err">Please verify your email to sign.</div>
+      </div>
       <div class="consent">
         <input type="checkbox" id="signConsentBox" ${data.signConsent?'checked':''}>
         <label for="signConsentBox">I have read this agreement and agree to its terms. I'm signing it electronically, and I understand it becomes binding once Ritumbhara countersigns it.</label>
@@ -401,6 +417,51 @@ function bindSignBlock(){
   const sn = document.querySelector('[data-field="signName"]');
   if(sn) sn.addEventListener('input', ()=>{ data.signName = sn.value; clearError('signName'); });
   setupSignaturePad();
+  bindOtp();
+}
+
+function otpVerified(){
+  return !!data.otpToken && data.otpEmail === String(data.ownerEmail||'').trim().toLowerCase();
+}
+
+async function api(body){
+  const r = await fetch(SUBMIT_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(body)});
+  return r.json();
+}
+
+function bindOtp(){
+  const send = document.getElementById('otpSend'), verify = document.getElementById('otpVerify');
+  const msg = document.getElementById('otpMsg'), input = document.getElementById('otpCode');
+  if(!send || !verify) return;
+  const say = (t, bad)=>{ msg.textContent = t; msg.style.color = bad ? 'var(--danger)' : ''; };
+  send.addEventListener('click', async ()=>{
+    send.disabled = true; say('Sending\u2026');
+    try{
+      const res = await api({action:'sendOtp', email:data.ownerEmail, name:data.ownerName});
+      if(res && res.ok){ send.textContent = 'Resend'; say(`Code sent to ${data.ownerEmail}. Check your inbox (and spam). It expires in 10 minutes.`); input.focus(); }
+      else say((res && res.error) || 'We couldn\u2019t send the code. Please try again.', true);
+    }catch(err){ say('We couldn\u2019t send the code. Please check your connection.', true); }
+    send.disabled = false;
+  });
+  const doVerify = async ()=>{
+    const code = input.value.trim();
+    if(!/^\d{6}$/.test(code)){ say('Please enter the 6-digit code from the email.', true); return; }
+    verify.disabled = true; say('Checking\u2026');
+    try{
+      const res = await api({action:'verifyOtp', email:data.ownerEmail, code});
+      if(res && res.ok && res.otpToken){
+        data.otpToken = res.otpToken; data.otpEmail = String(data.ownerEmail||'').trim().toLowerCase();
+        clearError('otp');
+        const sb = document.getElementById('signBlock');
+        if(sb){ sb.innerHTML = signBlockHtml(); bindSignBlock(); }
+        return;
+      }
+      say((res && res.error) || 'That code didn\u2019t work. Please try again.', true);
+    }catch(err){ say('We couldn\u2019t check the code. Please check your connection.', true); }
+    verify.disabled = false;
+  };
+  verify.addEventListener('click', doVerify);
+  input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); doVerify(); } });
 }
 
 function agreementBoxHtml(){
@@ -580,6 +641,7 @@ function validateStep(i){
     }
     if(!String(data.signName||'').trim()){ document.getElementById('f_signName')?.classList.add('invalid'); ok = false; }
     if(!data.signImage || data.signImage==='pending'){ document.getElementById('f_signImage')?.classList.add('invalid'); ok = false; }
+    if(!otpVerified()){ document.getElementById('f_otp')?.classList.add('invalid'); ok = false; }
     if(ok && !data.signConsent){ ok = false; alert('Please confirm you have read and agree to the agreement to continue.'); }
   } else if(i===4 && data.partnershipModel && !data.consent){ ok = false; alert('Please confirm you understand the indicative terms to continue.'); }
   if(i===1 && data.propCity==='Other' && !String(data.propCityOther||'').trim()){
@@ -645,7 +707,9 @@ async function submitForm(){
       signedAt: data.signedAt,
       userAgent: navigator.userAgent
     };
+    payload.otpToken = data.otpToken;
   }
+  payload.formVersion = 2;
 
   let res = null;
   try{
@@ -662,6 +726,11 @@ async function submitForm(){
 
   if(res && res.ok){ showSuccess(ref, res); return; }
   if(btn){ btn.disabled = false; btn.textContent = label; }
+  if(res && res.error==='otp_required'){
+    data.otpToken = ''; data.otpEmail = '';
+    if(errBox){ errBox.textContent = 'Your email verification has expired. Please go back to the agreement step and verify your email again.'; errBox.style.display = 'block'; }
+    return;
+  }
   if(errBox){
     errBox.textContent = 'We couldn’t confirm your submission. Please try again — submitting again won’t create a duplicate.';
     errBox.style.display = 'block';
