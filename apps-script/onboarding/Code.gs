@@ -57,7 +57,8 @@ var BASE_HEADERS = ['Timestamp', 'Reference', 'Owner Name', 'Phone', 'Email', 'P
   'Account Number', 'IFSC', 'UPI', 'Documents Confirmed', 'Documents Folder'];
 var AGREEMENT_HEADERS = ['Partnership Model', 'Agreement Status', 'Agreement Doc', 'Owner-signed PDF',
   'Owner Signed (IST)', 'Owner Typed Name', 'Countersigned (IST)', 'Countersigned By', 'Executed PDF', 'Agreement Token',
-  'Sign Method', 'Digio Document ID', 'Owner Sign Link', 'Owner Aadhaar Name'];
+  'Sign Method', 'Digio Document ID', 'Owner Sign Link', 'Owner Aadhaar Name', 'Owner Email Verified (IST)',
+  'Owner-signed PDF SHA-256', 'Countersigner Verified (IST)', 'Executed PDF SHA-256'];
 var STATUS = {
   AWAITING: 'Awaiting countersignature',
   EXECUTED: 'Executed',
@@ -81,6 +82,8 @@ function doPost(e) {
   }
   try {
     if (body && body.action === 'preview') return json_(previewAgreement_(body.data || {}));
+    if (body && body.action === 'sendOtp') return json_(sendOwnerOtp_(body.email, body.name));
+    if (body && body.action === 'verifyOtp') return json_(verifyOwnerOtp_(body.email, body.code));
     if (body && body.payload && body.payload.document) return json_(handleDigioWebhook_(body));
     return json_(handleSubmission_(body || {}));
   } catch (err) {
@@ -202,6 +205,11 @@ function handleSubmission_(p) {
     String(sig.name || '').trim());
   var now = new Date();
   var sh, cols, rowNum, folder;
+  // Email one-time-code check for the drawn signature (forms from version 2 on always send it).
+  var otp = checkOtpToken_(p.email, p.otpToken);
+  if (wantsAgreement && !aadhaar && Number(p.formVersion || 0) >= 2 && !otp.ok) {
+    return { ok: false, error: 'otp_required' };
+  }
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -263,7 +271,7 @@ function handleSubmission_(p) {
   }
 
   try {
-    var a = createOwnerSignedAgreement_(p, ref, folder, now);
+    var a = createOwnerSignedAgreement_(p, ref, folder, now, otp);
     var token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
     setCells_(sh, cols, rowNum, {
       'Agreement Status': STATUS.AWAITING,
@@ -272,7 +280,9 @@ function handleSubmission_(p) {
       'Owner Signed (IST)': fmt_(now, 'dd/MM/yyyy HH:mm:ss'),
       'Owner Typed Name': String(sig.name).trim(),
       'Agreement Token': token,
-      'Sign Method': 'Drawn e-signature'
+      'Sign Method': otp.ok ? 'Drawn e-signature + email OTP' : 'Drawn e-signature',
+      'Owner Email Verified (IST)': otp.ok ? fmt_(otp.at, 'dd/MM/yyyy HH:mm:ss') : 'Not verified',
+      'Owner-signed PDF SHA-256': a.sha256
     });
     notifyTeamToCountersign_(p, ref, folder, a, token);
     notifyOwnerReceived_(p, ref);
@@ -301,7 +311,7 @@ function saveDocuments_(p, ref) {
   return folder;
 }
 
-function createOwnerSignedAgreement_(p, ref, folder, signedAt) {
+function createOwnerSignedAgreement_(p, ref, folder, signedAt, otp) {
   var name = 'Ritumbhara SLA — ' + clean_(p.propertyName || 'Property') + ' — ' + ref;
   var file = DriveApp.getFileById(templateId_()).makeCopy(name, folder);
   var doc = DocumentApp.openById(file.getId());
@@ -311,11 +321,18 @@ function createOwnerSignedAgreement_(p, ref, folder, signedAt) {
   fillPlaceholders_(body, buildValues_(p, signedAt));
   appendAudit_(body, true, 'Signed electronically by the Asset Owner, ' + String(p.signature.name).trim() +
     ' (' + (p.email || '') + '), on ' + fmt_(signedAt, 'dd MMM yyyy, HH:mm:ss') + ' IST, through the Ritumbhara ' +
-    'asset owner onboarding form (reference ' + ref + '). Device: ' + String(p.signature.userAgent || 'not recorded').slice(0, 200) + '.');
+    'asset owner onboarding form (reference ' + ref + '). ' +
+    (otp && otp.ok
+      ? 'Identity check: the Asset Owner entered a one-time code emailed to ' + (p.email || '') + ', verified on ' +
+        fmt_(otp.at, 'dd MMM yyyy, HH:mm:ss') + ' IST. '
+      : 'Identity check: email one-time code not used. ') +
+    'Device: ' + String(p.signature.userAgent || 'not recorded').slice(0, 200) + '.');
   doc.saveAndClose();
 
-  var pdf = folder.createFile(file.getAs(MimeType.PDF).setName(name + ' (owner signed).pdf'));
-  return { docId: file.getId(), docUrl: file.getUrl(), pdfId: pdf.getId(), pdfUrl: pdf.getUrl(), name: name };
+  var blob = file.getAs(MimeType.PDF).setName(name + ' (owner signed).pdf');
+  var pdf = folder.createFile(blob);
+  return { docId: file.getId(), docUrl: file.getUrl(), pdfId: pdf.getId(), pdfUrl: pdf.getUrl(), name: name,
+    sha256: sha256Hex_(blob.getBytes()) };
 }
 
 // ---------------------------------------------------------------- countersign
@@ -341,9 +358,12 @@ function countersignInfo_(ref, token) {
 }
 
 /** Called from Countersign.html via google.script.run. */
-function countersign(ref, token, signatureImage, signerName) {
+function countersign(ref, token, signatureImage, signerName, code) {
   if (!signatureImage || String(signatureImage).length > 700000) return { ok: false, error: 'Please draw a signature.' };
   if (!String(signerName || '').trim()) return { ok: false, error: 'Please type your name.' };
+  if (!findByToken_(ref, token)) return { ok: false, error: 'This countersign link is not valid.' };
+  var check = checkCode_('cso_' + ref, companySigner_(), code);
+  if (!check.ok) return { ok: false, error: check.error };
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
@@ -362,20 +382,25 @@ function countersign(ref, token, signatureImage, signerName) {
     insertSignature_(body, '{{COMPANY_SIGNATURE}}', signatureImage);
     body.replaceText('\\{\\{COMPANY_SIGN_DATE\\}\\}', fmt_(now, 'dd.MM.yyyy'));
     appendAudit_(body, false, 'Countersigned electronically for the Management Entity by ' + String(signerName).trim() +
-      ' on ' + fmt_(now, 'dd MMM yyyy, HH:mm:ss') + ' IST.');
+      ' on ' + fmt_(now, 'dd MMM yyyy, HH:mm:ss') + ' IST. Identity check: a one-time code emailed to ' +
+      companySigner_() + ' was entered at signing.');
     doc.saveAndClose();
 
     var folder = file.getParents().hasNext() ? file.getParents().next() : DriveApp.getRootFolder();
     var baseName = file.getName();
-    var pdf = folder.createFile(file.getAs(MimeType.PDF).setName(baseName + ' (executed).pdf'));
+    var blob = file.getAs(MimeType.PDF).setName(baseName + ' (executed).pdf');
+    var pdf = folder.createFile(blob);
+    var hash = sha256Hex_(blob.getBytes());
     setCells_(sh, cols, row, {
       'Agreement Status': STATUS.EXECUTED,
       'Countersigned (IST)': fmt_(now, 'dd/MM/yyyy HH:mm:ss'),
       'Countersigned By': String(signerName).trim(),
-      'Executed PDF': pdf.getUrl()
+      'Countersigner Verified (IST)': fmt_(now, 'dd/MM/yyyy HH:mm:ss') + ' (' + companySigner_() + ')',
+      'Executed PDF': pdf.getUrl(),
+      'Executed PDF SHA-256': hash
     });
 
-    var owner = { name: g('Owner Name'), email: g('Email'), property: g('Property Name') };
+    var owner = { name: g('Owner Name'), email: g('Email'), property: g('Property Name'), sha256: hash };
     sendExecutedCopy_(owner, ref, pdf);
     return { ok: true, pdfUrl: pdf.getUrl() };
   } finally {
@@ -392,6 +417,107 @@ function findByToken_(ref, token) {
   var saved = String(sh.getRange(row, cols['Agreement Token']).getValue() || '');
   if (!saved || saved !== token) return null;
   return { sh: sh, cols: cols, row: row };
+}
+
+// ---------------------------------------------------------------- email one-time codes
+
+var OTP_TTL_SECONDS = 600;        // a code is valid for 10 minutes
+var OTP_MAX_SENDS_PER_HOUR = 5;
+var OTP_MAX_TRIES = 5;
+var OTP_TOKEN_HOURS = 6;          // after verifying, the owner has 6 hours to submit
+
+function normEmail_(e) { return String(e || '').trim().toLowerCase(); }
+
+function validEmail_(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e); }
+
+/** Creates and emails a 6-digit code. key identifies what the code is for. */
+function issueCode_(key, email, subject, intro) {
+  var cache = CacheService.getScriptCache();
+  var countKey = 'otpn_' + sha256Hex_(key);
+  var sent = Number(cache.get(countKey) || 0);
+  if (sent >= OTP_MAX_SENDS_PER_HOUR) return { ok: false, error: 'Too many codes requested. Please try again in an hour.' };
+  var digits = Utilities.getUuid().replace(/\D/g, '') + Utilities.getUuid().replace(/\D/g, '');
+  var code = ('000000' + (Number(digits.slice(0, 9)) % 1000000)).slice(-6);
+  cache.put('otp_' + sha256Hex_(key), JSON.stringify({ h: sha256Hex_(code + '|' + key), n: 0 }), OTP_TTL_SECONDS);
+  cache.put(countKey, String(sent + 1), 3600);
+  MailApp.sendEmail({
+    to: email,
+    name: 'Ritumbhara Partnerships',
+    subject: subject,
+    htmlBody: '<p>' + intro + '</p><p style="font-size:26px;letter-spacing:6px;font-weight:bold">' + code + '</p>' +
+      '<p>This code expires in 10 minutes. If you didn’t ask for it, you can ignore this email.</p><p>— Team Ritumbhara</p>'
+  });
+  return { ok: true };
+}
+
+function checkCode_(key, email, code) {
+  var cache = CacheService.getScriptCache();
+  var k = 'otp_' + sha256Hex_(key);
+  var raw = cache.get(k);
+  if (!raw) return { ok: false, error: 'The code has expired. Please request a new one.' };
+  var rec = JSON.parse(raw);
+  if (rec.n >= OTP_MAX_TRIES) return { ok: false, error: 'Too many wrong attempts. Please request a new code.' };
+  if (sha256Hex_(String(code || '').trim() + '|' + key) !== rec.h) {
+    rec.n++;
+    cache.put(k, JSON.stringify(rec), OTP_TTL_SECONDS);
+    return { ok: false, error: 'That code is not right. Please check and try again.' };
+  }
+  cache.remove(k);
+  return { ok: true };
+}
+
+function sendOwnerOtp_(email, name) {
+  var e = normEmail_(email);
+  if (!validEmail_(e)) return { ok: false, error: 'Please enter a valid email address in step 1.' };
+  var first = String(name || '').trim().split(/\s+/)[0] || 'there';
+  return issueCode_('owner|' + e, e, 'Your Ritumbhara agreement signing code',
+    'Hi ' + esc_(first) + ', use this code to verify your email and sign your Ritumbhara partnership agreement:');
+}
+
+function verifyOwnerOtp_(email, code) {
+  var e = normEmail_(email);
+  var res = checkCode_('owner|' + e, e, code);
+  if (!res.ok) return res;
+  var exp = Date.now() + OTP_TOKEN_HOURS * 3600 * 1000;
+  var at = Date.now();
+  return { ok: true, otpToken: [e, at, exp, hmacHex_(e + '|' + at + '|' + exp)].join('~') };
+}
+
+/** Checks the token the page got from verifyOtp. Returns { ok, at }. */
+function checkOtpToken_(email, token) {
+  var parts = String(token || '').split('~');
+  if (parts.length !== 4) return { ok: false };
+  var e = normEmail_(email);
+  if (parts[0] !== e || Number(parts[2]) < Date.now()) return { ok: false };
+  if (hmacHex_(parts[0] + '|' + parts[1] + '|' + parts[2]) !== parts[3]) return { ok: false };
+  return { ok: true, at: new Date(Number(parts[1])) };
+}
+
+/** Called from Countersign.html: emails a code to the Ritumbhara signer. */
+function sendCountersignOtp(ref, token) {
+  if (!findByToken_(ref, token)) return { ok: false, error: 'This countersign link is not valid.' };
+  var res = issueCode_('cso_' + ref, companySigner_(), 'Countersign code for ' + ref,
+    'Use this code to countersign the Ritumbhara partnership agreement ' + esc_(ref) + ':');
+  if (res.ok) res.sentTo = companySigner_();
+  return res;
+}
+
+function hmacHex_(value) {
+  var props = PropertiesService.getScriptProperties();
+  var secret = props.getProperty('OTP_SECRET');
+  if (!secret) {
+    secret = Utilities.getUuid() + Utilities.getUuid();
+    props.setProperty('OTP_SECRET', secret);
+  }
+  return bytesHex_(Utilities.computeHmacSha256Signature(value, secret));
+}
+
+function sha256Hex_(value) {
+  return bytesHex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, value));
+}
+
+function bytesHex_(bytes) {
+  return bytes.map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('');
 }
 
 // ---------------------------------------------------------------- Aadhaar eSign (Digio)
@@ -936,6 +1062,7 @@ function sendExecutedCopy_(owner, ref, pdf) {
       subject: 'Your signed Ritumbhara partnership agreement (' + ref + ')',
       htmlBody: '<p>Hi ' + esc_(first) + ',</p><p>Your partnership agreement for <b>' + esc_(owner.property) +
         '</b> is now signed by both parties. Your copy is attached — please keep it for your records.</p>' +
+        (owner.sha256 ? '<p style="color:#777;font-size:12px">Document fingerprint (SHA-256): ' + esc_(owner.sha256) + '</p>' : '') +
         '<p>We’ll be in touch about the next onboarding steps.</p><p>— Team Ritumbhara</p>',
       attachments: [blob]
     });

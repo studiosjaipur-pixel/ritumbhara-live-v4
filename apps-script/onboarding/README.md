@@ -6,10 +6,10 @@ The Apps Script web app behind `public/partner-onboarding.html`. It replaces the
 
 1. The owner fills in steps 1–4 and picks **FOCO** at step 5.
 2. The page asks this web app for a preview. The owner reads the full agreement with their details filled in.
-3. They type their name, draw a signature, tick the box and submit.
+3. They type their name, draw a signature, verify their email with a one-time code, tick the box and submit.
 4. The script saves the row and documents as before. It also copies the agreement template into the application folder, fills it in, places the owner's signature, and saves `… (owner signed).pdf`.
 5. The team gets a **Countersign needed** email with a button. The owner gets a short "we've received it" email.
-6. The team opens the link, reviews the PDF, signs and clicks **Countersign and send to owner**.
+6. The team opens the link, reviews the PDF, signs, enters the one-time code emailed to the Ritumbhara signer (shivam@ritumbhara.com) and clicks **Countersign and send to owner**.
 7. The script places the company signature, saves `… (executed).pdf`, emails it to the owner (and the team) and marks the row **Executed**.
 
 ### Aadhaar eSign (Digio)
@@ -54,6 +54,7 @@ Effective date = the day the owner signs. Term = 5 years from then (`TERM_YEARS`
 
 ## Notes
 
-- Anyone with a countersign link can sign for Ritumbhara. Don't forward those emails.
+- Countersigning needs both the link and a one-time code emailed to the Ritumbhara signer, so a forwarded link alone can't be used.
+- Each signed and executed PDF's SHA-256 fingerprint is saved in the Sheet (and the executed one is in the owner's email), so any later change to the file can be detected.
 - Each agreement records the owner's typed name, email, time (IST) and device in an "Electronic execution record" at the end of the doc.
 - Aadhaar eSign is recognised under the IT Act, 2000. Stamp duty is a separate question: ask your lawyer whether these agreements need e-stamping in Rajasthan (Digio offers e-stamping too).
