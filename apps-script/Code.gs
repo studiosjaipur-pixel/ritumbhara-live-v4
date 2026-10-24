@@ -346,7 +346,7 @@ function handoffProblem_(h) {
 function validQualifiedLead_(l) { return qualifiedLeadProblem_(l) ? null : l; }
 function validHandoff_(h) { return handoffProblem_(h) ? null : h; }
 
-var BOT_CODE_VERSION = "bot-v6.7-guest-name";
+var BOT_CODE_VERSION = "bot-v6.8-guest-name-columns";
 
 // Wrapper: an unexpected exception returns JSON (never Google's HTML error page) with a SAFE diagnostic:
 // the step that failed, the error type, a scrubbed message and the Code.gs line. No secrets, phone numbers,
@@ -558,7 +558,7 @@ function onLeadStatusEdit(e) {
   var n = last - first + 1;
   var singleCell = range.getNumRows() === 1 && range.getNumColumns() === 1;
 
-  var ids = sheet.getRange(first, 2, n, 1).getValues();
+  var ids = sheet.getRange(first, idColumn_(sheet), n, 1).getValues();
   var statuses = sheet.getRange(first, statusCol, n, 1).getValues();
   var updated = sheet.getRange(first, updatedCol, n, 1).getValues();
   var next = sheet.getRange(first, nextCol, n, 1).getValues();
@@ -623,6 +623,58 @@ function moveHandoffGuestColumns() {
   }
 }
 
+// The front of each tab after moveGuestNameColumns(): "Guest Name" right after the ID. The rest keeps its order.
+var GUEST_NAME_FRONT = [
+  [HANDOFF_SHEET, function () { return HANDOFF_HEADERS; }, HANDOFF_FRONT_COLUMNS],
+  [QUALIFIED_SHEET, function () { return QUALIFIED_HEADERS; }, ["Received (IST)", "Lead ID", "Guest Name", "Status", "Phone"]],
+  ["Guest Escalations", function () { return GUEST_ESCALATION_HEADERS; }, ["Received (IST)", "Escalation ID", "Guest Name", "Status", "Reason"]],
+  ["Guest Messages", function () { return GUEST_MESSAGE_HEADERS; }, ["Created (IST)", "Message ID", "Guest Name"]]
+];
+
+/**
+ * Run once from the editor: puts "Guest Name" right after the ID on all four tabs:
+ *   Handoffs:          Received | Handoff ID | Guest Name | Booking Code | Status | ... (the order already in use)
+ *   Qualified Leads:   Received | Lead ID | Guest Name | Status | Phone | ...
+ *   Guest Escalations: Received | Escalation ID | Guest Name | Status | Reason | ...
+ *   Guest Messages:    Created | Message ID | Guest Name | ... (its old "Guest" header is renamed, values kept)
+ * Adds "Guest Name" where it is missing (empty for existing rows: never guessed). Whole columns move, so every row
+ * keeps its values, formatting and dropdowns. Checks every tab first and changes nothing if a header appears twice.
+ * Tabs that do not exist yet are skipped. Safe to run again.
+ */
+function moveGuestNameColumns() {
+  var props = PropertiesService.getScriptProperties();
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) throw new Error("Another request holds the script lock; run this again in a minute.");
+  try {
+    var ss = openLeadsSpreadsheet_(props, { stage: "move_columns" });
+    var plan = [];
+    GUEST_NAME_FRONT.forEach(function (t) {
+      var sheet = ss.getSheetByName(t[0]);
+      if (!sheet) return;
+      var names = readLeadHeaders_(sheet).names;
+      t[2].forEach(function (name) {
+        var count = names.filter(function (n) { return n === name; }).length;
+        if (count > 1) throw new Error("Expected one \"" + name + "\" column on " + t[0] + ", found " + count + ". Nothing was changed.");
+      });
+      plan.push({ sheet: sheet, headers: t[1](), front: t[2] });
+    });
+    var lines = [];
+    plan.forEach(function (p) {
+      if (p.sheet.getName() === GUEST_MESSAGES_SHEET) renameLegacyHeader_(p.sheet, GUEST_MESSAGE_LEGACY_NAME_HEADER, "Guest Name");
+      ensureLeadHeaders_(p.sheet, p.headers); // adds a missing header only; never a second copy of one
+      var moved = reorderLeadColumns_(p.sheet, p.front);
+      lines.push(p.sheet.getName() + ": " + moved + " column(s) moved. Columns now start: " +
+        readLeadHeaders_(p.sheet).names.slice(0, p.front.length).join(" | "));
+    });
+    SpreadsheetApp.flush();
+    var result = lines.length ? lines.join("\n") : "No lead or guest tabs found. Nothing was changed.";
+    console.log(result);
+    return result;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 // Moves the named columns to the front in the given order; every other column keeps its relative order. Checks every
 // header first (each must appear exactly once), so it never moves half the columns. Returns the number of moves.
 function reorderLeadColumns_(sheet, front) {
@@ -664,7 +716,7 @@ function setupLeadStatusTracking() {
       var lastRow = sheet.getLastRow();
       if (lastRow >= 2) {
         var n = lastRow - 1;
-        var ids = sheet.getRange(2, 2, n, 1).getValues();
+        var ids = sheet.getRange(2, idColumn_(sheet), n, 1).getValues();
         var received = receivedCol ? sheet.getRange(2, receivedCol, n, 1).getValues() : null;
         var statuses = sheet.getRange(2, statusCol, n, 1).getValues();
         var updated = sheet.getRange(2, updatedCol, n, 1).getValues();
@@ -1775,11 +1827,20 @@ function openLeadsSpreadsheet_(props, trace) {
   return ss;
 }
 
-// Row number of an existing Lead/Handoff ID (column B), or 0.
+// The ID column of a lead / guest tab, found by header name ("Lead ID", "Handoff ID", "Message ID", "Escalation ID").
+// Column B (where the script always puts it) only when no such header exists.
+var ID_HEADERS = ["Lead ID", "Handoff ID", "Message ID", "Escalation ID"];
+function idColumn_(sheet) {
+  var index = readLeadHeaders_(sheet).index;
+  for (var i = 0; i < ID_HEADERS.length; i++) if (index[ID_HEADERS[i]]) return index[ID_HEADERS[i]];
+  return 2;
+}
+
+// Row number of an existing ID (found in the tab's ID column, by header name), or 0.
 function findRowById_(sheet, id) {
   var last = sheet.getLastRow();
   if (last < 2) return 0;
-  var ids = sheet.getRange(2, 2, last - 1, 1).getValues();
+  var ids = sheet.getRange(2, idColumn_(sheet), last - 1, 1).getValues();
   for (var i = 0; i < ids.length; i++) if (String(ids[i][0]) === id) return i + 2;
   return 0;
 }
@@ -1989,8 +2050,11 @@ function sendBotLeadEmail_(item, qualified, props, sheetUrl) {
 
 var GUEST_MESSAGES_SHEET = "Guest Messages";
 var GUEST_MESSAGE_HEADERS = ["Created (IST)", "Message ID", "Status", "Type", "Scheduled Date", "Send By", "Booking ID", "Booking Code",
-  "Check-in", "Check-out", "Nights", "Guests", "Property", "Guest", "Guest WhatsApp", "Special Request", "Booking Source",
+  "Check-in", "Check-out", "Nights", "Guests", "Property", "Guest Name", "Guest WhatsApp", "Special Request", "Booking Source",
   "Reason", "Message", "Status Updated (IST)"];
+// "Guest Name" was called "Guest" before; an existing tab's "Guest" header is renamed in place (same column, same
+// values, see guestTab_), so there is never a second name column.
+var GUEST_MESSAGE_LEGACY_NAME_HEADER = "Guest";
 var GUEST_MESSAGE_STATUSES = ["QUEUED", "READY", "SENT", "SKIPPED", "FAILED"];
 var GUEST_MESSAGE_TYPES = ["PRE_ARRIVAL", "CHECK_IN", "CHECKOUT"];
 var GUEST_MESSAGE_TRANSITIONS = { "QUEUED": ["READY", "SKIPPED", "FAILED"], "READY": ["SKIPPED"], "FAILED": ["READY", "SKIPPED"] };
@@ -1998,7 +2062,8 @@ var GUEST_MESSAGE_TYPE_LABELS = { "PRE_ARRIVAL": "Pre-arrival", "CHECK_IN": "Che
 
 var GUEST_ESCALATIONS_SHEET = "Guest Escalations";
 var GUEST_ESCALATION_HEADERS = ["Received (IST)", "Escalation ID", "Status", "Reason", "Question", "Guest WhatsApp", "Booking Code",
-  "Topic", "Channel", "Received (UTC)", "Email Status", "Status Updated (IST)"];
+  "Topic", "Channel", "Received (UTC)", "Email Status", "Status Updated (IST)", "Guest Name"];
+// Guest Name: the verified Intellistay booking's guest name (sent only for a verified booking); otherwise empty.
 var GUEST_ESCALATION_STATUSES = ["Open", "In progress", "Resolved"];
 var GUEST_ESCALATION_REASONS = ["HUMAN_REQUESTED", "BOOKING_CHANGE", "CANCELLATION", "PAYMENT", "URGENT_ISSUE", "MISSING_INFORMATION", "UNSUPPORTED_QUESTION"];
 var GUEST_ESCALATION_REASON_LABELS = {
@@ -2157,7 +2222,24 @@ function guestTab_(ss, name, headers, trace) {
   if (trace) trace.stage = "open_tab";
   var sheet = ss.getSheetByName(name) || ss.insertSheet(name);
   if (trace) trace.stage = "write_headers";
+  if (name === GUEST_MESSAGES_SHEET) renameLegacyHeader_(sheet, GUEST_MESSAGE_LEGACY_NAME_HEADER, "Guest Name");
   return { sheet: sheet, cols: ensureLeadHeaders_(sheet, headers) };
+}
+
+// Renames one header cell in place (the column and its values stay where they are). Only when the new name is not
+// there yet, so it never creates a second column with that name.
+function renameLegacyHeader_(sheet, from, to) {
+  var h = readLeadHeaders_(sheet);
+  if (!h.index[from] || h.index[to]) return false;
+  sheet.getRange(1, h.index[from]).setValue(to);
+  return true;
+}
+
+// The escalation's guest name: only from a valid, verified booking block (escalation.lead); otherwise empty.
+function escalationGuestName_(x) {
+  var l = x && x.lead;
+  if (!l || typeof l !== "object" || escalationLeadProblem_(l)) return "";
+  return typeof l.guestName === "string" ? l.guestName : "";
 }
 
 function handleGuestRequest_(body, props) {
@@ -2223,13 +2305,14 @@ function handleGuestRequestInner_(body, props, trace) {
       "Created (IST)": istText_(now), "Message ID": item.messageId, "Status": item.status, "Type": item.type,
       "Scheduled Date": item.scheduledDate, "Send By": item.sendBy, "Booking ID": String(item.bookingId), "Booking Code": item.bookingCode,
       "Check-in": item.checkIn, "Check-out": item.checkOut, "Nights": item.nights, "Guests": item.guests,
-      "Property": item.property, "Guest": item.guestName, "Guest WhatsApp": item.guestPhone,
+      "Property": item.property, "Guest Name": item.guestName, "Guest WhatsApp": item.guestPhone,
       "Special Request": item.specialRequest, "Booking Source": item.bookingSource, "Reason": item.reason,
       "Status Updated (IST)": istText_(now)
     } : {
       "Received (IST)": istText_(now), "Escalation ID": item.escalationId, "Status": "Open", "Reason": item.reason,
       "Guest WhatsApp": item.guestPhone, "Booking Code": item.bookingCode, "Topic": item.intent, "Channel": item.channel,
-      "Received (UTC)": item.receivedAt, "Email Status": "PENDING", "Status Updated (IST)": istText_(now)
+      "Received (UTC)": item.receivedAt, "Email Status": "PENDING", "Status Updated (IST)": istText_(now),
+      "Guest Name": escalationGuestName_(item)
     };
     var row = cols.names.map(function (name) {
       if (isMessage && name === "Message") return longCell_(item.message, 1500);
@@ -2335,7 +2418,7 @@ function collectDueGuestMessages_(ss, today) {
     if (!ISO_DATE.test(sendBy) || sendBy < today) return;
     out.push({
       status: status, type: sheetText_(v("Type")), scheduled: scheduled, bookingCode: sheetText_(v("Booking Code")),
-      guest: sheetText_(v("Guest")), phone: sheetText_(v("Guest WhatsApp")), property: sheetText_(v("Property")),
+      guest: sheetText_(h.index["Guest Name"] ? v("Guest Name") : v(GUEST_MESSAGE_LEGACY_NAME_HEADER)), phone: sheetText_(v("Guest WhatsApp")), property: sheetText_(v("Property")),
       reason: sheetText_(v("Reason")), message: sheetText_(v("Message"))
     });
   });
