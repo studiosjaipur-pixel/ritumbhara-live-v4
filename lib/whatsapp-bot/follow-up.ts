@@ -5,6 +5,7 @@ import { buildCatalog, type CatalogProperty } from "./catalog";
 import { createConversationStore, createStoreKeys } from "./store";
 import { createUpstashClient, RedisUnavailableError, type RedisClient } from "./upstash";
 import { sendWhatsAppTemplate, type TwilioSendResult, type WhatsAppTemplateMessage } from "../twilio/send";
+import { isMetaFollowUpProvider, sendFollowUpViaMeta } from "../meta/follow-up";
 
 // Week 6 Stretch 2: automatic WhatsApp follow-up endpoint. SERVER-ONLY.
 //
@@ -237,7 +238,8 @@ const defaultLog: FollowUpLogFn = function (event, meta) {
 const defaultDeps: FollowUpDeps = {
   getConfig: function () { return getFollowUpConfig(); },
   createRedis: function (config) { return createUpstashClient({ url: config.upstashRedisRestUrl, token: config.upstashRedisRestToken }); },
-  sendTemplate: function (msg) { return sendWhatsAppTemplate(msg); },
+  // Meta runs alongside Twilio: only WHATSAPP_FOLLOW_UP_PROVIDER=meta switches; unset = the Twilio sender, unchanged.
+  sendTemplate: function (msg) { return isMetaFollowUpProvider() ? sendFollowUpViaMeta(msg) : sendWhatsAppTemplate(msg); },
   now: function () { return new Date(); },
   log: defaultLog,
 };
