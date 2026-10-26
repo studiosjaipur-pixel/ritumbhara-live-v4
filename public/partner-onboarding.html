@@ -144,6 +144,9 @@
 
   .site-footer{border-top:1px solid var(--sand-line);padding:28px 24px 40px;text-align:center;margin-top:16px;}
   .site-footer p{font-size:11.5px;color:#8a8378;margin:0;letter-spacing:.01em;}
+  .invite-banner{max-width:1080px;margin:32px auto 24px;padding:14px 18px;border:1px solid var(--sand-line);background:var(--sand);font-size:14px;line-height:1.6;color:var(--ink);}
+  .invite-banner b{color:var(--crimson);font-weight:600;}
+  .field.locked input,.field.locked textarea,.field.locked select{background:#f6f2ec;color:var(--ink-soft);}
 </style>
 </head>
 <body>
@@ -183,6 +186,10 @@ const data = {
 // Agreement preview (FOCO): the filled agreement comes from the onboarding web app, built from the same
 // Google Doc template that the signed copy is generated from.
 const agreement = {key:'', html:'', loading:false, error:'', signMode:''};
+// Invite links from the team's admin page (?invite=...): details come pre-filled and locked, and the agreement is the
+// one the team finalised for this owner (a draft Google Doc), not the standard template.
+const INVITE_TOKEN = (new URLSearchParams(location.search).get('invite') || '').replace(/[^a-f0-9]/g, '').slice(0, 64);
+let invite = null; // {reference, version, ...} once loaded
 
 const partnershipModels = [
   {value:'FOCO', title:'FOCO — Franchise-Owned, Company-Operated', desc:'You own the property. Ritumbhara manages day-to-day operations, guest experience, and distribution.'},
@@ -366,7 +373,10 @@ function previewPayload(){
   };
 }
 
-function agreementReady(){ return agreement.key===JSON.stringify(previewPayload()) && !!agreement.html; }
+function agreementReady(){
+  if(invite) return !!agreement.html;
+  return agreement.key===JSON.stringify(previewPayload()) && !!agreement.html;
+}
 function isAadhaar(){ return agreementReady() && agreement.signMode==='aadhaar'; }
 
 function signBlockHtml(){
@@ -465,6 +475,7 @@ function bindOtp(){
 }
 
 function agreementBoxHtml(){
+  if(invite) return agreement.html || '<div class="agreement-state">Your agreement isn’t ready yet. Please contact the Ritumbhara team.</div>';
   const key = JSON.stringify(previewPayload());
   if(agreement.key===key && agreement.html) return agreement.html;
   if(agreement.error && agreement.key===key) return `<div class="agreement-state"><span class="err-text">${agreement.error}</span><button type="button" class="btn-ghost btn-small" id="agreementRetry">Try again</button></div>`;
@@ -472,6 +483,7 @@ function agreementBoxHtml(){
 }
 
 async function loadAgreement(){
+  if(invite) return; // the team's finalised agreement came with the invite
   const key = JSON.stringify(previewPayload());
   if(agreement.loading || (agreement.key===key && (agreement.html || agreement.error))) return;
   agreement.loading = true; agreement.key = key; agreement.html = ''; agreement.error = '';
@@ -596,6 +608,54 @@ function bindInputs(){
   const cb = document.getElementById('consentBox');
   if(cb) cb.addEventListener('change', ()=>{ data.consent = cb.checked; });
   if(current===4 && data.partnershipModel==='FOCO'){ bindSignBlock(); bindAgreementRetry(); loadAgreement(); }
+  if(invite) lockInviteFields();
+}
+
+function lockInviteFields(){
+  document.querySelectorAll('[data-field]').forEach(el=>{
+    if(el.dataset.field==='signName') return;
+    if(el.tagName==='SELECT' || el.type==='radio') el.disabled = true; else el.readOnly = true;
+    el.closest('.field')?.classList.add('locked');
+  });
+}
+
+function inviteBanner(html){
+  let el = document.getElementById('inviteBanner');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'inviteBanner'; el.className = 'invite-banner';
+    const layout = document.querySelector('.layout');
+    layout.parentNode.insertBefore(el, layout);
+  }
+  el.innerHTML = html;
+}
+
+async function loadInvite(){
+  inviteBanner('Loading your application&hellip;');
+  document.getElementById('card').innerHTML = '<div class="agreement-state">Loading&hellip;</div>';
+  let res = null;
+  try{
+    const r = await fetch(SUBMIT_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({action:'getInvite', token: INVITE_TOKEN})});
+    res = await r.json();
+  }catch(err){ res = null; }
+  if(!res || !res.ok){
+    const msg = !res ? 'We couldn’t load your application. Please check your connection and refresh this page.'
+      : res.error==='already_submitted' ? 'This application has already been submitted. Thank you! We’ll email you once the agreement is fully signed.'
+      : 'This link is no longer valid. Please contact the Ritumbhara team for a fresh link.';
+    inviteBanner(msg);
+    document.getElementById('card').innerHTML = `<div class="success"><div class="stamp">R</div><p>${msg}</p>${res && res.reference ? `<p class="ref">Reference: ${res.reference}</p>` : ''}</div>`;
+    document.getElementById('rail').innerHTML = '';
+    return;
+  }
+  invite = res;
+  Object.keys(res.data||{}).forEach(k=>{ if(k in data) data[k] = res.data[k]; });
+  data.reference = res.reference;
+  agreement.html = res.html || '';
+  agreement.signMode = res.signMode==='aadhaar' ? 'aadhaar' : 'drawn';
+  agreement.key = JSON.stringify(previewPayload());
+  inviteBanner(`Our team has filled in your details (ref <b>${res.reference}</b>). Please check them, add any pending documents, then ${data.partnershipModel==='FOCO' ? 'read and sign your agreement' : 'submit'}. Spotted a mistake? Contact us before signing.`);
+  current = 3; // Documents
+  renderAll();
 }
 
 function fileToBase64(file){
@@ -710,6 +770,7 @@ async function submitForm(){
     payload.otpToken = data.otpToken;
   }
   payload.formVersion = 2;
+  if(invite){ payload.inviteToken = INVITE_TOKEN; payload.inviteVersion = invite.version || ''; }
 
   let res = null;
   try{
@@ -726,6 +787,14 @@ async function submitForm(){
 
   if(res && res.ok){ showSuccess(ref, res); return; }
   if(btn){ btn.disabled = false; btn.textContent = label; }
+  if(res && res.error==='agreement_changed'){
+    if(errBox){ errBox.innerHTML = 'Our team updated your agreement after you opened it. Please <a href="" onclick="location.reload();return false;">reload this page</a> to read the latest version before signing.'; errBox.style.display = 'block'; }
+    return;
+  }
+  if(res && res.error==='invalid_link'){
+    if(errBox){ errBox.textContent = 'This link is no longer valid. Please contact the Ritumbhara team for a fresh link.'; errBox.style.display = 'block'; }
+    return;
+  }
   if(res && res.error==='otp_required'){
     data.otpToken = ''; data.otpEmail = '';
     if(errBox){ errBox.textContent = 'Your email verification has expired. Please go back to the agreement step and verify your email again.'; errBox.style.display = 'block'; }
@@ -767,7 +836,7 @@ function showSuccess(ref, res){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-renderAll();
+if(INVITE_TOKEN) loadInvite(); else renderAll();
 document.getElementById('footerYear').textContent = new Date().getFullYear();
 </script>
 

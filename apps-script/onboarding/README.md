@@ -58,3 +58,21 @@ Effective date = the day the owner signs. Term = 5 years from then (`TERM_YEARS`
 - Each signed and executed PDF's SHA-256 fingerprint is saved in the Sheet (and the executed one is in the owner's email), so any later change to the file can be detected.
 - Each agreement records the owner's typed name, email, time (IST) and device in an "Electronic execution record" at the end of the doc.
 - Aadhaar eSign is recognised under the IT Act, 2000. Stamp duty is a separate question: ask your lawyer whether these agreements need e-stamping in Rajasthan (Digio offers e-stamping too).
+
+## Team admin panel (fill applications for owners, finalise the agreement, send)
+
+Page: `https://www.ritumbhara.com/admin-onboarding.html` (`public/admin-onboarding.html`, not indexed). Code: `Admin.gs` in this folder.
+
+1. The team signs in with the shared `ADMIN_KEY`, clicks **New application** and fills the owner's details (and any documents the owner already sent). Saving creates a row in the **Admin Applications** tab and the application folder (`RTB-A… — Owner — Property`) in the Applications folder.
+2. **Prepare agreement** copies the template into that folder as `DRAFT — Ritumbhara SLA — …` with the owner's details filled in. Dates and signatures stay as `{{PLACEHOLDERS}}`. The team clicks **Edit in Google Docs** and changes anything: wording, clauses, commercials. **Refresh preview** shows exactly what the owner will read.
+3. **Send to owner** emails a link (`/partner-onboarding.html?invite=…`). You can also copy it or share it on WhatsApp. The owner sees their details already filled in and locked, adds documents, reads the edited agreement and signs (drawn signature + email code, or Aadhaar via Digio).
+4. On submit, the script signs a **copy of the draft** (not the template). Everything after that is unchanged: countersign link, Digio, executed PDF, emails, the row in Sheet1. If someone edits the draft after the owner opened the page, the owner is asked to reload and read the new version first.
+
+Setup:
+
+1. Add a script file called `Admin` and paste in `Admin.gs`. Replace `Code.gs` with this folder's `Code.gs`. It adds two lines to `doPost` and reads the draft instead of the template for invite links.
+2. Script Properties: add `ADMIN_KEY` (24+ random characters, shared only with the team). Optional: `ONBOARDING_URL`.
+3. Deploy → Manage deployments → edit → New version → Deploy (same URL).
+4. Team members who edit drafts need edit access to the Applications folder in Drive.
+
+Notes: leave `{{OWNER_SIGNATURE}}` / `{{COMPANY_SIGNATURE}}` in the draft. The admin page warns if one goes missing. Accept or reject all suggestions in the doc before sending. Once the owner submits, the application is read-only in the admin panel, and its status follows the Agreement Status in Sheet1.

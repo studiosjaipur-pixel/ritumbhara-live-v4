@@ -84,6 +84,8 @@ function doPost(e) {
     if (body && body.action === 'preview') return json_(previewAgreement_(body.data || {}));
     if (body && body.action === 'sendOtp') return json_(sendOwnerOtp_(body.email, body.name));
     if (body && body.action === 'verifyOtp') return json_(verifyOwnerOtp_(body.email, body.code));
+    if (body && body.action === 'getInvite') return json_(getInvite_(body.token));               // Admin.gs
+    if (body && /^admin[A-Za-z]+$/.test(String(body.action || ''))) return json_(handleAdmin_(body)); // Admin.gs
     if (body && body.payload && body.payload.document) return json_(handleDigioWebhook_(body));
     return json_(handleSubmission_(body || {}));
   } catch (err) {
@@ -111,13 +113,12 @@ function doGet(e) {
 function previewAgreement_(d) {
   if (String(d.partnershipModel || '') !== 'FOCO') return { ok: false, error: 'no_template_for_model' };
   var v = buildValues_(d, new Date());
-  var html = renderBlocks_(templateBlocks_(), v);
+  var html = renderBlocks_(docBlocks_(templateId_()), v);
   return { ok: true, html: html, effectiveDate: v.START_DATE, signMode: digioOn_() ? 'aadhaar' : 'drawn' };
 }
 
-/** The template as simple blocks, cached per template version. */
-function templateBlocks_() {
-  var id = templateId_();
+/** A Google Doc (the template, or a team-edited draft from Admin.gs) as simple blocks, cached per version. */
+function docBlocks_(id) {
   var ver = DriveApp.getFileById(id).getLastUpdated().getTime();
   var key = 'tpl_' + id + '_' + ver;
   var cache = CacheService.getScriptCache();
@@ -195,6 +196,15 @@ function renderBlocks_(blocks, v) {
 // ---------------------------------------------------------------- submission
 
 function handleSubmission_(p) {
+  // Internal fields are only ever set below from an admin invite, never by the page.
+  delete p._agreementSourceId;
+  delete p._folderUrl;
+  var invite = null;
+  if (p.inviteToken) {
+    invite = inviteSubmission_(p); // Admin.gs: the team's saved details + the edited draft agreement
+    if (!invite.ok) return { ok: false, error: invite.error };
+    p = invite.p;
+  }
   var ref = String(p.reference || '');
   if (!/^RTB-[A-Za-z0-9]{4,24}$/.test(ref)) return { ok: false, error: 'bad_reference' };
 
@@ -223,7 +233,7 @@ function handleSubmission_(p) {
       return { ok: true, reference: ref, duplicate: true, signUrl: st === STATUS.OWNER_AADHAAR ? link : '',
         agreementStatus: st === STATUS.OWNER_AADHAAR ? 'awaiting_owner_esign' : st };
     }
-    folder = saveDocuments_(p, ref);
+    folder = saveDocuments_(p, ref, p._folderUrl);
     var row = {
       'Timestamp': now,
       'Reference': ref,
@@ -237,6 +247,7 @@ function handleSubmission_(p) {
     };
     appendRow_(sh, cols, row);
     rowNum = sh.getLastRow();
+    if (invite) markInviteSubmitted_(p.inviteToken);
     // Keep account numbers as text (no scientific notation / lost leading zeros).
     sh.getRange(rowNum, cols['Account Number']).setNumberFormat('@').setValue(String(p.accountNumber || ''));
     sh.getRange(rowNum, cols['Phone']).setNumberFormat('@').setValue(String(p.phone || ''));
@@ -295,9 +306,15 @@ function handleSubmission_(p) {
   }
 }
 
-function saveDocuments_(p, ref) {
-  var parent = DriveApp.getFolderById(cfg_('APPLICATIONS_FOLDER_ID'));
-  var folder = parent.createFolder(ref + ' — ' + clean_(p.ownerName || 'Owner') + ' — ' + clean_(p.propertyName || 'Property'));
+function saveDocuments_(p, ref, existingFolderUrl) {
+  var folder = null;
+  if (existingFolderUrl) {
+    try { folder = DriveApp.getFolderById(idFromUrl_(existingFolderUrl)); } catch (err) { folder = null; }
+  }
+  if (!folder) {
+    var parent = DriveApp.getFolderById(cfg_('APPLICATIONS_FOLDER_ID'));
+    folder = parent.createFolder(ref + ' — ' + clean_(p.ownerName || 'Owner') + ' — ' + clean_(p.propertyName || 'Property'));
+  }
   (p.files || []).forEach(function (f) {
     if (!f || !f.data) return;
     try {
@@ -313,7 +330,7 @@ function saveDocuments_(p, ref) {
 
 function createOwnerSignedAgreement_(p, ref, folder, signedAt, otp) {
   var name = 'Ritumbhara SLA — ' + clean_(p.propertyName || 'Property') + ' — ' + ref;
-  var file = DriveApp.getFileById(templateId_()).makeCopy(name, folder);
+  var file = DriveApp.getFileById(p._agreementSourceId || templateId_()).makeCopy(name, folder);
   var doc = DocumentApp.openById(file.getId());
   var body = doc.getBody();
 
@@ -547,7 +564,7 @@ function companySigner_() { return cfg_('DIGIO_COMPANY_SIGNER') || Session.getEf
 /** Fills the agreement (no drawn signatures), uploads the PDF to Digio with owner -> Ritumbhara signing order. */
 function sendForAadhaarEsign_(p, ref, folder, now) {
   var name = 'Ritumbhara SLA — ' + clean_(p.propertyName || 'Property') + ' — ' + ref;
-  var file = DriveApp.getFileById(templateId_()).makeCopy(name, folder);
+  var file = DriveApp.getFileById(p._agreementSourceId || templateId_()).makeCopy(name, folder);
   var doc = DocumentApp.openById(file.getId());
   var body = doc.getBody();
   var v = buildValues_(p, now);
