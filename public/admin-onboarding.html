@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Onboarding Admin — Ritumbhara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Italiana&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --crimson:#BF2542; --crimson-dark:#8f1c33; --ink:#241F1C; --ink-soft:#5b544e;
+  --ivory:#FBF7F1; --sand:#F1E9DC; --sand-line:#e3d7c3; --gold:#B08D3E; --white:#fff;
+  --danger:#B3261E; --ok:#2f7a4a; --blue:#2c5d8a;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Poppins,system-ui,sans-serif;background:var(--ivory);color:var(--ink);font-size:14px}
+h1,h2,h3{font-weight:400}
+.serif{font-family:Italiana,serif}
+button{font:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+a{color:var(--crimson)}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;padding:12px 24px;background:var(--white);border-bottom:1px solid var(--sand-line)}
+.brand{font-family:Italiana,serif;font-size:22px;letter-spacing:.12em}
+.brand small{font-family:Poppins;font-size:11px;letter-spacing:.14em;color:var(--ink-soft);margin-left:8px}
+.top .spacer{flex:1}
+.who{font-size:13px;color:var(--ink-soft)}
+
+.btn{border:1px solid var(--sand-line);background:var(--white);color:var(--ink);padding:9px 16px;border-radius:8px;font-size:13px;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--ink-soft)}
+.btn.primary{background:var(--crimson);border-color:var(--crimson);color:#fff}
+.btn.primary:hover{background:var(--crimson-dark)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.sm{padding:6px 10px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.wrap{max-width:1180px;margin:0 auto;padding:24px}
+
+/* login */
+.login{max-width:400px;margin:12vh auto;background:var(--white);border:1px solid var(--sand-line);border-radius:14px;padding:32px}
+.login h1{font-family:Italiana,serif;font-size:30px;margin:0 0 4px}
+.login p{color:var(--ink-soft);margin:0 0 22px}
+
+/* fields */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field label{font-size:12px;font-weight:500;color:var(--ink-soft)}
+.field .req{color:var(--crimson)}
+.field input,.field select,.field textarea{border:1px solid var(--sand-line);background:var(--white);border-radius:8px;padding:10px 12px;outline:none}
+.field textarea{min-height:76px;resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--crimson)}
+.field.bad input,.field.bad select,.field.bad textarea{border-color:var(--danger)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.grid .full{grid-column:1/-1}
+.msg{font-size:13px;margin-top:8px}
+.msg.bad{color:var(--danger)}
+
+/* list */
+.list-head{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.list-head h1{font-family:Italiana,serif;font-size:34px;margin:0;flex:1}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.filters input,.filters select{border:1px solid var(--sand-line);border-radius:8px;padding:8px 12px;background:var(--white)}
+.filters input{min-width:240px}
+.stats{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.stat{background:var(--white);border:1px solid var(--sand-line);border-radius:10px;padding:10px 16px;min-width:110px}
+.stat b{display:block;font-size:20px;font-weight:500}
+.stat span{font-size:12px;color:var(--ink-soft)}
+table{width:100%;border-collapse:collapse;background:var(--white);border:1px solid var(--sand-line);border-radius:12px;overflow:hidden}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--sand);vertical-align:middle}
+th{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);background:#fdfbf7}
+tr.click{cursor:pointer}
+tr.click:hover td{background:#fdf9f3}
+td .sub{font-size:12px;color:var(--ink-soft)}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:500}
+.pill.Draft{background:var(--sand);color:var(--ink-soft)}
+.pill.Sent{background:#e6eef6;color:var(--blue)}
+.pill.Signed{background:#e4f1e8;color:var(--ok)}
+.pill.Submitted{background:#e6eef6;color:var(--blue)}
+.pill.Archived{background:#eee;color:#888}
+.empty{padding:40px;text-align:center;color:var(--ink-soft)}
+
+/* editor */
+.ed-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.ed-head h1{font-family:Italiana,serif;font-size:30px;margin:0}
+.ed-head .ref{font-size:12px;color:var(--ink-soft)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--sand-line);margin-bottom:20px;overflow-x:auto}
+.tab{border:0;background:none;padding:10px 16px;font-size:13px;color:var(--ink-soft);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tab.on{color:var(--crimson);border-bottom-color:var(--crimson);font-weight:500}
+.tab .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--gold);margin-left:6px;vertical-align:middle}
+.panel{background:var(--white);border:1px solid var(--sand-line);border-radius:12px;padding:22px;margin-bottom:18px}
+.panel h3{margin:0 0 4px;font-size:16px;font-weight:500}
+.panel .hint{font-size:12px;color:var(--ink-soft);margin:0 0 16px}
+.models{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.model{border:1px solid var(--sand-line);border-radius:10px;padding:14px;cursor:pointer}
+.model.on{border-color:var(--crimson);background:#fdf3f4}
+.model b{display:block;font-weight:500;margin-bottom:4px}
+.model span{font-size:12px;color:var(--ink-soft)}
+.model input{display:none}
+
+.docs{display:grid;gap:10px}
+.doc{display:flex;align-items:center;gap:12px;border:1px dashed var(--sand-line);border-radius:10px;padding:12px 14px}
+.doc .t{flex:1}
+.doc .t b{font-weight:500;display:block}
+.doc .t span{font-size:12px;color:var(--ink-soft)}
+.doc .q{font-size:12px;color:var(--ok)}
+.saved-docs{margin-top:14px;font-size:13px}
+.saved-docs a{display:block;margin:4px 0}
+
+/* agreement */
+.agr-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.agr-bar .note{font-size:12px;color:var(--ink-soft);flex:1;min-width:220px;line-height:1.5}
+.warn{background:#fff6e5;border:1px solid #f0d9a8;color:#7a5a16;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.warn.bad{background:#fdeceb;border-color:#f2c4c0;color:var(--danger)}
+.tips{font-size:12px;color:var(--ink-soft);background:#fdfbf7;border:1px solid var(--sand);border-radius:8px;padding:10px 14px;margin-bottom:14px;line-height:1.6}
+.tips code{background:var(--sand);padding:1px 5px;border-radius:4px;font-size:11px}
+.prev-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:4px 0 8px}
+.doc-paper{background:#fff;border:1px solid var(--sand-line);border-radius:10px;padding:48px 56px;max-height:70vh;overflow:auto;font-family:Georgia,'Times New Roman',serif;font-size:14.5px;line-height:1.65;color:#222}
+.doc-paper h3{font-size:18px;text-align:center;margin:0 0 14px}
+.doc-paper h4{font-size:15px;margin:18px 0 6px}
+.doc-paper p.c{text-align:center}
+.doc-paper table{border:0;border-radius:0;width:100%}
+.doc-paper td{border:1px solid #ddd;padding:6px 8px;vertical-align:top}
+.doc-paper .sig-line,.doc-paper .date-line{display:inline-block;min-width:160px;border-bottom:1px solid #999;height:1.2em}
+.placeholder{padding:50px 20px;text-align:center;color:var(--ink-soft);line-height:1.7}
+
+/* sticky action bar */
+.actions{position:sticky;bottom:0;z-index:10;display:flex;gap:10px;align-items:center;padding:12px 24px;background:rgba(255,255,255,.96);border-top:1px solid var(--sand-line);backdrop-filter:blur(6px)}
+.actions .status{flex:1;font-size:13px;color:var(--ink-soft)}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(36,31,28,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal-bg.on{display:flex}
+.modal{background:#fff;border-radius:14px;max-width:520px;width:100%;padding:26px;max-height:90vh;overflow:auto}
+.modal h2{font-family:Italiana,serif;font-size:26px;margin:0 0 6px}
+.modal p{color:var(--ink-soft);margin:0 0 16px}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:10px 0}
+.linkbox{display:flex;gap:8px;margin:12px 0}
+.linkbox input{flex:1;border:1px solid var(--sand-line);border-radius:8px;padding:9px 10px;font-size:12px;background:#fdfbf7}
+.modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:60}
+.toast.on{opacity:1}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.hide{display:none!important}
+
+@media (max-width:760px){
+  .wrap{padding:16px}
+  .top{padding:10px 16px}
+  .grid,.models{grid-template-columns:1fr}
+  .doc-paper{padding:24px 18px}
+  .hide-m{display:none}
+  .actions{padding:10px 16px;flex-wrap:wrap}
+  .filters input{min-width:0;flex:1}
+  table{font-size:13px}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">RITUMBHARA<small class="hide-m">ONBOARDING ADMIN</small></div>
+  <div class="spacer"></div>
+  <span class="who" id="who"></span>
+  <button class="btn sm ghost hide" id="logoutBtn">Sign out</button>
+</header>
+
+<!-- LOGIN -->
+<section id="loginView" class="hide">
+  <div class="login">
+    <h1>Team sign in</h1>
+    <p>Fill onboarding applications for asset owners and finalise their agreements before sending.</p>
+    <div class="field"><label>Your name</label><input id="loginName" placeholder="e.g. Shivam"></div>
+    <div class="field"><label>Admin key</label><input id="loginKey" type="password" placeholder="Shared team key"></div>
+    <button class="btn primary" id="loginBtn" style="width:100%">Sign in</button>
+    <div class="msg bad" id="loginMsg"></div>
+  </div>
+</section>
+
+<!-- LIST -->
+<section id="listView" class="hide">
+  <div class="wrap">
+    <div class="list-head">
+      <h1>Asset owner applications</h1>
+      <button class="btn" id="refreshBtn">Refresh</button>
+      <button class="btn primary" id="newBtn">+ New application</button>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="filters">
+      <input id="q" placeholder="Search owner, property, city, ref…">
+      <select id="statusF">
+        <option value="">All statuses</option><option value="Draft">Draft</option><option value="Sent">Awaiting owner</option><option value="Submitted">Submitted</option><option value="Archived">Archived</option>
+      </select>
+    </div>
+    <div id="listBox"></div>
+  </div>
+</section>
+
+<!-- EDITOR -->
+<section id="editView" class="hide">
+  <div class="wrap">
+    <div class="ed-head">
+      <button class="btn sm" id="backBtn">← All applications</button>
+      <h1 id="edTitle">New application</h1>
+      <span class="pill Draft" id="edStatus">Draft</span>
+      <span class="ref" id="edRef"></span>
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="tab on" data-tab="details">1. Owner &amp; property</button>
+      <button class="tab" data-tab="payout">2. Payout</button>
+      <button class="tab" data-tab="docs">3. Documents</button>
+      <button class="tab" data-tab="agreement">4. Agreement</button>
+      <button class="tab" data-tab="notes">Internal notes</button>
+    </div>
+
+    <div data-pane="details">
+      <div class="panel">
+        <h3>Partnership model</h3>
+        <p class="hint">Decides which agreement is generated.</p>
+        <div class="models" id="models"></div>
+      </div>
+      <div class="panel">
+        <h3>Owner details</h3>
+        <p class="hint">The person signing the partnership agreement.</p>
+        <div class="grid" id="ownerFields"></div>
+      </div>
+      <div class="panel">
+        <h3>Property details</h3>
+        <div class="grid" id="propFields"></div>
+      </div>
+    </div>
+
+    <div data-pane="payout" class="hide">
+      <div class="panel">
+        <h3>Payout details</h3>
+        <p class="hint">Where owner payouts go. Shown in the agreement.</p>
+        <div class="grid" id="bankFields"></div>
+      </div>
+    </div>
+
+    <div data-pane="docs" class="hide">
+      <div class="panel">
+        <h3>Documents</h3>
+        <p class="hint">Optional. Upload anything the owner has already shared with you (images or PDFs, under 10MB each). They upload on save. The owner can still add more from their link.</p>
+        <div class="docs" id="docList"></div>
+        <div class="saved-docs" id="savedDocs"></div>
+      </div>
+    </div>
+
+    <div data-pane="agreement" class="hide">
+      <div class="panel" id="agrPanel"></div>
+    </div>
+
+    <div data-pane="notes" class="hide">
+      <div class="panel">
+        <h3>Internal notes</h3>
+        <p class="hint">Only your team sees these.</p>
+        <div class="field"><textarea id="notes" style="min-height:160px" placeholder="Commercials discussed, follow-ups, who referred the owner…"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <div class="status" id="saveStatus">Not saved yet</div>
+    <button class="btn hide" id="archiveBtn">Archive</button>
+    <button class="btn" id="saveBtn">Save draft</button>
+    <button class="btn primary" id="sendBtn">Send to owner</button>
+  </div>
+</section>
+
+<!-- SEND MODAL -->
+<div class="modal-bg" id="sendModal">
+  <div class="modal">
+    <div id="sendStep1">
+      <h2>Send to owner</h2>
+      <p id="sendTo"></p>
+      <div class="field"><label>Personal message (optional)</label><textarea id="sendMsg" placeholder="Hi, as discussed on our call, here's your agreement…"></textarea></div>
+      <label class="check"><input type="checkbox" id="sendEmail" checked> Email the link to the owner</label>
+      <label class="check"><input type="checkbox" id="sendConfirm"> <span id="sendConfirmLabel"></span></label>
+      <div class="msg bad" id="sendErr"></div>
+      <div class="row">
+        <button class="btn" data-close>Cancel</button>
+        <button class="btn primary" id="sendGo">Send</button>
+      </div>
+    </div>
+    <div id="sendStep2" class="hide">
+      <h2>Sent</h2>
+      <p id="sentInfo"></p>
+      <div class="linkbox"><input id="sentLink" readonly><button class="btn" id="copyLink">Copy</button></div>
+      <a class="btn" id="waLink" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none">Share on WhatsApp</a>
+      <div class="row"><button class="btn primary" data-close>Done</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ CONFIG ============ */
+// Same Apps Script web app the public onboarding form uses (apps-script/onboarding: Code.gs + Admin.gs).
+const API_URL = 'https://script.google.com/macros/s/AKfycbyU_UAwyUYqfbbrEVED_hbP2uzovPpZKpDBNLbvAbgAa2x4W3MyyBT3HPUlIu1FZ-msLg/exec';
+
+/* ============ FORM DEFINITION (mirrors partner-onboarding.html) ============ */
+const MODELS = [
+  {value:'FOCO', title:'FOCO — Franchise-Owned, Company-Operated', desc:'Owner owns the property. Ritumbhara runs operations, guest experience and distribution.'},
+  {value:'FOFO', title:'FOFO — Franchise-Owned, Franchise-Operated', desc:'Owner runs the property under the Ritumbhara brand, SOPs and design standards. No agreement template yet.'}
+];
+const OWNER_FIELDS = [
+  {id:'ownerName', label:'Full name', req:1, ph:'As per PAN card'},
+  {id:'ownerPhone', label:'Phone number', req:1, type:'tel', ph:'+91'},
+  {id:'ownerEmail', label:'Email address', req:1, type:'email', ph:'owner@example.com'},
+  {id:'ownerPan', label:'PAN number', req:1, ph:'ABCDE1234F'},
+  {id:'ownerAddress', label:'Residential address', req:1, type:'textarea', full:1}
+];
+const PROP_FIELDS = [
+  {id:'propName', label:'Property name', req:1, ph:'e.g. The Jeerota Retreat'},
+  {id:'propCity', label:'City / region', req:1, type:'select', options:['Jaipur','Alwar','Sariska / Jeerota','Agra','Other']},
+  {id:'propCityOther', label:'City (if Other)', ph:'Enter city name', showIf:d=>d.propCity==='Other', req:1},
+  {id:'propType', label:'Property type', req:1, type:'select', options:['Villa','Farmhouse','Homestay','Boutique hotel','Serviced apartment','Other']},
+  {id:'propRooms', label:'Number of bedrooms', req:1, type:'number', ph:'e.g. 4'},
+  {id:'propStatus', label:'Current status', req:1, type:'select', options:['Vacant / ready to operate','Currently self-managed','Currently listed elsewhere','Under construction']},
+  {id:'propAmenities', label:'Key amenities', ph:'Pool, lawn, parking, AC…', full:1},
+  {id:'propAddress', label:'Full property address', req:1, type:'textarea', full:1}
+];
+const BANK_FIELDS = [
+  {id:'bankAccName', label:'Account holder name', req:1},
+  {id:'bankName', label:'Bank name', req:1},
+  {id:'bankAccNo', label:'Account number', req:1},
+  {id:'bankIfsc', label:'IFSC code', req:1, ph:'e.g. HDFC0001234'},
+  {id:'bankUpi', label:'UPI ID (optional)', ph:'name@bank'}
+];
+const DOC_TYPES = [
+  {key:'title', label:'Title deed / ownership proof', sub:'Sale deed, patta, or equivalent.'},
+  {key:'id', label:'Owner ID proof', sub:'PAN and Aadhaar (or passport).'},
+  {key:'photos', label:'Property photographs', sub:'Recent exterior and interior photos.'},
+  {key:'noc', label:'No-objection certificate', sub:'Society / local authority NOC, if applicable.'},
+  {key:'tax', label:'Property tax receipt', sub:'Latest paid receipt.'}
+];
+const ALL_FIELDS = [...OWNER_FIELDS, ...PROP_FIELDS, ...BANK_FIELDS];
+const STATUS_LABEL = {Draft:'Draft', Sent:'Awaiting owner', Submitted:'Submitted', Archived:'Archived'};
+
+/* ============ STATE ============ */
+const S = {
+  key:'', name:'', items:[],
+  app:null, data:{}, notes:'', preview:null,
+  pendingFiles:{}, savedFiles:[], dirty:false, busy:false
+};
+try{ S.key = sessionStorage.getItem('rtb_admin_key') || ''; S.name = localStorage.getItem('rtb_admin_name') || ''; }catch(e){}
+
+/* ============ HELPERS ============ */
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeUrl = u => /^https:\/\/(docs|drive)\.google\.com\//.test(String(u||'')) ? String(u) : '';
+function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('on'),2600); }
+function show(view){ ['loginView','listView','editView'].forEach(v=>$(v).classList.toggle('hide', v!==view)); }
+function isLocked(){ return !!(S.app && S.app.status==='Submitted'); }
+function statusText(i){
+  if(i.status==='Submitted') return i.agreementStatus || 'Submitted';
+  return STATUS_LABEL[i.status] || i.status;
+}
+function statusClass(i){
+  if(i.status!=='Submitted') return i.status;
+  return /Executed/.test(i.agreementStatus) ? 'Signed' : 'Sent';
+}
+
+async function api(body, admin=true){
+  const payload = admin ? Object.assign({adminKey:S.key, adminName:S.name}, body) : body;
+  const r = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload)});
+  const res = await r.json();
+  if(res && res.error === 'unauthorized'){ logout('Your admin key was rejected. Please sign in again.'); throw new Error('unauthorized'); }
+  if(res && res.error === 'server_error') throw new Error('The server hit an error. Check the Apps Script executions log.');
+  return res;
+}
+const quiet = err => err && err.message==='unauthorized';
+
+/* ============ AUTH ============ */
+async function login(){
+  const name = $('loginName').value.trim(), key = $('loginKey').value.trim();
+  $('loginMsg').textContent = '';
+  if(!name || !key){ $('loginMsg').textContent = 'Enter your name and the admin key.'; return; }
+  $('loginBtn').disabled = true; $('loginBtn').innerHTML = '<span class="spin"></span>';
+  S.key = key; S.name = name;
+  try{
+    const res = await api({action:'adminPing'});
+    if(!res.ok) throw new Error(res.error === 'unknown_action' || !res.error ? 'The server doesn’t have the admin code yet (Admin.gs not deployed).' : res.error);
+    try{ sessionStorage.setItem('rtb_admin_key', key); localStorage.setItem('rtb_admin_name', name); }catch(e){}
+    afterLogin();
+  }catch(err){
+    if(!quiet(err)) $('loginMsg').textContent = err.message === 'Failed to fetch' ? 'Couldn’t reach the server.' : err.message;
+  }
+  $('loginBtn').disabled = false; $('loginBtn').textContent = 'Sign in';
+}
+function logout(msg){
+  S.key=''; try{ sessionStorage.removeItem('rtb_admin_key'); }catch(e){}
+  $('who').textContent=''; $('logoutBtn').classList.add('hide');
+  show('loginView'); $('loginName').value = S.name; $('loginKey').value=''; $('loginMsg').textContent = msg || '';
+}
+function afterLogin(){
+  $('who').textContent = S.name; $('logoutBtn').classList.remove('hide');
+  show('listView'); loadList();
+}
+
+/* ============ LIST ============ */
+async function loadList(){
+  $('listBox').innerHTML = '<div class="empty"><span class="spin"></span></div>';
+  try{
+    const res = await api({action:'adminList'});
+    if(!res.ok) throw new Error(res.error);
+    S.items = res.items || [];
+    renderList();
+  }catch(err){ if(!quiet(err)) $('listBox').innerHTML = `<div class="empty">Couldn’t load applications: ${esc(err.message)}</div>`; }
+}
+function renderList(){
+  const q = $('q').value.trim().toLowerCase(), st = $('statusF').value;
+  const c = {Draft:0, Sent:0, Submitted:0, Executed:0};
+  S.items.forEach(i=>{ if(c[i.status]!==undefined) c[i.status]++; if(/Executed/.test(i.agreementStatus)) c.Executed++; });
+  $('stats').innerHTML = [['Drafts',c.Draft],['Awaiting owner',c.Sent],['Submitted',c.Submitted],['Executed',c.Executed]]
+    .map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join('');
+  const rows = S.items.filter(i=>{
+    if(st ? i.status!==st : i.status==='Archived') return false;
+    if(!q) return true;
+    return [i.ownerName,i.propertyName,i.city,i.reference,i.ownerEmail,i.ownerPhone].join(' ').toLowerCase().includes(q);
+  });
+  if(!rows.length){ $('listBox').innerHTML = `<div class="empty">${S.items.length?'No applications match.':'No applications yet. Click <b>+ New application</b> to fill one for an owner.'}</div>`; return; }
+  $('listBox').innerHTML = `<table><thead><tr>
+      <th>Owner</th><th>Property</th><th class="hide-m">Model</th><th>Status</th><th class="hide-m">Updated</th><th></th>
+    </tr></thead><tbody>${rows.map(i=>{
+      const pdf = safeUrl(i.executedPdf) || safeUrl(i.ownerSignedPdf);
+      return `<tr class="click" data-token="${esc(i.token)}">
+      <td><b style="font-weight:500">${esc(i.ownerName||'—')}</b><div class="sub">${esc(i.reference)}</div></td>
+      <td>${esc(i.propertyName||'—')}<div class="sub">${esc(i.city)}</div></td>
+      <td class="hide-m">${esc(i.model)}</td>
+      <td><span class="pill ${esc(statusClass(i))}">${esc(statusText(i))}</span></td>
+      <td class="hide-m"><span class="sub">${esc(i.updated)}${i.createdBy?' · '+esc(i.createdBy):''}</span></td>
+      <td style="text-align:right">${pdf?`<a class="btn sm" href="${esc(pdf)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${safeUrl(i.executedPdf)?'Executed PDF':'Signed PDF'}</a>`:''}</td>
+    </tr>`;}).join('')}</tbody></table>`;
+}
+
+/* ============ EDITOR ============ */
+function fieldHtml(f){
+  const v = S.data[f.id] || '';
+  const req = f.req ? '<span class="req"> *</span>' : '';
+  const hidden = f.showIf && !f.showIf(S.data) ? ' hide' : '';
+  let input;
+  if(f.type==='select') input = `<select data-f="${f.id}"><option value="">Select</option>${f.options.map(o=>`<option ${o===v?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  else if(f.type==='textarea') input = `<textarea data-f="${f.id}" placeholder="${esc(f.ph||'')}">${esc(v)}</textarea>`;
+  else input = `<input data-f="${f.id}" type="${f.type||'text'}" placeholder="${esc(f.ph||'')}" value="${esc(v)}">`;
+  return `<div class="field${f.full?' full':''}${hidden}" id="fld_${f.id}"><label>${esc(f.label)}${req}</label>${input}</div>`;
+}
+function renderForm(){
+  $('models').innerHTML = MODELS.map(m=>`<label class="model ${S.data.partnershipModel===m.value?'on':''}">
+    <input type="radio" name="model" value="${m.value}" ${S.data.partnershipModel===m.value?'checked':''}><b>${esc(m.title)}</b><span>${esc(m.desc)}</span></label>`).join('');
+  $('ownerFields').innerHTML = OWNER_FIELDS.map(fieldHtml).join('');
+  $('propFields').innerHTML = PROP_FIELDS.map(fieldHtml).join('');
+  $('bankFields').innerHTML = BANK_FIELDS.map(fieldHtml).join('');
+  $('notes').value = S.notes || '';
+  renderDocs();
+  const locked = isLocked();
+  document.querySelectorAll('#editView [data-f], #models input, #notes').forEach(el=>el.disabled = locked);
+}
+function renderDocs(){
+  $('docList').innerHTML = DOC_TYPES.map(d=>{
+    const p = S.pendingFiles[d.key] || [];
+    return `<div class="doc"><div class="t"><b>${esc(d.label)}</b><span>${esc(d.sub)}</span>
+      ${p.length?`<div class="q">${p.length} file(s) will upload when you save</div>`:''}</div>
+      <label class="btn sm ${isLocked()?'hide':''}">Add files<input type="file" accept="image/*,application/pdf" multiple data-doc="${d.key}" hidden></label></div>`;
+  }).join('');
+  $('savedDocs').innerHTML = S.savedFiles.length ? '<b style="font-weight:500">In the application folder</b>' +
+    S.savedFiles.map(f=>`<a href="${esc(safeUrl(f.url))}" target="_blank" rel="noopener">${esc(f.name)}</a>`).join('') : '';
+}
+
+function applyServer(res){
+  S.app = res.item; S.data = Object.assign({}, res.data||{}); S.notes = res.item.notes || '';
+  S.savedFiles = res.files || []; S.preview = res.preview || null;
+}
+function openEditor(res){
+  S.pendingFiles = {}; S.dirty = false;
+  if(res) applyServer(res); else { S.app=null; S.data={}; S.notes=''; S.savedFiles=[]; S.preview=null; }
+  renderForm(); renderHeader(); renderAgreement(); switchTab('details');
+  $('saveStatus').textContent = S.app ? 'Saved ' + S.app.updated : 'Not saved yet';
+  show('editView'); window.scrollTo(0,0);
+}
+function renderHeader(){
+  const a = S.app;
+  $('edTitle').textContent = S.data.ownerName ? `${S.data.ownerName}${S.data.propName?' · '+S.data.propName:''}` : 'New application';
+  $('edStatus').className = 'pill ' + (a ? statusClass(a) : 'Draft');
+  $('edStatus').textContent = a ? statusText(a) : 'Draft';
+  const links = [];
+  if(a && safeUrl(a.folderUrl)) links.push(`<a href="${esc(a.folderUrl)}" target="_blank" rel="noopener">Drive folder</a>`);
+  if(a && safeUrl(a.executedPdf)) links.push(`<a href="${esc(a.executedPdf)}" target="_blank" rel="noopener">Executed PDF</a>`);
+  else if(a && safeUrl(a.ownerSignedPdf)) links.push(`<a href="${esc(a.ownerSignedPdf)}" target="_blank" rel="noopener">Owner-signed PDF</a>`);
+  $('edRef').innerHTML = a ? esc(a.reference) + (links.length ? ' · ' + links.join(' · ') : '') : '';
+  const locked = isLocked();
+  $('saveBtn').classList.toggle('hide', locked);
+  $('sendBtn').classList.toggle('hide', locked || (a && a.status==='Archived'));
+  $('sendBtn').textContent = a && a.status==='Sent' ? 'Resend to owner' : 'Send to owner';
+  $('archiveBtn').classList.toggle('hide', !a || locked);
+  $('archiveBtn').textContent = a && a.status==='Archived' ? 'Restore' : 'Archive';
+  if(locked) $('saveStatus').textContent = `Submitted by the owner ${a.submitted} — read only`;
+}
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
+  document.querySelectorAll('[data-pane]').forEach(p=>p.classList.toggle('hide', p.dataset.pane!==t));
+  if(t==='agreement') renderAgreement();
+}
+function markDirty(){ S.dirty = true; $('saveStatus').textContent = 'Unsaved changes'; if(S.preview) renderAgreementWarnings(); }
+
+/* ---- agreement (a draft Google Doc per owner) ---- */
+function renderAgreement(){
+  const box = $('agrPanel'); const pv = S.preview; const locked = isLocked();
+  const tab = document.querySelector('.tab[data-tab="agreement"]');
+  tab.innerHTML = '4. Agreement' + (pv && (pv.stale || (pv.missingPlaceholders||[]).length) ? '<span class="dot" title="Needs attention"></span>' : '');
+  if(S.data.partnershipModel === 'FOFO'){
+    box.innerHTML = `<div class="placeholder">There’s no FOFO agreement template yet.<br>You can still send the owner their pre-filled application to check, add documents and submit.</div>`; return;
+  }
+  if(!S.data.partnershipModel){
+    box.innerHTML = `<div class="placeholder">Choose the partnership model on the first tab.</div>`; return;
+  }
+  if(!pv){
+    box.innerHTML = `<div class="placeholder">
+      <p style="margin:0 0 6px;color:var(--ink);font-size:15px">Prepare this owner’s agreement</p>
+      Creates a draft Google Doc from your agreement template, filled with the details on tabs 1–2.<br>You then edit it in Google Docs before sending.<br><br>
+      <button class="btn primary" id="prepBtn" ${locked?'disabled':''}>Prepare agreement</button></div>`;
+    $('prepBtn').onclick = ()=>prepare(false);
+    return;
+  }
+  box.innerHTML = `
+    <div class="agr-bar">
+      <div class="note">Draft agreement for <b>${esc(S.data.ownerName||'this owner')}</b>. Edit it in Google Docs, then refresh the preview to check what the owner will see.</div>
+      ${locked ? '' : `<a class="btn primary" href="${esc(safeUrl(pv.docUrl))}" target="_blank" rel="noopener" style="text-decoration:none">Edit in Google Docs ↗</a>
+      <button class="btn" id="refreshPv">Refresh preview</button>`}
+    </div>
+    <div id="agrWarn"></div>
+    ${locked ? '' : `<div class="tips"><b style="font-weight:500">While editing:</b> change any wording, clauses or commercials. Leave <code>{{START_DATE}}</code>-style placeholders and the signature lines as they are, since they’re filled in when the owner signs. Accept or reject all suggestions before sending. If you edit after sending, the owner’s link shows the new version, and an owner who already had the page open is asked to reload before signing.</div>`}
+    <div class="prev-head"><span>What the owner will see</span>${locked?'':'<button class="btn sm ghost" id="recreate">Re-create from template</button>'}</div>
+    <div class="doc-paper" id="paper">${pv.html || '<p>(empty)</p>'}</div>`;
+  renderAgreementWarnings();
+  if(!locked){
+    $('refreshPv').onclick = refreshPreview;
+    $('recreate').onclick = ()=>prepare(true);
+  }
+}
+function renderAgreementWarnings(){
+  const el = $('agrWarn'); const pv = S.preview; if(!el || !pv) return;
+  const w = [];
+  if(pv.stale || S.dirty) w.push(`<div class="warn"><span style="flex:1">${S.dirty ? 'You have unsaved detail changes.' : 'Owner or property details changed after this draft was made.'} The draft doc still has the old details. Fix them by hand in Google Docs, or re-create the draft from the template (this discards your edits in the doc).</span></div>`);
+  (pv.missingPlaceholders||[]).forEach(x=>w.push(`<div class="warn bad"><span><b>${esc(x)}</b> is missing from the draft. Signing needs it. Put it back where the signature should go.</span></div>`));
+  if((pv.leftovers||[]).length) w.push(`<div class="warn"><span>Unfilled placeholders in the draft: ${pv.leftovers.map(esc).join(', ')}. Replace them with text.</span></div>`);
+  el.innerHTML = w.join('');
+}
+async function prepare(recreate){
+  if(recreate && !confirm('Re-create the draft from the template? Any edits made in the current Google Doc will be discarded (it moves to Drive trash).')) return;
+  const miss = validate();
+  if(miss.length){ switchTab('details'); toast('Fill the required details first'); return; }
+  if(!(await save(true))) return;
+  const btn = $('prepBtn') || $('recreate'); if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Preparing…'; }
+  try{
+    const res = await api({action:'adminPrepareAgreement', token:S.app.token});
+    if(!res.ok) throw new Error(res.error);
+    applyServer(res); renderHeader(); renderAgreement();
+    toast('Draft ready. Click “Edit in Google Docs”');
+  }catch(err){ if(!quiet(err)) toast('Couldn’t prepare: ' + err.message); renderAgreement(); }
+}
+async function refreshPreview(){
+  const btn = $('refreshPv'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
+  try{
+    const res = await api({action:'adminPreview', token:S.app.token});
+    if(!res.ok) throw new Error(res.error);
+    S.preview = res.preview; renderAgreement(); toast('Preview updated');
+  }catch(err){ if(!quiet(err)) toast('Couldn’t refresh: ' + err.message); btn.disabled=false; btn.textContent='Refresh preview'; }
+}
+
+function validate(){
+  const miss = [];
+  document.querySelectorAll('.field.bad').forEach(f=>f.classList.remove('bad'));
+  if(!S.data.partnershipModel) miss.push('Partnership model');
+  ALL_FIELDS.forEach(f=>{
+    if(!f.req) return;
+    if(f.showIf && !f.showIf(S.data)) return;
+    if(!String(S.data[f.id]||'').trim()){ miss.push(f.label); const el=$('fld_'+f.id); if(el) el.classList.add('bad'); }
+  });
+  const e = S.data.ownerEmail||'';
+  if(e && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)){ miss.push('Valid email'); $('fld_ownerEmail').classList.add('bad'); }
+  return miss;
+}
+
+async function save(silent){
+  if(isLocked()) return true;
+  if(!S.dirty && S.app && !Object.keys(S.pendingFiles).length) return true;
+  if(!S.data.ownerName){ switchTab('details'); toast('Add at least the owner’s name before saving'); $('fld_ownerName').classList.add('bad'); return false; }
+  const btn = $('saveBtn'); btn.disabled = true; $('saveStatus').innerHTML = '<span class="spin"></span> Saving…';
+  const files = [].concat(...Object.values(S.pendingFiles));
+  try{
+    const res = await api({action:'adminSave', token: S.app ? S.app.token : '', data: S.data, notes: S.notes, files});
+    if(!res.ok) throw new Error(res.error);
+    S.pendingFiles = {}; S.dirty = false;
+    applyServer(res); renderHeader(); renderDocs(); renderAgreement();
+    $('saveStatus').textContent = 'Saved ' + res.item.updated;
+    if(!silent) toast('Saved');
+    btn.disabled = false; return true;
+  }catch(err){
+    if(!quiet(err)) $('saveStatus').textContent = 'Save failed: ' + err.message;
+    btn.disabled = false; return false;
+  }
+}
+
+function openSend(){
+  const miss = validate();
+  if(miss.length){ switchTab('details'); toast('Missing: ' + miss.slice(0,3).join(', ') + (miss.length>3?'…':'')); return; }
+  if(S.data.partnershipModel==='FOCO' && !S.preview){ switchTab('agreement'); toast('Prepare the agreement first'); return; }
+  if(S.preview && (S.preview.missingPlaceholders||[]).length){ switchTab('agreement'); toast('Fix the agreement warnings first'); return; }
+  $('sendTo').innerHTML = `The owner gets a link to check their details, add documents${S.data.partnershipModel==='FOCO'?' and sign the agreement':' and submit'}. Sending to <b>${esc(S.data.ownerEmail)}</b>.`;
+  $('sendErr').textContent = ''; $('sendConfirm').checked = false; $('sendEmail').checked = true;
+  $('sendConfirmLabel').textContent = S.data.partnershipModel==='FOCO' ? 'I’ve read the final agreement and it’s ready for the owner to sign' : 'The details are correct';
+  $('sendStep1').classList.remove('hide'); $('sendStep2').classList.add('hide');
+  $('sendModal').classList.add('on');
+}
+async function doSend(){
+  if(!$('sendConfirm').checked){ $('sendErr').textContent = 'Please tick the confirmation.'; return; }
+  const btn = $('sendGo'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
+  try{
+    if(!(await save(true))) throw new Error('Could not save before sending.');
+    if(S.preview && S.preview.stale && !confirm('The draft agreement was made before your latest detail changes. Send anyway?')) throw new Error('Cancelled');
+    const res = await api({action:'adminSend', token:S.app.token, message:$('sendMsg').value.trim(), sendEmail:$('sendEmail').checked});
+    if(!res.ok) throw new Error(res.error);
+    S.app = Object.assign(S.app, res.item); renderHeader();
+    $('sentInfo').textContent = $('sendEmail').checked ? `Emailed to ${S.data.ownerEmail}. You can also share the link directly:` : 'Share this link with the owner:';
+    $('sentLink').value = res.link;
+    const first = (S.data.ownerName||'').split(' ')[0];
+    const phone = String(S.data.ownerPhone||'').replace(/\D/g,'').replace(/^0+/,'').replace(/^(\d{10})$/,'91$1');
+    $('waLink').href = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(`Hi ${first}, your Ritumbhara ${S.data.partnershipModel==='FOCO'?'partnership agreement is ready. Please review and sign':'onboarding application is ready. Please review and submit'} here: ${res.link}`);
+    $('sendStep1').classList.add('hide'); $('sendStep2').classList.remove('hide');
+  }catch(err){ if(!quiet(err) && err.message!=='Cancelled') $('sendErr').textContent = err.message; }
+  btn.disabled = false; btn.textContent = 'Send';
+}
+
+async function openExisting(token){
+  show('editView'); $('agrPanel').innerHTML=''; $('saveStatus').innerHTML = '<span class="spin"></span> Loading…';
+  try{
+    const res = await api({action:'adminGet', token});
+    if(!res.ok) throw new Error(res.error);
+    openEditor(res);
+  }catch(err){ if(!quiet(err)){ toast('Couldn’t open: ' + err.message); show('listView'); } }
+}
+
+/* ============ EVENTS ============ */
+$('loginBtn').addEventListener('click', login);
+$('loginKey').addEventListener('keydown', e=>{ if(e.key==='Enter') login(); });
+$('logoutBtn').addEventListener('click', ()=>logout());
+$('refreshBtn').addEventListener('click', loadList);
+$('newBtn').addEventListener('click', ()=>openEditor(null));
+$('q').addEventListener('input', renderList);
+$('statusF').addEventListener('change', renderList);
+$('listBox').addEventListener('click', e=>{ const tr = e.target.closest('tr[data-token]'); if(tr) openExisting(tr.dataset.token); });
+$('backBtn').addEventListener('click', ()=>{
+  if(S.dirty && !confirm('You have unsaved changes. Leave without saving?')) return;
+  S.dirty = false; show('listView'); loadList();
+});
+$('tabs').addEventListener('click', e=>{ const b=e.target.closest('.tab'); if(b) switchTab(b.dataset.tab); });
+
+document.addEventListener('input', e=>{
+  const f = e.target.dataset && e.target.dataset.f;
+  if(f){
+    S.data[f] = e.target.value; markDirty();
+    e.target.closest('.field').classList.remove('bad');
+    if(f==='ownerName' || f==='propName') renderHeader();
+  }
+  if(e.target.id==='notes'){ S.notes = e.target.value; markDirty(); }
+});
+document.addEventListener('change', e=>{
+  const f = e.target.dataset && e.target.dataset.f;
+  if(f==='propCity'){ $('fld_propCityOther').classList.toggle('hide', e.target.value!=='Other'); }
+  if(e.target.name==='model'){
+    S.data.partnershipModel = e.target.value; markDirty();
+    document.querySelectorAll('.model').forEach(m=>m.classList.toggle('on', m.querySelector('input').checked));
+  }
+  if(e.target.dataset && e.target.dataset.doc){
+    const key = e.target.dataset.doc, label = DOC_TYPES.find(d=>d.key===key).label;
+    const files = [...e.target.files]; let skipped = 0;
+    (async()=>{
+      for(const f of files){
+        if(f.size > 10*1024*1024){ skipped++; continue; }
+        const b64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]||''); r.onerror=rej; r.readAsDataURL(f); });
+        (S.pendingFiles[key] = S.pendingFiles[key] || []).push({name: label + ' - ' + f.name, mimeType: f.type || 'application/octet-stream', data: b64});
+      }
+      markDirty(); renderDocs();
+      if(skipped) toast(skipped + ' file(s) over 10MB skipped');
+    })();
+  }
+});
+
+$('saveBtn').addEventListener('click', ()=>{ save(false); });
+$('sendBtn').addEventListener('click', openSend);
+$('sendGo').addEventListener('click', doSend);
+$('archiveBtn').addEventListener('click', async ()=>{
+  const restore = S.app.status==='Archived';
+  if(!restore && !confirm('Archive this application? The owner’s link will stop working.')) return;
+  try{
+    const res = await api({action: restore ? 'adminRestore' : 'adminArchive', token:S.app.token});
+    if(res.ok){ S.app = Object.assign(S.app, res.item); renderHeader(); toast(restore?'Restored as draft (send again to reactivate the link)':'Archived'); } else toast(res.error);
+  }catch(err){ if(!quiet(err)) toast(err.message); }
+});
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', ()=>$('sendModal').classList.remove('on')));
+$('copyLink').addEventListener('click', ()=>{ $('sentLink').select(); (navigator.clipboard ? navigator.clipboard.writeText($('sentLink').value) : Promise.reject()).then(()=>toast('Link copied'), ()=>{ document.execCommand('copy'); toast('Link copied'); }); });
+document.addEventListener('keydown', e=>{
+  if((e.ctrlKey||e.metaKey) && e.key==='s' && !$('editView').classList.contains('hide')){ e.preventDefault(); save(false); }
+});
+window.addEventListener('beforeunload', e=>{ if(S.dirty){ e.preventDefault(); e.returnValue=''; } });
+
+/* ============ START ============ */
+if(S.key) afterLogin(); else { show('loginView'); $('loginName').value = S.name; }
+</script>
+</body>
+</html>
