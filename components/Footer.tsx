@@ -29,6 +29,7 @@ export default function Footer() {
           React.createElement(Link, { href: "/journal", className: linkClass }, "Journal"),
           React.createElement(Link, { href: "/contact", className: linkClass }, "Contact"),
           React.createElement(Link, { href: "/#policies", className: linkClass }, "Booking Policies"),
+          React.createElement(Link, { href: "/privacy-policy", className: linkClass }, "Privacy Policy"),
           React.createElement("a", { href: "/partner-onboarding.html", className: linkClass }, "Partner With Us")
         )
       ),
