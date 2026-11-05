@@ -5,6 +5,10 @@ import { destinations } from "@/config/destinations.config";
 import { bookingEngine } from "@/config/booking.config";
 import { socialMetadata } from "@/lib/seo";
 import { buildWhatsAppUrl, WHATSAPP_DISPLAY_NUMBER } from "@/lib/whatsapp";
+import { breadcrumbSchema, faqSchema, pageSchema } from "@/lib/schema";
+import type { Faq } from "@/lib/schema";
+import JsonLd from "@/components/JsonLd";
+import FaqSection from "@/components/FaqSection";
 import { Metadata } from "next";
 
 const contactTitle = "Contact: Reservations & Partner Enquiries";
@@ -17,6 +21,31 @@ export const metadata: Metadata = {
       ...socialMetadata("/contact", contactTitle + " | Ritumbhara", contactDescription),
 };
 
+const faqs: Faq[] = [
+  {
+    question: "How do I make a reservation?",
+    answer: "Open any property page and use Book Now to reach that property's secure booking page on Hotel Spider. To check availability first, message us on WhatsApp using the link on this page.",
+  },
+  {
+    question: "What should I include when I message about availability?",
+    answer: "Tell us the destination, your check-in and check-out dates, and the number of guests, plus anything you need from the stay. That gives the team what it needs to check availability for you.",
+  },
+  {
+    question: "Is the phone number the same as the WhatsApp number?",
+    answer: "No. Calls go to +91 95030 02629. WhatsApp messages go to a separate number, shown on this page.",
+  },
+  {
+    question: "Where is Ritumbhara located?",
+    answer: "Our business address, as listed on our online booking engine, is 302022 Jaipur, Rajasthan, India. Our stays are in Jaipur, Alwar and near Sariska, and each property page shows that stay's own location details.",
+  },
+  {
+    question: "I own a property. How do I work with Ritumbhara?",
+    answer: "Ritumbhara partners with owners under a Franchise-Owned, Company-Operated model. Read how it works on our Our Story page, then use Partner With Us to start an application.",
+  },
+];
+
+const bodyLinkClass = "font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy transition-colors";
+
 const cardClass = "group border-t border-line py-5 flex flex-col transition-colors duration-200";
 const labelClass = "text-xs font-semibold text-sage mb-1";
 const valueClass = "font-display text-[1.75rem] leading-tight text-charcoal group-hover-fine:text-burgundy transition-colors break-words";
@@ -25,6 +54,9 @@ export default function ContactPage() {
       return React.createElement(React.Fragment, null, React.createElement(
               "main",
           { className: "min-h-[100svh] flex flex-col pt-32 lg:pt-36 pb-16 lg:pb-20 px-6 lg:px-10 max-w-7xl mx-auto w-full" },
+              React.createElement(JsonLd, { data: pageSchema("ContactPage", contactTitle, "/contact", contactDescription) }),
+              React.createElement(JsonLd, { data: breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Contact", path: "/contact" }]) }),
+              React.createElement(JsonLd, { data: faqSchema(faqs) }),
               React.createElement(
                         "div",
                   { className: "grid lg:grid-cols-[0.9fr_1.1fr] gap-10 lg:gap-16 items-start" },
@@ -113,6 +145,27 @@ export default function ContactPage() {
                                                             )
                                               )
                                   )
+                      ),
+              React.createElement(
+                        "section",
+                  { className: "mt-12 lg:mt-16 pt-10 border-t border-line" },
+                        React.createElement("h2", { className: "text-[1.75rem] leading-tight text-charcoal mb-3" }, "Before you book"),
+                        React.createElement("p", { className: "text-[15px] text-charcoal-soft leading-relaxed max-w-2xl" },
+                                    "Check-in, check-out and cancellation terms are listed under ",
+                                    React.createElement(Link, { href: "/#policies", className: bodyLinkClass }, "Booking Policies"),
+                                    " on our homepage. To compare places first, browse our ",
+                                    React.createElement(Link, { href: "/destinations", className: bodyLinkClass }, "destinations"),
+                                    " or see the ",
+                                    React.createElement(Link, { href: "/experiences", className: bodyLinkClass }, "experiences"),
+                                    " near each stay. Planning the journey? Read our travel guides for ",
+                                    React.createElement(Link, { href: "/serviced-apartments-jaipur", className: bodyLinkClass }, "Jaipur"),
+                                    ", ",
+                                    React.createElement(Link, { href: "/studios-in-alwar", className: bodyLinkClass }, "Alwar"),
+                                    " and ",
+                                    React.createElement(Link, { href: "/stays-in-sariska", className: bodyLinkClass }, "Sariska"),
+                                    "."
+                                  ),
+                        React.createElement(FaqSection, { heading: "Contact questions", faqs: faqs })
                       )
             ),
       // Real guest reviews from testimonials.config (UX-003).
