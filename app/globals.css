@@ -135,3 +135,9 @@ h2,
   radial-gradient(55% 60% at 70% 100%, rgba(151,24,60,0.10), transparent 70%),
   #F8F3EA; }
 .ai-scope .ai-glass { background: rgba(248,243,234,0.72); -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4); }
+@keyframes ai-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.ai-scope .ai-marquee { animation: ai-marquee 32s linear infinite; }
+.ai-scope .ai-marquee-wrap:hover .ai-marquee { animation-play-state: paused; }
+.ai-scope details > summary { list-style: none; }
+.ai-scope details > summary::-webkit-details-marker { display: none; }
+.ai-scope details[open] .ai-chev { transform: rotate(45deg); }
