@@ -7,6 +7,12 @@ import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import WhatsAppClickTracker from "@/components/WhatsAppClickTracker";
 import AvailabilityDialog from "@/components/AvailabilityDialog";
 import PageEnhancer from "@/components/PageEnhancer";
+import SearchPalette, { SearchItem } from "@/components/SearchPalette";
+import ShortlistDrawer, { ShortlistStay } from "@/components/ShortlistDrawer";
+import { properties } from "@/config/properties.config";
+import { destinations } from "@/config/destinations.config";
+import { isPlacementVerified } from "@/config/locations.config";
+import { journalPosts } from "@/lib/journal-posts";
 import "./globals.css";
 
 // Cormorant Garamond for display headings, Manrope for body and UI text.
@@ -98,6 +104,28 @@ const websiteSchema = {
     url: siteUrl,
 };
 
+// Slim, server-built indexes for the quick search and the shortlist, so the browser never downloads the full
+// property data (photo lists, amenities) just for these. Only facts already on the site.
+function placeLabel(destSlug: string): string {
+  const d = destinations.find(function (x) { return x.slug === destSlug; });
+  if (!d) return "";
+  return isPlacementVerified(d.slug) ? d.name + ", " + d.state : d.state;
+}
+const shortlistStays: ShortlistStay[] = properties.map(function (p) {
+  return { slug: p.slug, name: p.name, type: p.propertyType, location: placeLabel(p.destinationSlug), maxGuests: p.maxGuests };
+});
+const searchItems: SearchItem[] = [
+  ...properties.map(function (p): SearchItem { return { href: "/properties/" + p.slug, title: p.name, hint: p.propertyType + " · " + placeLabel(p.destinationSlug), group: "Stays", keywords: p.destinationSlug }; }),
+  ...destinations.map(function (d): SearchItem { return { href: "/destinations/" + d.slug, title: d.name, hint: d.status === "operational" ? d.state : "Coming soon", group: "Destinations", keywords: d.state }; }),
+  { href: "/destinations#all-stays", title: "Browse all stays", hint: "Filter by place and group size", group: "Pages", keywords: "find stay filter" },
+  { href: "/experiences", title: "Experiences", hint: "Things to do", group: "Pages" },
+  { href: "/about", title: "Our Story", hint: "About Ritumbhara", group: "Pages", keywords: "about" },
+  { href: "/contact", title: "Contact", hint: "Reach the team", group: "Pages", keywords: "phone email whatsapp enquiry" },
+  { href: "/journal", title: "Journal", hint: "Travel guides", group: "Pages" },
+  { href: "/ai", title: "Ritumbhara AI", hint: "For property operators", group: "Pages" },
+  ...journalPosts.map(function (j): SearchItem { return { href: "/journal/" + j.slug, title: j.title, hint: "Guide", group: "Guides" }; }),
+];
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return React.createElement("html", { lang: "en" },
                                    React.createElement("body", { className: display.variable + " " + sans.variable + " font-sans bg-ivory text-charcoal" },
@@ -109,6 +137,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                                              React.createElement(FloatingWhatsApp, null),
                                                              React.createElement(WhatsAppClickTracker, null),
                                                              React.createElement(AvailabilityDialog, null),
+                                                             React.createElement(ShortlistDrawer, { stays: shortlistStays }),
+                                                             React.createElement(SearchPalette, { items: searchItems }),
                                                              React.createElement(PageEnhancer, null)
                                                            )
                                  );
