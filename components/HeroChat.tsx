@@ -29,7 +29,7 @@ export default function HeroChat() {
   }
 
   return (
-    <div className="ai-float bg-ivory rounded-sm shadow-[0_18px_50px_-18px_rgba(38,34,31,0.35)] border border-line overflow-hidden">
+    <div className="ai-float bg-ivory rounded-2xl shadow-[0_18px_50px_-18px_rgba(38,34,31,0.35)] border border-line overflow-hidden">
       <div className="flex items-center gap-3 px-5 py-3 bg-burgundy text-ivory">
         <span aria-hidden className="w-2 h-2 rounded-full bg-[#7BD88F]" />
         <span className="text-sm font-semibold">Ritumbhara AI concierge</span>
@@ -37,10 +37,10 @@ export default function HeroChat() {
       </div>
       <div ref={box} className="h-[280px] overflow-y-auto px-5 py-4 space-y-3" aria-live="polite">
         {msgs.map((m, i) => (
-          <div key={i} className={"ai-pop max-w-[85%] rounded-sm px-4 py-3 text-sm leading-relaxed " + (m.from === "ai" ? "bg-sand text-charcoal" : "ml-auto bg-burgundy text-ivory")}>{m.text}</div>
+          <div key={i} className={"ai-pop max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed " + (m.from === "ai" ? "bg-sand text-charcoal" : "ml-auto bg-burgundy text-ivory")}>{m.text}</div>
         ))}
         {typing && (
-          <div className="bg-sand rounded-sm px-4 py-3 w-16 flex gap-1" aria-label="Typing">
+          <div className="bg-sand rounded-2xl px-4 py-3 w-16 flex gap-1" aria-label="Typing">
             <span className="ai-dot w-1.5 h-1.5 rounded-full bg-charcoal-muted" />
             <span className="ai-dot w-1.5 h-1.5 rounded-full bg-charcoal-muted" style={{ animationDelay: "0.15s" }} />
             <span className="ai-dot w-1.5 h-1.5 rounded-full bg-charcoal-muted" style={{ animationDelay: "0.3s" }} />
@@ -49,7 +49,7 @@ export default function HeroChat() {
       </div>
       <div className="flex flex-wrap gap-2 px-5 py-4 border-t border-line">
         {qa.map((x, i) => (
-          <button key={x.q} type="button" onClick={() => ask(i)} disabled={typing} className="min-h-[40px] px-3 rounded-sm border border-burgundy/40 text-[13px] font-medium text-burgundy hover-fine:bg-burgundy hover-fine:text-ivory active:scale-[0.97] transition-[background-color,color,transform] duration-200 disabled:opacity-50">
+          <button key={x.q} type="button" onClick={() => ask(i)} disabled={typing} className="min-h-[40px] px-4 rounded-full border border-burgundy/40 text-[13px] font-medium text-burgundy hover-fine:bg-burgundy hover-fine:text-ivory active:scale-[0.97] transition-[background-color,color,transform] duration-200 disabled:opacity-50">
             {x.q}
           </button>
         ))}

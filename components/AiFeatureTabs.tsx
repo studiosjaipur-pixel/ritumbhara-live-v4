@@ -16,13 +16,13 @@ export default function AiFeatureTabs({ tabs }: { tabs: Tab[] }) {
             type="button"
             aria-selected={t.id === active}
             onClick={() => setActive(t.id)}
-            className={"min-h-[44px] px-4 rounded-sm text-sm font-semibold transition-colors duration-200 " + (t.id === active ? "bg-burgundy text-ivory" : "bg-sand text-charcoal hover-fine:bg-sand-deep")}
+            className={"min-h-[44px] px-5 rounded-full text-sm font-semibold transition-colors duration-200 " + (t.id === active ? "bg-burgundy text-ivory" : "bg-sand text-charcoal hover-fine:bg-sand-deep")}
           >
             {t.label}
           </button>
         ))}
       </div>
-      <div role="tabpanel" className="bg-sand/70 rounded-sm p-6 sm:p-10">
+      <div role="tabpanel" className="bg-sand/70 rounded-2xl p-6 sm:p-10">
         <h3 className="font-display text-[1.9rem] leading-tight text-charcoal mb-5">{current.headline}</h3>
         <ul className="grid sm:grid-cols-2 gap-x-10 gap-y-3">
           {current.points.map((p) => (

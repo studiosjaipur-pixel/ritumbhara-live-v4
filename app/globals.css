@@ -119,3 +119,19 @@ h2,
 @keyframes ai-dot { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
 .ai-dot { animation: ai-dot 1.1s infinite; }
 @media (prefers-reduced-motion: reduce) { .rv { opacity: 1; transform: none; } }
+
+/* Ritumbhara AI page: Montserrat + modern premium type */
+.ai-scope, .ai-scope h1, .ai-scope h2, .ai-scope h3, .ai-scope h4, .ai-scope button, .ai-scope .font-display {
+  font-family: var(--font-montserrat), system-ui, sans-serif;
+  font-feature-settings: normal;
+  font-variant-numeric: normal;
+}
+.ai-scope h1, .ai-scope h2, .ai-scope h3, .ai-scope .font-display { font-weight: 700; letter-spacing: -0.025em; line-height: 1.08; }
+.ai-scope h3 { font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; }
+.ai-scope .ai-grad { background: linear-gradient(100deg, #97183C 10%, #C8693F 55%, #C8A96A 95%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ai-scope .ai-mesh { background:
+  radial-gradient(60% 55% at 12% 8%, rgba(151,24,60,0.16), transparent 70%),
+  radial-gradient(50% 50% at 92% 18%, rgba(200,169,106,0.30), transparent 70%),
+  radial-gradient(55% 60% at 70% 100%, rgba(151,24,60,0.10), transparent 70%),
+  #F8F3EA; }
+.ai-scope .ai-glass { background: rgba(248,243,234,0.72); -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4); }

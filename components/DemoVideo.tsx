@@ -4,7 +4,7 @@ import { useState } from "react";
 export default function DemoVideo({ src, poster }: { src: string; poster: string }) {
   const [playing, setPlaying] = useState(false);
   return (
-    <div className="relative rounded-sm overflow-hidden border border-line bg-charcoal shadow-[0_18px_50px_-18px_rgba(38,34,31,0.35)] aspect-video">
+    <div className="relative rounded-2xl overflow-hidden border border-line bg-charcoal shadow-[0_18px_50px_-18px_rgba(38,34,31,0.35)] aspect-video">
       {playing ? (
         <video src={src} poster={poster} controls autoPlay playsInline className="w-full h-full" />
       ) : (
