@@ -15,13 +15,13 @@ export default function Testimonials() {
             ),
             React.createElement(
               "div",
-      { className: "grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12" },
+      { className: "flex md:grid md:grid-cols-3 gap-6 lg:gap-12 overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none -mx-6 px-6 md:mx-0 md:px-0 pb-4 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" },
               testimonials.map((t) =>
                 React.createElement(
                   "figure",
       {
                     key: t.id,
-                    className: "border-t border-charcoal/20 pt-6 flex flex-col",
+                    className: "border-t border-charcoal/20 pt-6 flex flex-col shrink-0 basis-[82%] sm:basis-[60%] md:basis-auto snap-center",
       },
                   React.createElement(
                     "blockquote",

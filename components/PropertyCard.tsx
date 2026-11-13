@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Property } from "@/config/properties.config";
 import { destinations } from "@/config/destinations.config";
 import { isPlacementVerified } from "@/config/locations.config";
+import SaveStayButton from "@/components/SaveStayButton";
 
 // Editorial card: photograph first, then place, name and a single quiet call to action.
 export default function PropertyCard({ property }: { property: Property }) {
@@ -17,7 +18,8 @@ export default function PropertyCard({ property }: { property: Property }) {
   const cardFacts = (property.maxGuests ? ["Up to " + property.maxGuests + " guests"] : []).concat(
     property.amenities.filter(function (a) { return a.indexOf("individually controlled") === -1; }).slice(0, property.maxGuests ? 2 : 3)
   );
-  return React.createElement(Link, {
+  return React.createElement("div", { className: "relative h-full" },
+  React.createElement(Link, {
     href: "/properties/" + property.slug,
     className: "property-card city-" + property.destinationSlug + " group flex flex-col h-full",
   },
@@ -47,5 +49,8 @@ export default function PropertyCard({ property }: { property: Property }) {
         )
       )
     )
+  ),
+  // Save-to-shortlist sits over the photo's lower corner, outside the link so the two controls never nest.
+  React.createElement("div", { className: "absolute right-3 top-12 sm:top-[3.25rem]" }, React.createElement(SaveStayButton, { slug: property.slug, name: property.name }))
   );
 }

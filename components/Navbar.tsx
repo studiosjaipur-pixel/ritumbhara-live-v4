@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import OpenAvailabilityButton from "@/components/OpenAvailabilityButton";
+import { SearchButton } from "@/components/SearchPalette";
+import { ShortlistButton } from "@/components/ShortlistDrawer";
 
 // Pages whose top section is a dark hero (burgundy or photo). On these the
 // transparent header needs light text until the visitor scrolls.
@@ -82,7 +84,9 @@ export default function Navbar() {
           })}
         </nav>
 
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center gap-0 sm:gap-1">
+          <SearchButton onDark={onDark} />
+          <ShortlistButton onDark={onDark} />
           <OpenAvailabilityButton className={"inline-flex items-center justify-center min-h-[44px] px-4 lg:px-5 rounded-sm text-sm lg:text-[15px] font-semibold whitespace-nowrap active:scale-[0.97] active:duration-100 active:ease-out transition-[background-color,color,transform] duration-200 ease-snap " + bookTone}>
             <span className="lg:hidden">Book</span>
             <span className="hidden lg:inline">Check Availability</span>

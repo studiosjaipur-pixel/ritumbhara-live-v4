@@ -10,6 +10,7 @@ import Link from "next/link";
 import PropertyBooking from "@/components/PropertyBooking";
 import PropertyGallery from "@/components/PropertyGallery";
 import HeroPhotosButton from "@/components/HeroPhotosButton";
+import SaveStayButton from "@/components/SaveStayButton";
 
 // Existing standalone landing pages with directions and FAQs for each destination (Week 3: UX-005, UX-012).
 const travelGuides: Record<string, string> = {
@@ -158,6 +159,7 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
       React.createElement(Image, { src: property.heroImage, alt: heroAlt, fill: true, sizes: "100vw", quality: 70, priority: true, className: "object-cover" }),
       React.createElement("div", { className: "absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/45" }),
       gallery.length > 0 && React.createElement(HeroPhotosButton, { count: gallery.length + 1 }),
+      React.createElement("div", { className: "absolute top-[6.5rem] right-4 lg:right-10 z-10" }, React.createElement(SaveStayButton, { slug: property.slug, name: property.name })),
       React.createElement("div", { className: "absolute top-24 left-0 right-0 px-6 lg:px-10" },
         React.createElement("nav", { "aria-label": "Breadcrumb", className: "max-w-7xl mx-auto text-xs text-ivory/80 flex flex-wrap items-center gap-x-2" },
           React.createElement("a", { href: "/", className: "inline-flex items-center min-h-[44px] hover:text-ivory" }, "Home"),
