@@ -37,6 +37,7 @@ const navLinks = [
     { href: "/#standard", label: "The Standard" },
     { href: "/experiences", label: "Experiences" },
     { href: "/about", label: "Our Story" },
+    { href: "/ai", label: "Ritumbhara AI" },
     { href: "/contact", label: "Contact" },
     ];
 
