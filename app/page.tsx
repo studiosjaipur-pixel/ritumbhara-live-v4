@@ -10,6 +10,7 @@ import IndiaMap from "@/components/IndiaMap";
 import Testimonials from "@/components/Testimonials";
 import CheckAvailabilityWidget from "@/components/CheckAvailabilityWidget";
 import LeadCaptureForm from "@/components/LeadCaptureForm";
+import FaqAccordion from "@/components/FaqAccordion";
 
 const faqs = [
   { question: "How do I book a stay with Ritumbhara?", answer: "Each property page has a Book Now link that takes you directly to that property's secure booking page on Hotel Spider, our booking engine partner. Ritumbhara does not process reservations or payments on this website." },
@@ -164,6 +165,9 @@ return React.createElement("main", null,
                                                                                        featured.map(function (p) {
                                                                                          return React.createElement(PropertyCard, { key: p.slug, property: p });
                                                                                        })
+                                                                                       ),
+                                                                   React.createElement("div", { className: "mt-10 flex justify-center" },
+                                                                                       React.createElement(Link, { href: "/destinations#all-stays", className: "inline-flex items-center justify-center min-h-[48px] px-6 border border-burgundy text-burgundy font-semibold rounded-sm hover-fine:bg-burgundy hover-fine:text-ivory active:scale-[0.98] transition-[background-color,color,transform] duration-200 ease-snap" }, "Browse all " + properties.length + " stays, filter by place and group size \u2192")
                                                                                        )
                                                                    )
                                                ),
@@ -228,14 +232,7 @@ return React.createElement("main", null,
                            React.createElement("section", { id: "faq", className: "scroll-mt-28 border-t border-line" },
                                                React.createElement("div", { className: "max-w-7xl mx-auto px-6 lg:px-10 py-16 lg:py-24 grid lg:grid-cols-[0.8fr_1.2fr] gap-8 lg:gap-16" },
                                                                    React.createElement("h2", { className: "text-4xl lg:text-5xl text-charcoal" }, "Frequently Asked Questions"),
-                                                                   React.createElement("div", { className: "divide-y divide-line border-y border-line" },
-                                                                                       faqs.map(function (f) {
-                                                                                         return React.createElement("div", { key: f.question, className: "py-6" },
-                                                                                                                    React.createElement("h3", { className: "font-semibold text-charcoal text-[17px] mb-2" }, f.question),
-                                                                                                                    React.createElement("p", { className: "text-[15px] text-charcoal-soft leading-relaxed" }, f.answer)
-                                                                                                                    );
-                                                                                       })
-                                                                                       )
+                                                                   React.createElement(FaqAccordion, { items: faqs })
                                                                    )
                                                )
                            );

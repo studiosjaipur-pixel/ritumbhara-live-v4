@@ -1,8 +1,8 @@
 import { Metadata } from "next";
 import React from "react";
 import Link from "next/link";
+import FaqAccordion from "@/components/FaqAccordion";
 import CheckAvailabilityWidget from "@/components/CheckAvailabilityWidget";
-import LeadCaptureForm from "@/components/LeadCaptureForm";
 import { socialMetadata } from "@/lib/seo";
 
 const pageTitle = "Boutique Stays Near Sariska | Ritumbhara";
@@ -69,7 +69,7 @@ export default function SariskaStaysPage() {
                   React.createElement(
                             "div",
                     { className: "flex" },
-                            React.createElement(CheckAvailabilityWidget, { variant: "inline" })
+                            React.createElement(CheckAvailabilityWidget, { variant: "inline", defaultDestination: "sariska" })
                           )
                 ),
           React.createElement(
@@ -124,18 +124,7 @@ export default function SariskaStaysPage() {
                   "section",
             { className: "py-10 md:py-12 max-w-3xl" },
                   React.createElement("h2", { className: "text-3xl md:text-[2.5rem] text-charcoal mb-6" }, "Frequently Asked Questions"),
-                  React.createElement(
-                            "div",
-                    { className: "divide-y divide-line border-y border-line" },
-                            faqs.map((item, i) =>
-                                        React.createElement(
-                                                      "div",
-                                          { key: i, className: "py-5" },
-                                                      React.createElement("h3", { className: "font-semibold text-[17px] text-charcoal mb-1.5" }, item.q),
-                                                      React.createElement("p", { className: "text-charcoal-soft leading-relaxed" }, item.a)
-                                                    )
-                                             )
-                          )
+                  React.createElement(FaqAccordion, { items: faqs.map(function (f) { return { question: f.q, answer: f.a }; }) })
                 ),
           React.createElement(
                   "section",
@@ -152,11 +141,7 @@ export default function SariskaStaysPage() {
                             React.createElement(
                                         "div",
                               { className: "flex justify-center" },
-                                        React.createElement(LeadCaptureForm, {
-                                                      title: "Check Availability Near Sariska",
-                                                      subtitle: "We'll get back to you directly — no OTA fees, real-time human answers.",
-                                                      defaultDestination: "sariska",
-                                        })
+                                        React.createElement(CheckAvailabilityWidget, { variant: "inline", defaultDestination: "sariska" })
                                       )
                           )
                 )

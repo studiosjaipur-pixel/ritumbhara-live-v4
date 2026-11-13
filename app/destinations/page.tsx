@@ -9,6 +9,7 @@ import { breadcrumbSchema, faqSchema, pageSchema } from "@/lib/schema";
 import type { Faq } from "@/lib/schema";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
+import StayFinder from "@/components/StayFinder";
 
 const destinationsTitle = "Stays in Jaipur, Alwar & Sariska";
 const destinationsDescription = "Studios, serviced apartments and a villa managed by Ritumbhara in Jaipur, Alwar and Sariska, Rajasthan, with Agra coming soon.";
@@ -89,6 +90,7 @@ export default function DestinationsPage() {
                                                                                                           );
                                                              })
                                                            ),
+                                   React.createElement(StayFinder, null),
                                    React.createElement("section", { className: "mt-14 lg:mt-20 pt-10 border-t border-line" },
                                                              React.createElement("h2", { className: "text-[1.75rem] leading-tight text-charcoal mb-2" }, "Choosing where to stay"),
                                                              React.createElement("p", { className: "text-charcoal-soft max-w-2xl mb-8 leading-relaxed" }, "Each destination suits a different kind of trip. Distances are approximate and match what is published on our destination and property pages."),

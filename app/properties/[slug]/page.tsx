@@ -7,7 +7,9 @@ import { getLocationDetails, isPlacementVerified } from "@/config/locations.conf
 import { bookingEngine } from "@/config/booking.config";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { buildWhatsAppUrl, makeWhatsAppRef } from "@/lib/whatsapp";
+import PropertyBooking from "@/components/PropertyBooking";
+import PropertyGallery from "@/components/PropertyGallery";
+import HeroPhotosButton from "@/components/HeroPhotosButton";
 
 // Existing standalone landing pages with directions and FAQs for each destination (Week 3: UX-005, UX-012).
 const travelGuides: Record<string, string> = {
@@ -90,13 +92,9 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
   };
 
   const guideHref = placeDestination ? travelGuides[placeDestination.slug] : undefined;
-  const whatsappRef = makeWhatsAppRef("PROP", property.slug);
-  const whatsappHref = buildWhatsAppUrl("Hi, I'd like to check availability for " + property.name, whatsappRef);
   const location = placeDestination ? getLocationDetails(property.slug, placeDestination.slug) : undefined;
   const heroAlt = property.name + " \u2014 " + property.propertyType.toLowerCase() + (placeDestination ? " in " + placeDestination.name + ", " + placeDestination.state : "");
   const gallery = property.gallery || [];
-  const galleryShown = gallery.length > 4 ? gallery.slice(0, 4) : gallery;
-  const galleryMore = gallery.length > 4 ? gallery.slice(4) : [];
   const nearby: string[] = location ? location.nearby : placeDestination ? placeDestination.thingsToDo.map(function (t) { return t.title; }) : [];
   const gettingThereList: string[] = location ? location.gettingThere : placeDestination && placeDestination.transportation ? [placeDestination.transportation] : [];
   // Where the place line and Location section point: verified area, verified city, the booking engine's
@@ -159,6 +157,7 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
     React.createElement("div", { className: "relative h-[62vh] min-h-[420px] max-h-[680px] w-full overflow-hidden bg-charcoal" },
       React.createElement(Image, { src: property.heroImage, alt: heroAlt, fill: true, sizes: "100vw", quality: 70, priority: true, className: "object-cover" }),
       React.createElement("div", { className: "absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/45" }),
+      gallery.length > 0 && React.createElement(HeroPhotosButton, { count: gallery.length + 1 }),
       React.createElement("div", { className: "absolute top-24 left-0 right-0 px-6 lg:px-10" },
         React.createElement("nav", { "aria-label": "Breadcrumb", className: "max-w-7xl mx-auto text-xs text-ivory/80 flex flex-wrap items-center gap-x-2" },
           React.createElement("a", { href: "/", className: "inline-flex items-center min-h-[44px] hover:text-ivory" }, "Home"),
@@ -188,32 +187,8 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
     React.createElement("div", { className: "grid lg:grid-cols-[1fr_380px] gap-10 lg:gap-16 items-start" },
       React.createElement("div", { className: "min-w-0" },
         React.createElement("p", { className: "text-lg lg:text-xl text-charcoal leading-relaxed mb-10 max-w-2xl" }, property.description),
-        // Verified Hotel-Spider gallery (UX-005). The first 4 photos show straight away; the rest sit in a
-        // native <details> toggle, so their lazy images are not downloaded until the visitor opens it.
-        gallery.length > 0 && React.createElement("section", { className: "mb-10", "aria-label": property.name + " photos" },
-          React.createElement("h2", { className: "text-3xl mb-5" }, "Photos"),
-          React.createElement("ul", { className: "grid grid-cols-2 gap-3 sm:gap-4" },
-            galleryShown.map(function (img, i) {
-              const wide = i === 0 && galleryShown.length % 2 === 1;
-              return React.createElement("li", { key: img.src, className: "relative overflow-hidden rounded-sm bg-sand " + (wide ? "col-span-2 aspect-[16/9]" : "aspect-[4/3]") },
-                React.createElement(Image, { src: img.src, alt: img.alt, fill: true, quality: 70, sizes: wide ? "(max-width: 1024px) 100vw, 800px" : "(max-width: 1024px) 50vw, 400px", className: "object-cover" })
-              );
-            })
-          ),
-          galleryMore.length > 0 && React.createElement("details", { className: "group mt-3 sm:mt-4" },
-            React.createElement("summary", { className: "inline-flex items-center min-h-[44px] cursor-pointer list-none [&::-webkit-details-marker]:hidden text-sm font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy" },
-              React.createElement("span", { className: "group-open:hidden" }, "Show all " + (gallery.length + 1) + " photos"),
-              React.createElement("span", { className: "hidden group-open:inline" }, "Show fewer photos")
-            ),
-            React.createElement("ul", { className: "grid grid-cols-2 gap-3 sm:gap-4 mt-3" },
-              galleryMore.map(function (img) {
-                return React.createElement("li", { key: img.src, className: "relative overflow-hidden rounded-sm bg-sand aspect-[4/3]" },
-                  React.createElement(Image, { src: img.src, alt: img.alt, fill: true, quality: 70, sizes: "(max-width: 1024px) 50vw, 400px", className: "object-cover" })
-                );
-              })
-            )
-          )
-        ),
+        // Photos with a full-screen viewer (tap any photo, arrows, swipe, keyboard). The hero is photo 1.
+        gallery.length > 0 && React.createElement(PropertyGallery, { name: property.name, photos: [{ src: property.heroImage, alt: heroAlt }].concat(gallery) }),
         React.createElement("section", { className: "mb-10" },
           React.createElement("h2", { className: "text-3xl mb-5" }, "Amenities"),
           property.amenities.length > 0
@@ -310,48 +285,7 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
           React.createElement("figcaption", { className: "text-sm text-charcoal-soft font-medium" }, matchingTestimonial.guestLabel + " \u2014 a guest in " + matchingTestimonial.location)
         )
       ),
-      React.createElement("aside", { className: "bg-sand/70 border-t-2 border-burgundy rounded-sm p-6 lg:p-7 h-fit lg:sticky lg:top-28" },
-        React.createElement("h2", { className: "text-[1.6rem] leading-tight text-charcoal mb-1" }, "Book Your Stay"),
-        React.createElement("div", { className: "flex items-center gap-2 mb-4 text-xs font-semibold text-burgundy" },
-          React.createElement("span", null, "\u2605 Airbnb Superhost")
-        ),
-        // How pricing works (UX-002). Hotel-Spider prices depend on dates, guests and availability, so the
-        // panel explains where the live price is shown instead of displaying a stale number.
-        React.createElement("div", { className: "bg-ivory/80 border-l-2 border-burgundy rounded-sm px-4 py-3 mb-5" },
-          React.createElement("p", { className: "text-xs font-semibold text-sage mb-1" }, "Price per night"),
-          React.createElement("p", { className: "font-display text-[1.45rem] leading-tight text-charcoal mb-1" }, hasRoomLink ? "Live price for your dates" : "Price on request"),
-          React.createElement("p", { className: "text-sm text-charcoal-soft leading-snug" }, hasRoomLink
-            ? "Shown in \u20B9 on our booking page for your dates and number of guests, before you pay. Rates change with dates and availability."
-            : "This stay isn\u2019t on our online booking engine \u2014 message us on WhatsApp with your dates for a price.")
-        ),
-        // One set of booking actions (UX-003): a fixed bar at the bottom of the screen on mobile, and part of
-        // this sticky booking panel on desktop. Same links as before; rendered once instead of twice.
-        React.createElement("div", { className: "fixed bottom-0 inset-x-0 z-40 bg-ivory/95 backdrop-blur border-t border-line p-3 flex flex-row-reverse flex-wrap gap-2 lg:flex-nowrap lg:static lg:z-auto lg:bg-transparent lg:backdrop-blur-none lg:border-0 lg:p-0 lg:flex-col lg:gap-3 lg:mb-4" },
-          React.createElement("p", { className: "lg:hidden order-first basis-full text-center text-xs text-charcoal-soft -mt-0.5" }, hasRoomLink ? "Nightly price: live in \u20B9 for your dates" : "Nightly price: on request via WhatsApp"),
-          // Room-specific booking link only when the room is verified on the engine; otherwise a WhatsApp
-          // enquiry plus the engine's general page, never a broken room link.
-          ...(hasRoomLink ? [
-          React.createElement("a", { href: property.hotelSpiderBookingUrl, target: "_blank", rel: "noopener", className: "flex-1 flex items-center justify-center min-h-[48px] lg:min-h-[52px] text-center bg-burgundy text-ivory text-sm lg:text-base font-semibold rounded-sm hover-fine:bg-burgundy-deep active:scale-[0.98] active:duration-100 transition-[background-color,transform] duration-200 ease-snap" },
-            React.createElement("span", { className: "lg:hidden" }, "Availability & Prices"),
-            React.createElement("span", { className: "hidden lg:inline" }, "Check Availability & Pricing")
-          ),
-          React.createElement("a", { href: whatsappHref, target: "_blank", rel: "noopener", "data-wa-ref": whatsappRef, "data-wa-cta": "property", className: "flex-1 flex items-center justify-center min-h-[48px] text-center border border-burgundy text-burgundy text-sm lg:text-base font-semibold rounded-sm hover-fine:bg-burgundy hover-fine:text-ivory active:scale-[0.98] active:duration-100 transition-[background-color,color,transform] duration-200 ease-snap" },
-            "WhatsApp", React.createElement("span", { className: "hidden lg:inline" }, "\u00A0Us")
-          )
-          ] : [
-          React.createElement("a", { href: whatsappHref, target: "_blank", rel: "noopener", "data-wa-ref": whatsappRef, "data-wa-cta": "property", className: "flex-1 flex items-center justify-center min-h-[48px] lg:min-h-[52px] text-center bg-burgundy text-ivory text-sm lg:text-base font-semibold rounded-sm hover-fine:bg-burgundy-deep active:scale-[0.98] active:duration-100 transition-[background-color,transform] duration-200 ease-snap" },
-            React.createElement("span", { className: "lg:hidden" }, "Ask on WhatsApp"),
-            React.createElement("span", { className: "hidden lg:inline" }, "Ask About Availability on WhatsApp")
-          ),
-          React.createElement("a", { href: bookingEngine.generalUrl, target: "_blank", rel: "noopener", className: "flex-1 flex items-center justify-center min-h-[48px] text-center border border-burgundy text-burgundy text-sm lg:text-base font-semibold rounded-sm hover-fine:bg-burgundy hover-fine:text-ivory active:scale-[0.98] active:duration-100 transition-[background-color,color,transform] duration-200 ease-snap" },
-            React.createElement("span", { className: "lg:hidden" }, "Bookable Rooms"),
-            React.createElement("span", { className: "hidden lg:inline" }, "Browse Bookable Rooms")
-          )
-          ])
-        ),
-        React.createElement("p", { className: "text-xs text-center text-charcoal-muted mb-2" }, "Book direct with Ritumbhara \u2014 no OTA booking fees"),
-        React.createElement("a", { href: "#before-you-book", className: "flex items-center justify-center min-h-[44px] text-xs font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy mb-4" }, property.bookingEngineListed ? "Check-in times & cancellation terms" : "Check-in, cancellation & house rules"),
-      )
+      React.createElement(PropertyBooking, { slug: property.slug, name: property.name })
     ),
     )
   );
