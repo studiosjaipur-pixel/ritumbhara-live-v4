@@ -6,6 +6,10 @@ import type { Faq } from "@/lib/schema";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
 import AiFeatureTabs from "@/components/AiFeatureTabs";
+import Reveal from "@/components/Reveal";
+import CountUp from "@/components/CountUp";
+import HeroChat from "@/components/HeroChat";
+import DemoVideo from "@/components/DemoVideo";
 
 const title = "Ritumbhara AI: Operations Platform for Short-Term Rental Hosts";
 const description = "Ritumbhara AI runs guest messaging, tickets and housekeeping for Indian short-term rental hosts. Built and tested across Ritumbhara's own stays in Jaipur, Sariska and Alwar.";
@@ -120,25 +124,31 @@ export default function AiPage() {
             </div>
             <p className="text-sm text-charcoal-muted">Works with Airbnb, Booking.com, Agoda and WhatsApp</p>
           </div>
-          <div aria-hidden className="bg-ivory rounded-sm shadow-[0_1px_0_#DDD0BA] p-6 space-y-3">
-            <div className="max-w-[80%] bg-sand rounded-sm px-4 py-3 text-sm text-charcoal">Is there parking at the studio?</div>
-            <div className="max-w-[80%] ml-auto bg-burgundy text-ivory rounded-sm px-4 py-3 text-sm">Yes, one covered spot per unit. Share your arrival time and we will have it ready.</div>
-            <div className="max-w-[80%] bg-sand rounded-sm px-4 py-3 text-sm text-charcoal">Great, around 4 pm.</div>
-            <div className="border-t border-line pt-3 text-xs text-charcoal-muted">Replied by Ritumbhara AI in 12 seconds</div>
-          </div>
+          <HeroChat />
         </div>
+      </section>
+
+      <section className="max-w-5xl mx-auto px-6 lg:px-10 pt-4 pb-16 lg:pb-20">
+        <Reveal>
+          <p className={eyebrow}>Product demo</p>
+          <h2 className="text-[2rem] lg:text-[2.6rem] text-charcoal mb-3">See Ritumbhara OS in action</h2>
+          <p className="text-[16px] text-charcoal-soft max-w-2xl mb-8">A 20-second walk through the dashboard and operations hub our team uses every day. Guest names shown are samples.</p>
+          <DemoVideo src="/ritumbhara-os-demo.mp4" poster="/ritumbhara-os-demo-poster.jpg" />
+        </Reveal>
       </section>
 
       <section className="max-w-7xl mx-auto px-6 lg:px-10 py-16 lg:py-20">
         <p className={eyebrow}>What do you need help with?</p>
         <h2 className="text-[2rem] lg:text-[2.6rem] text-charcoal mb-8">Pick the part of hosting that eats your time</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {audiences.map((a) => (
-            <div key={a.name} className="border border-line rounded-sm p-5 bg-ivory">
+          {audiences.map((a, i) => (
+            <Reveal key={a.name} delay={i * 70}>
+            <div className="border border-line rounded-sm p-5 bg-ivory h-full hover-fine:-translate-y-1 hover-fine:shadow-[0_12px_30px_-16px_rgba(38,34,31,0.35)] hover-fine:border-burgundy/40 transition-[transform,box-shadow,border-color] duration-300">
               <div aria-hidden className="text-2xl mb-3">{a.icon}</div>
               <h3 className="text-[1.25rem] text-charcoal mb-1">{a.name}</h3>
               <p className="text-[15px] text-charcoal-soft">{a.text}</p>
             </div>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -147,11 +157,13 @@ export default function AiPage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
           <h2 className="font-display text-[2rem] lg:text-[2.4rem] mb-10">Built where it counts: our own properties</h2>
           <dl className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {stats.map((s) => (
-              <div key={s.label}>
-                <dt className="font-display text-[2.6rem] leading-none text-gold mb-2">{s.value}</dt>
+            {stats.map((s, i) => (
+              <Reveal key={s.label} delay={i * 90}>
+              <div>
+                <dt className="font-display text-[2.6rem] leading-none text-gold mb-2"><CountUp value={s.value} /></dt>
                 <dd className="text-sm text-ivory/70 leading-relaxed">{s.label}</dd>
               </div>
+              </Reveal>
             ))}
           </dl>
         </div>
@@ -159,7 +171,7 @@ export default function AiPage() {
 
       <section id="how-it-works" className="max-w-7xl mx-auto px-6 lg:px-10 py-16 lg:py-24 space-y-16 lg:space-y-24">
         {steps.map((s, i) => (
-          <div key={s.heading} className={"grid lg:grid-cols-2 gap-10 lg:gap-16 items-center " + (i % 2 ? "lg:[&>div:first-child]:order-2" : "")}>
+          <Reveal key={s.heading}><div className={"grid lg:grid-cols-2 gap-10 lg:gap-16 items-center " + (i % 2 ? "lg:[&>div:first-child]:order-2" : "")}>
             <div aria-hidden className="bg-sand/70 rounded-sm p-6 space-y-3">
               {s.chat.map((m, j) => (
                 <div key={j} className={"max-w-[85%] rounded-sm px-4 py-3 text-sm " + (m[0] === "ai" ? "ml-auto bg-burgundy text-ivory" : "bg-ivory text-charcoal")}>{m[1]}</div>
@@ -171,7 +183,7 @@ export default function AiPage() {
               <p className="text-[16px] text-charcoal-soft leading-relaxed mb-5">{s.body}</p>
               <Link href="/contact" className="text-sm font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4 hover-fine:decoration-burgundy">Talk to us →</Link>
             </div>
-          </div>
+          </div></Reveal>
         ))}
       </section>
 
@@ -180,11 +192,13 @@ export default function AiPage() {
           <p className={eyebrow}>Who it is for</p>
           <h2 className="text-[2rem] lg:text-[2.6rem] text-charcoal mb-8">From a few units to a growing portfolio</h2>
           <div className="grid md:grid-cols-3 gap-5">
-            {whoFor.map((w) => (
-              <div key={w.name} className="bg-ivory rounded-sm p-6 border border-line">
+            {whoFor.map((w, i) => (
+              <Reveal key={w.name} delay={i * 100}>
+              <div className="bg-ivory rounded-sm p-6 border border-line h-full hover-fine:-translate-y-1 hover-fine:shadow-[0_12px_30px_-16px_rgba(38,34,31,0.35)] transition-[transform,box-shadow] duration-300">
                 <h3 className="text-[1.35rem] text-charcoal mb-2">{w.name}</h3>
                 <p className="text-[15px] text-charcoal-soft leading-relaxed">{w.text}</p>
               </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -200,11 +214,13 @@ export default function AiPage() {
         <p className={eyebrow}>The agents</p>
         <h2 className="text-[2rem] lg:text-[2.6rem] text-charcoal mb-8">Six agents, one system</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {agents.map((a) => (
-            <div key={a.name} className="border border-line rounded-sm p-6 bg-ivory">
+          {agents.map((a, i) => (
+            <Reveal key={a.name} delay={i * 70}>
+            <div className="border border-line rounded-sm p-6 bg-ivory h-full hover-fine:-translate-y-1 hover-fine:shadow-[0_12px_30px_-16px_rgba(38,34,31,0.35)] hover-fine:border-burgundy/40 transition-[transform,box-shadow,border-color] duration-300">
               <h3 className="text-[1.3rem] text-charcoal mb-2">{a.name}</h3>
               <p className="text-[15px] text-charcoal-soft leading-relaxed">{a.text}</p>
             </div>
+            </Reveal>
           ))}
         </div>
       </section>
