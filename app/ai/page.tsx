@@ -154,7 +154,7 @@ export default function AiPage() {
         <Reveal>
           <p className={eyebrow}>Product demo</p>
           <h2 className="text-[2rem] lg:text-[2.7rem] text-charcoal mb-3">See Ritumbhara OS in action</h2>
-          <p className="text-[16px] text-charcoal-soft max-w-2xl mb-8">A 20-second walk through the dashboard and operations hub our team uses every day. Guest names shown are samples.</p>
+          <p className="text-[16px] text-charcoal-soft max-w-2xl mb-8">A 40-second tour of the app our team uses every day: home, bookings, operations and every module in the menu. Guest names shown are samples.</p>
           <DemoVideo src="/ritumbhara-os-demo.mp4" poster="/ritumbhara-os-demo-poster.jpg" />
         </Reveal>
       </section>
