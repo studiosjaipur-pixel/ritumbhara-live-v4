@@ -6,6 +6,8 @@ import { destinations } from "@/config/destinations.config";
 import CheckAvailabilityWidget from "@/components/CheckAvailabilityWidget";
 import LeadCaptureForm from "@/components/LeadCaptureForm";
 import { notFound } from "next/navigation";
+import OpenAvailabilityButton from "@/components/OpenAvailabilityButton";
+import { ReadingProgress, ShareButton } from "@/components/ArticleTools";
 
 export function generateStaticParams() {
   return journalPosts.map(function (p) {
@@ -59,6 +61,24 @@ function renderBlock(block: JournalBlock, i: number) {
   return React.createElement("p", { key: i, className: "text-[17px] text-charcoal/90 leading-[1.8] mb-6" }, block.text);
 }
 
+// Renders the article body and, roughly halfway, a short prompt to check dates for the destination the guide is about.
+function renderBody(body: JournalBlock[], destinationSlug: string | undefined, destinationName: string | undefined) {
+  const out: React.ReactNode[] = [];
+  const mid = Math.max(2, Math.floor(body.length / 2));
+  body.forEach(function (block, i) {
+    out.push(renderBlock(block, i));
+    if (i === mid && destinationSlug && destinationName) {
+      out.push(
+        React.createElement("aside", { key: "cta", className: "my-10 border-l-2 border-burgundy bg-sand/60 rounded-sm px-5 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" },
+          React.createElement("p", { className: "font-display text-[1.4rem] leading-snug text-charcoal" }, "Thinking of staying in " + destinationName + "?"),
+          React.createElement(OpenAvailabilityButton, { destination: destinationSlug, className: "shrink-0 inline-flex items-center justify-center min-h-[48px] px-6 bg-burgundy text-ivory font-semibold rounded-sm hover-fine:bg-burgundy-deep active:scale-[0.98] transition-[background-color,transform] duration-200 ease-snap" }, "Check dates")
+        )
+      );
+    }
+  });
+  return out;
+}
+
 export default function JournalPostPage({ params }: { params: { slug: string } }) {
   const post = journalPosts.find(function (p) {
     return p.slug === params.slug;
@@ -69,6 +89,7 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
     return post.relatedDestinationSlugs.indexOf(d.slug) !== -1;
   });
   const primaryDestinationSlug = post.relatedDestinationSlugs[0];
+  const primaryDestination = destinations.find(function (d) { return d.slug === primaryDestinationSlug && d.status === "operational"; });
 
   const articleSchema = {
     "@context": "https://schema.org",
@@ -96,6 +117,7 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
   return React.createElement(
     "main",
     { className: "max-w-3xl mx-auto px-6 pt-32 lg:pt-40 pb-24" },
+    React.createElement(ReadingProgress, null),
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(articleSchema) } }),
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(breadcrumbSchema) } }),
     React.createElement(
@@ -108,9 +130,10 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
     React.createElement("p", { className: "flex items-center gap-3 text-sm font-medium text-sage mb-3" }, React.createElement("span", { "aria-hidden": true, className: "h-px w-8 bg-burgundy" }), post.destinationTag),
     React.createElement("h1", { className: "text-[2.5rem] md:text-[3.25rem] text-charcoal leading-[1.06] mb-6" }, post.title),
     React.createElement(
-      "p",
-      { className: "text-sm text-charcoal-muted mb-10 pb-8 border-b border-line" },
-      formatDate(post.publishedAt) + " · " + post.readingMinutes + " min read"
+      "div",
+      { className: "flex flex-wrap items-center justify-between gap-x-6 gap-y-1 text-sm text-charcoal-muted mb-10 pb-6 border-b border-line" },
+      React.createElement("p", null, formatDate(post.publishedAt) + " \u00B7 " + post.readingMinutes + " min read"),
+      React.createElement(ShareButton, { title: post.title })
     ),
     post.heroImage
       ? React.createElement(
@@ -127,7 +150,7 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
           })
         )
       : null,
-    React.createElement("div", null, post.body.map(renderBlock)),
+    React.createElement("div", { "data-article-body": "" }, renderBody(post.body, primaryDestination ? primaryDestination.slug : undefined, primaryDestination ? primaryDestination.name : undefined)),
 
     relatedDestinations.length > 0 &&
       React.createElement(
@@ -161,17 +184,21 @@ export default function JournalPostPage({ params }: { params: { slug: string } }
     React.createElement(
       "div",
       { className: "border-t border-line pt-12 mt-4" },
-      React.createElement("h2", { className: "text-3xl text-charcoal mb-6 text-center" }, "Check Availability"),
+      React.createElement("h2", { className: "text-3xl text-charcoal mb-2 text-center" }, "Check Availability"),
+      React.createElement("p", { className: "text-center text-charcoal-soft mb-6" }, "Pick your dates and we\u2019ll check with the team."),
       React.createElement(
         "div",
         { className: "flex justify-center" },
-        primaryDestinationSlug
-          ? React.createElement(LeadCaptureForm, {
-              title: "Plan your stay",
-              subtitle: "We'll get back to you directly — no OTA fees, real-time human answers.",
-              defaultDestination: primaryDestinationSlug,
-            })
-          : React.createElement(CheckAvailabilityWidget, { variant: "inline" })
+        React.createElement(CheckAvailabilityWidget, { variant: "inline", defaultDestination: primaryDestination ? primaryDestination.slug : undefined })
+      ),
+      React.createElement(
+        "div",
+        { className: "flex justify-center mt-12" },
+        React.createElement(LeadCaptureForm, {
+          title: "Not ready to book yet?",
+          subtitle: "Leave your email and we\u2019ll share new guides and availability updates.",
+          defaultDestination: primaryDestinationSlug,
+        })
       )
     )
   );

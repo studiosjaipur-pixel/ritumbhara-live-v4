@@ -156,7 +156,7 @@ export default function DestinationPage({ params }: { params: { slug: string } }
         React.createElement("h2", { className: "text-3xl text-charcoal mb-3" }, "Prefer to ask us first?"),
         React.createElement("p", { className: "text-charcoal-soft leading-relaxed" }, "Send your dates and we'll reply on WhatsApp.")
       ),
-      React.createElement(CheckAvailabilityWidget, { variant: "inline" })
+      React.createElement(CheckAvailabilityWidget, { variant: "inline", defaultDestination: destination.slug })
     ),
     matchingTestimonial && React.createElement("figure", { className: "mb-16 max-w-3xl border-t border-charcoal/20 pt-6" },
       React.createElement("blockquote", { className: "font-display text-[1.75rem] leading-snug text-charcoal mb-4" }, "\u201C" + matchingTestimonial.quote + "\u201D"),

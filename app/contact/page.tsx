@@ -9,6 +9,7 @@ import { breadcrumbSchema, faqSchema, pageSchema } from "@/lib/schema";
 import type { Faq } from "@/lib/schema";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
+import ContactEnquiry from "@/components/ContactEnquiry";
 import { Metadata } from "next";
 
 const contactTitle = "Contact: Reservations & Partner Enquiries";
@@ -87,6 +88,10 @@ export default function ContactPage() {
                                   ),
                         React.createElement(
                                     "div",
+                                    { className: "space-y-8 min-w-0" },
+                                    React.createElement(ContactEnquiry, null),
+                                    React.createElement(
+                                    "div",
                                     { className: "grid sm:grid-cols-2 gap-x-8 border-b border-line" },
                                     React.createElement(
                                                 "a",
@@ -116,6 +121,7 @@ export default function ContactPage() {
                                                 React.createElement("address", { className: "not-italic " + valueClass }, "Ritumbhara, " + bookingEngine.address),
                                                 React.createElement("span", { className: "mt-1 text-sm font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-4" }, "View on Google Maps")
                                               )
+                                  )
                                   )
                       ),
               React.createElement(

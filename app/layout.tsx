@@ -5,6 +5,8 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import WhatsAppClickTracker from "@/components/WhatsAppClickTracker";
+import AvailabilityDialog from "@/components/AvailabilityDialog";
+import PageEnhancer from "@/components/PageEnhancer";
 import "./globals.css";
 
 // Cormorant Garamond for display headings, Manrope for body and UI text.
@@ -105,7 +107,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                                              children,
                                                              React.createElement(Footer, null),
                                                              React.createElement(FloatingWhatsApp, null),
-                                                             React.createElement(WhatsAppClickTracker, null)
+                                                             React.createElement(WhatsAppClickTracker, null),
+                                                             React.createElement(AvailabilityDialog, null),
+                                                             React.createElement(PageEnhancer, null)
                                                            )
                                  );
 }

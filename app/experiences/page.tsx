@@ -5,6 +5,7 @@ import { experiences } from "@/config/experiences.config";
 import { destinations } from "@/config/destinations.config";
 import { destinationLocations, propertyLocations } from "@/config/locations.config";
 import ExperienceCard from "@/components/ExperienceCard";
+import ExperienceTabs from "@/components/ExperienceTabs";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
 import { socialMetadata } from "@/lib/seo";
@@ -101,25 +102,7 @@ export default function ExperiencesPage() {
                   { className: "mt-14 lg:mt-20 pt-10 border-t border-line" },
                         React.createElement("h2", { className: "text-[1.75rem] leading-tight text-charcoal mb-2" }, "Experiences near each destination"),
                         React.createElement("p", { className: "text-charcoal-soft max-w-2xl mb-8 leading-relaxed" }, "What is actually close to our stays. Distances are approximate and match our destination and property pages."),
-                        React.createElement(
-                                    "div",
-                                    { className: "grid md:grid-cols-3 gap-x-10 lg:gap-x-14 gap-y-10" },
-                                    areas.map(function (a) {
-                                      return React.createElement("article", { key: a.slug },
-                                        React.createElement("h3", { className: "text-[1.5rem] leading-tight text-charcoal mb-2" },
-                                          React.createElement(Link, { href: "/destinations/" + a.slug, className: "hover-fine:text-burgundy transition-colors" }, a.name)),
-                                        React.createElement("p", { className: "text-[15px] text-charcoal-soft leading-relaxed mb-3" }, a.intro),
-                                        React.createElement("ul", { className: "space-y-2 mb-3" },
-                                          a.items.map(function (item) {
-                                            return React.createElement("li", { key: item, className: "text-[15px] text-charcoal-soft leading-relaxed" }, item);
-                                          })),
-                                        React.createElement("div", { className: "flex flex-col" },
-                                          a.guides.map(function (g) {
-                                            return React.createElement(Link, { key: g.href, href: g.href, className: linkClass + " inline-flex items-center min-h-[44px]" }, g.label);
-                                          }))
-                                      );
-                                    })
-                                  )
+                        React.createElement(ExperienceTabs, { areas: areas })
                       ),
               React.createElement(FaqSection, { heading: "Questions about experiences", faqs: faqs }),
               React.createElement(
