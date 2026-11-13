@@ -37,7 +37,7 @@ export default function Footer() {
         React.createElement("h4", { className: "text-xs font-semibold tracking-[0.14em] uppercase text-[#C8A96A] mb-3" }, "Contact"),
         React.createElement("div", { className: "flex flex-col" },
           React.createElement("a", { href: "tel:+919503002629", className: linkClass }, "+91 95030 02629"),
-          React.createElement("a", { href: "mailto:reservations@ritumbhara.com", className: linkClass + " break-all" }, "reservations@ritumbhara.com"),
+          React.createElement("a", { href: "mailto:shivam@ritumbhara.com", className: linkClass + " break-all" }, "shivam@ritumbhara.com"),
           // Business address as listed on the Hotel-Spider booking engine (UX-010).
           React.createElement("address", { className: "not-italic text-sm text-ivory/65 mt-2 leading-relaxed" }, "Ritumbhara, " + bookingEngine.address),
           React.createElement(Link, { href: "/#find-us", className: linkClass }, "Map & directions")
