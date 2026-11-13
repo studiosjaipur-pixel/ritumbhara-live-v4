@@ -56,7 +56,8 @@ return React.createElement("header", {
     className: "fixed top-0 inset-x-0 z-50 transition-[background-color,box-shadow] duration-300 " + (isSolid ? "bg-ivory/95 backdrop-blur-md shadow-[0_1px_0_#DDD0BA]" : "bg-transparent"),
 },
                            React.createElement("div", { className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 flex items-center justify-between h-20" },
-                                               React.createElement(Link, { href: "/", onClick: function () { setMobileOpen(false); }, className: "inline-flex items-start min-h-[44px] items-center font-display text-[1.9rem] leading-none font-semibold tracking-[0.01em] shrink-0 transition-colors " + (onDark ? "text-ivory" : "text-burgundy") }, "Ritumbhara", React.createElement("sup", { className: "font-sans text-[9px] ml-0.5 font-normal self-start mt-2" }, "\u00AE")),
+                                               React.createElement(Link, { href: "/", "aria-label": "Ritumbhara home", onClick: function () { setMobileOpen(false); }, className: "inline-flex items-center min-h-[44px] shrink-0" },
+                                                                   React.createElement("img", { src: onDark ? "/brand/ritumbhara-logo-white.png" : "/brand/ritumbhara-logo-red.png", alt: "Ritumbhara", width: 720, height: 131, className: "h-[26px] sm:h-[30px] w-auto" })),
                                                React.createElement("nav", { "aria-label": "Main", className: "hidden lg:flex items-center gap-5 xl:gap-8 text-[15px] font-medium whitespace-nowrap" },
                                                                    navLinks.map(function (link) {
                                                                        const active = isActive(link.href);
