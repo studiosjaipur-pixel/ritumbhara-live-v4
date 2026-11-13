@@ -79,6 +79,7 @@ const organizationSchema = {
     "@type": "Organization",
     name: "Ritumbhara",
     url: siteUrl,
+    logo: siteUrl + "/brand/ritumbhara-logo-square.png",
     description: "Ritumbhara is a hospitality management company operating hotels, studios, villas and serviced apartments across India under one consistent standard of guest experience.",
     areaServed: { "@type": "Country", name: "India" },
     // Business address exactly as listed on the Hotel-Spider booking engine and shown on the Contact page (no street line published).

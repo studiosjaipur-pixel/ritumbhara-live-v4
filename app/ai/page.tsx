@@ -125,7 +125,7 @@ export default function AiPage() {
   return (
     <main>
       <div className="h-20" aria-hidden />
-      <AiStickyBar />
+      <AiStickyBar logo={<img src="/brand/ritumbhara-logo-red.png" alt="Ritumbhara" width={720} height={131} className="hidden sm:block h-5 w-auto" />} />
       <JsonLd data={pageSchema("WebPage", title, "/ai", description)} />
       <JsonLd data={breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Ritumbhara AI", path: "/ai" }])} />
       <JsonLd data={faqSchema(faqs)} />

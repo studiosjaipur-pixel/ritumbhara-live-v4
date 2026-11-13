@@ -9,7 +9,7 @@ export default function Footer() {
   return React.createElement("footer", { id: "footer", className: "bg-charcoal text-ivory/80 pt-14 lg:pt-20 pb-24 lg:pb-10" },
     React.createElement("div", { className: "max-w-7xl mx-auto px-6 lg:px-10 grid sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr] gap-x-12 gap-y-10 mb-14" },
       React.createElement("div", { className: "max-w-xs" },
-        React.createElement("p", { className: "inline-flex font-display text-[2rem] leading-none font-semibold text-ivory mb-4" }, "Ritumbhara", React.createElement("sup", { className: "font-sans text-[8px] ml-0.5 font-normal mt-1.5" }, "\u00AE")),
+        React.createElement("img", { src: "/brand/ritumbhara-logo-white.png", alt: "Ritumbhara", width: 720, height: 131, className: "h-8 w-auto mb-5" }),
         React.createElement("p", { className: "text-sm leading-relaxed text-ivory/60" }, "A hospitality management company curating hotels, villas, and boutique stays across India.")
       ),
       React.createElement("div", null,
