@@ -1,10 +1,11 @@
 import React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Property } from "@/config/properties.config";
 import { destinations } from "@/config/destinations.config";
 import { isPlacementVerified } from "@/config/locations.config";
 import SaveStayButton from "@/components/SaveStayButton";
+import FallbackImage from "@/components/immersive/FallbackImage";
+import type { SceneSlug } from "@/components/immersive/DestinationScene";
 
 // Editorial card: photograph first, then place, name and a single quiet call to action.
 export default function PropertyCard({ property }: { property: Property }) {
@@ -24,12 +25,11 @@ export default function PropertyCard({ property }: { property: Property }) {
     className: "property-card city-" + property.destinationSlug + " group flex flex-col h-full",
   },
     React.createElement("div", { className: "relative aspect-[4/3] sm:aspect-[4/5] w-full overflow-hidden rounded-sm bg-sand" },
-      React.createElement(Image, {
+      React.createElement(FallbackImage, {
         src: property.heroImage,
         alt: property.name,
-        fill: true,
         sizes: "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
-        quality: 70,
+        scene: destination && isPlacementVerified(destination.slug) ? (destination.slug as SceneSlug) : undefined,
         className: "object-cover transition-transform duration-700 ease-snap group-hover-fine:scale-[1.04]",
       }),
       React.createElement("div", { className: "absolute top-3 left-3 right-3 flex items-start justify-between gap-2" },

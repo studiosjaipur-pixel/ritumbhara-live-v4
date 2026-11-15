@@ -1,4 +1,6 @@
 import React from "react";
+import SceneBackdrop from "@/components/immersive/SceneBackdrop";
+import type { SceneSlug } from "@/components/immersive/DestinationScene";
 import Link from "next/link";
 import Image from "next/image";
 import { destinations } from "@/config/destinations.config";
@@ -87,10 +89,10 @@ export default async function DestinationPage(props: { params: Promise<{ slug: s
   return React.createElement(React.Fragment, null,
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(placeSchema) } }),
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(breadcrumbSchema) } }),
-    React.createElement("section", { className: "relative overflow-hidden pt-28 lg:pt-32 pb-10 lg:pb-12 " + (destination.heroImage ? "bg-charcoal" : "rb-jaali-dark") },
-      destination.heroImage && React.createElement(Image, { src: destination.heroImage, alt: "Ritumbhara stay in " + destination.name + ", " + destination.state, fill: true, priority: true, quality: 70, sizes: "100vw", className: "object-cover opacity-60" }),
-      React.createElement("div", { className: "absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/40", "aria-hidden": true }),
-      React.createElement("div", { className: "relative max-w-7xl mx-auto px-6 lg:px-10" },
+    React.createElement("section", { className: "relative isolate overflow-hidden min-h-[72svh] flex flex-col justify-end pt-32 pb-12 lg:pb-16 bg-[#240713]" },
+      React.createElement(SceneBackdrop, { slug: destination.slug as SceneSlug }),
+      React.createElement("div", { className: "absolute inset-0 bg-gradient-to-t from-[#240713]/80 via-[#240713]/15 to-[#240713]/45", "aria-hidden": true }),
+      React.createElement("div", { className: "relative w-full max-w-7xl mx-auto px-6 lg:px-10" },
         React.createElement("p", { className: "flex items-center gap-3 text-sm font-medium text-sage-light mb-3" }, React.createElement("span", { "aria-hidden": true, className: "h-px w-8 bg-sage-light" }), "Destination"),
         React.createElement("h1", { className: "text-[2.75rem] lg:text-[3.75rem] text-ivory mb-2" }, destination.name),
         React.createElement("p", { className: "flex items-center gap-1.5 text-ivory/85 text-sm font-medium mb-3" },
