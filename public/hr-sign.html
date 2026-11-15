@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Review & sign — Ritumbhara</title>
+<link rel="icon" href="/apple-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Italiana&family=Poppins:wght@300;400;500;600&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--crimson:#BF2542;--crimson-dark:#8f1c33;--ink:#241F1C;--ink-soft:#5b544e;--ivory:#FBF7F1;--sand:#F1E9DC;--sand-line:#e3d7c3;--gold:#B08D3E;--danger:#B3261E;--ok:#2f7a4a}
+*{box-sizing:border-box}
+body{margin:0;font-family:Poppins,system-ui,sans-serif;background:var(--ivory);color:var(--ink);font-size:15px}
+button{font:inherit;cursor:pointer}
+input{font:inherit;color:inherit}
+[hidden]{display:none!important}
+.top{display:flex;align-items:center;padding:14px 20px;background:#fff;border-bottom:1px solid var(--sand-line)}
+.brand{font-family:Italiana,serif;font-size:22px;letter-spacing:.12em}
+.wrap{max-width:860px;margin:0 auto;padding:22px 16px 80px}
+h1{font-family:Italiana,serif;font-weight:400;font-size:28px;margin:0 0 4px}
+.muted{color:var(--ink-soft)}
+.small{font-size:13px}
+.card{background:#fff;border:1px solid var(--sand-line);border-radius:14px;padding:20px;margin-top:16px}
+.doc{width:100%;height:68vh;min-height:420px;border:1px solid var(--sand-line);border-radius:10px;background:#fff;display:block}
+.steps{display:flex;gap:8px;margin:16px 0 4px;font-size:12px;color:var(--ink-soft);flex-wrap:wrap}
+.steps span{padding:4px 10px;border-radius:999px;background:var(--sand)}
+.steps span.on{background:var(--crimson);color:#fff}
+.btn{border:1px solid var(--sand-line);background:#fff;padding:11px 18px;border-radius:10px;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.primary{background:var(--crimson);border-color:var(--crimson);color:#fff}
+.btn.primary:hover{background:var(--crimson-dark)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn.link{border:0;background:none;color:var(--crimson);padding:4px 0;font-size:13px}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--ink-soft);margin-top:14px}
+label.f input{padding:11px 12px;border:1px solid var(--sand-line);border-radius:10px;font-size:15px;color:var(--ink);background:#fff}
+label.f input:focus{outline:2px solid #f1c9d1;border-color:var(--crimson)}
+.otp{letter-spacing:10px;font-size:22px!important;text-align:center;max-width:220px}
+.sigtabs{display:flex;gap:6px;margin:16px 0 8px}
+.sigtabs button{border:1px solid var(--sand-line);background:#fff;border-radius:999px;padding:5px 14px;font-size:13px}
+.sigtabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.sigpad{border:1px dashed var(--gold);border-radius:10px;background:#fff;width:100%;height:160px;touch-action:none;display:block}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;margin-top:16px;line-height:1.5}
+.chk input{margin-top:3px;width:18px;height:18px;accent-color:var(--crimson)}
+.err{color:var(--danger);font-size:13.5px;min-height:20px;margin-top:10px}
+.center{text-align:center;padding:40px 20px}
+.tick{width:64px;height:64px;border-radius:50%;background:#e3f1e8;color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 14px}
+.spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;display:inline-block;animation:sp .7s linear infinite}
+.btn:not(.primary) .spin{border-color:var(--sand-line);border-top-color:var(--crimson)}
+@keyframes sp{to{transform:rotate(360deg)}}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<header class="top"><div class="brand" id="brand">RITUMBHARA</div></header>
+<main class="wrap">
+  <div id="vLoading" class="center muted"><span class="spin" style="border-color:var(--sand-line);border-top-color:var(--crimson)"></span><br><br>Loading your document…</div>
+
+  <div id="vMsg" class="card center" hidden></div>
+
+  <div id="vSign" hidden>
+    <h1 id="dTitle"></h1>
+    <div class="muted small" id="dMeta"></div>
+    <div class="steps"><span class="on" id="st1">1 · Review</span><span id="st2">2 · Verify email</span><span id="st3">3 · Sign</span></div>
+    <div class="card" style="padding:10px"><iframe class="doc" id="docFrame" sandbox="allow-same-origin" title="Document"></iframe></div>
+
+    <div class="card" id="cVerify">
+      <b>Verify it's you</b>
+      <p class="muted small" style="margin:6px 0 14px">We'll email a 6-digit code to <b id="mEmail"></b>.</p>
+      <button class="btn primary" id="otpBtn" onclick="sendOtp()">I've read it — email me a code</button>
+      <div class="err" id="otpErr"></div>
+    </div>
+
+    <div class="card" id="cSign" hidden>
+      <label class="f">6-digit code from your email
+        <input id="otp" class="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••"></label>
+      <button class="btn link" id="resendBtn" onclick="sendOtp(true)">Resend code</button>
+
+      <label class="f">Your full name<input id="fullName" autocomplete="name"></label>
+
+      <div class="sigtabs"><button class="on" id="tDraw" onclick="sigMode('draw')">Draw</button><button id="tType" onclick="sigMode('type')">Type</button></div>
+      <canvas id="sigCanvas" class="sigpad"></canvas>
+      <div class="row" style="justify-content:space-between;margin-top:6px">
+        <span class="small muted" id="sigHint">Sign with your finger or mouse</span>
+        <button class="btn link" onclick="clearSig()">Clear</button>
+      </div>
+
+      <label class="chk"><input type="checkbox" id="consent">
+        <span>I have read this document and agree to sign it electronically. I understand my electronic signature is legally binding, the same as my handwritten signature.</span></label>
+
+      <div class="row" style="margin-top:18px"><button class="btn primary" id="signBtn" onclick="submitSign()">Sign document</button></div>
+      <div class="err" id="signErr"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* Paste the same Apps Script Web app URL used in admin-hr.html */
+const HR_API_URL = 'https://script.google.com/macros/s/AKfycbz7ueTVl_QQMLRXbIh7HngN8MLZVGgTy790AyR75sz7VgMC0sXmIkCX5XkygJeX95DoiQ/exec';
+
+const $=id=>document.getElementById(id);
+const token=(new URLSearchParams(location.search).get('t')||'').replace(/[^a-f0-9]/gi,'');
+let info=null,mode='draw',has=false,ctx,cooldown=0;
+// keep the token out of browser history / analytics once read
+try{history.replaceState(null,'',location.pathname+'?t='+token)}catch(e){}
+
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function fmt(v){const d=new Date(v);return isNaN(d)?'':d.toLocaleString('en-IN',{day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit'})}
+function busy(b,on){if(on){b._h=b.innerHTML;b.disabled=true;b.innerHTML='<span class="spin"></span>'}else{b.disabled=false;b.innerHTML=b._h}}
+async function api(body){
+  const r=await fetch(HR_API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token},body))});
+  const res=await r.json();
+  if(res.error==='user_error')throw new Error(res.message);
+  if(res.error)throw new Error('Something went wrong. Please try again in a minute.');
+  return res;
+}
+function message(html){$('vLoading').hidden=true;$('vSign').hidden=true;$('vMsg').hidden=false;$('vMsg').innerHTML=html}
+
+async function load(){
+  if(!token)return message('<h1>Link not valid</h1><p class="muted">Please open the link from your email again.</p>');
+  try{
+    info=await api({action:'signGet'});
+    if(info.companyName)$('brand').textContent=info.companyName.toUpperCase();
+    if(info.status==='Signed')return message(`<div class="tick">✓</div><h1>Already signed</h1><p class="muted">${esc(info.title)} was signed on ${esc(fmt(info.signedAt))}.<br>A copy was emailed to ${esc(info.emailMasked)}.</p>`);
+    if(info.status==='Void')return message('<h1>This link was withdrawn</h1><p class="muted">Please contact HR for an updated document.</p>');
+    if(info.status!=='Sent')return message('<h1>Not available</h1><p class="muted">This document is not open for signing.</p>');
+    $('dTitle').textContent=info.title;
+    $('dMeta').textContent=`Ref ${info.refNo} · for ${info.empName}`;
+    $('mEmail').textContent=info.emailMasked;
+    $('fullName').value=info.empName||'';
+    $('docFrame').srcdoc=info.html;
+    $('vLoading').hidden=true;$('vSign').hidden=false;
+  }catch(e){message(`<h1>Can't open this document</h1><p class="muted">${esc(e.message)}</p>`)}
+}
+
+async function sendOtp(resend){
+  const b=resend?$('resendBtn'):$('otpBtn');const err=resend?$('signErr'):$('otpErr');err.textContent='';
+  if(cooldown>Date.now()){err.textContent='Please wait a few seconds before requesting another code.';return}
+  busy(b,true);
+  try{
+    await api({action:'signOtp'});cooldown=Date.now()+45000;
+    $('cVerify').hidden=true;$('cSign').hidden=false;$('st2').classList.add('on');$('st3').classList.add('on');
+    setupPad();$('otp').focus();
+    if(resend)err.style.color='var(--ok)',err.textContent='A new code is on its way.';
+  }catch(e){err.style.color='';err.textContent=e.message}
+  finally{busy(b,false)}
+}
+
+function setupPad(){
+  const c=$('sigCanvas');if(ctx)return;
+  ctx=c.getContext('2d');resize();
+  let drawing=false,last=null;
+  const pos=e=>{const r=c.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}};
+  c.addEventListener('pointerdown',e=>{if(mode!=='draw')return;drawing=true;last=pos(e);c.setPointerCapture(e.pointerId)});
+  c.addEventListener('pointermove',e=>{if(!drawing)return;const p=pos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;has=true});
+  ['pointerup','pointercancel'].forEach(t=>c.addEventListener(t,()=>drawing=false));
+  $('fullName').addEventListener('input',()=>{if(mode==='type')drawTyped()});
+  window.addEventListener('resize',()=>{if(mode==='type'){resize();drawTyped()}});
+}
+function resize(){const c=$('sigCanvas'),r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=r.width*d;c.height=r.height*d;ctx.setTransform(d,0,0,d,0,0);ctx.lineWidth=2.4;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#1d2a5c';has=false}
+function clearSig(){resize();if(mode==='type')drawTyped()}
+function sigMode(m){mode=m;$('tDraw').classList.toggle('on',m==='draw');$('tType').classList.toggle('on',m==='type');
+  $('sigHint').textContent=m==='draw'?'Sign with your finger or mouse':'Your typed name, in signature style';resize();if(m==='type'){drawTyped();document.fonts&&document.fonts.load('600 40px "Dancing Script"').then(()=>{if(mode==='type')drawTyped()}).catch(()=>{})}}
+function drawTyped(){
+  const c=$('sigCanvas'),r=c.getBoundingClientRect(),n=$('fullName').value.trim();
+  ctx.clearRect(0,0,r.width,r.height);has=!!n;if(!n)return;
+  let size=54;ctx.fillStyle='#1d2a5c';ctx.textBaseline='middle';
+  do{ctx.font=`600 ${size}px "Dancing Script", cursive`;size-=2}while(ctx.measureText(n).width>r.width-30&&size>18);
+  ctx.fillText(n,16,r.height/2);
+}
+function sigPng(){
+  const c=$('sigCanvas'),w=c.width,h=c.height,d=ctx.getImageData(0,0,w,h).data;let t=h,l=w,r=0,b=0;
+  for(let y=0;y<h;y+=2)for(let x=0;x<w;x+=2)if(d[(y*w+x)*4+3]>8){if(x<l)l=x;if(x>r)r=x;if(y<t)t=y;if(y>b)b=y}
+  if(r<=l)return'';const p=10,o=document.createElement('canvas');o.width=r-l+p*2;o.height=b-t+p*2;
+  o.getContext('2d').drawImage(c,l,t,r-l,b-t,p,p,r-l,b-t);return o.toDataURL('image/png');
+}
+
+async function submitSign(){
+  const err=$('signErr');err.style.color='';err.textContent='';
+  const otp=$('otp').value.replace(/\D/g,''),name=$('fullName').value.trim();
+  if(otp.length!==6)return err.textContent='Enter the 6-digit code from your email.';
+  if(name.length<2)return err.textContent='Type your full name.';
+  if(!has)return err.textContent='Please add your signature.';
+  if(!$('consent').checked)return err.textContent='Please tick the box to agree to sign electronically.';
+  const b=$('signBtn');busy(b,true);
+  try{
+    const r=await api({action:'signSubmit',otp,name,signature:sigPng(),consent:true});
+    message(`<div class="tick">✓</div><h1>Signed — thank you</h1><p class="muted">You signed <b>${esc(info.title)}</b> on ${esc(fmt(r.signedAt))}.<br>A signed PDF copy has been emailed to ${esc(info.emailMasked)}.</p>`);
+  }catch(e){err.textContent=e.message;busy(b,false)}
+}
+load();
+</script>
+</body>
+</html>

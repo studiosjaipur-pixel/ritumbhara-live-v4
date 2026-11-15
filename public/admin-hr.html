@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>HR Admin — Ritumbhara</title>
+<link rel="icon" href="/apple-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Italiana&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --crimson:#BF2542; --crimson-dark:#8f1c33; --ink:#241F1C; --ink-soft:#5b544e;
+  --ivory:#FBF7F1; --sand:#F1E9DC; --sand-line:#e3d7c3; --gold:#B08D3E; --white:#fff;
+  --danger:#B3261E; --ok:#2f7a4a; --blue:#2c5d8a; --amber:#9a6a00;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Poppins,system-ui,sans-serif;background:var(--ivory);color:var(--ink);font-size:14px}
+h1,h2,h3{font-weight:400;margin:0}
+button{font:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+a{color:var(--crimson)}
+[hidden]{display:none!important}
+
+.top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:18px;padding:12px 24px;background:var(--white);border-bottom:1px solid var(--sand-line)}
+.brand{font-family:Italiana,serif;font-size:22px;letter-spacing:.12em;white-space:nowrap}
+.brand small{font-family:Poppins;font-size:11px;letter-spacing:.14em;color:var(--ink-soft);margin-left:8px}
+.topnav{display:flex;gap:4px}
+.topnav a{padding:6px 12px;border-radius:999px;text-decoration:none;color:var(--ink-soft);font-size:13px}
+.topnav a.on{background:var(--sand);color:var(--ink)}
+.spacer{flex:1}
+.who{font-size:13px;color:var(--ink-soft)}
+
+.btn{border:1px solid var(--sand-line);background:var(--white);padding:8px 14px;border-radius:8px;font-size:13px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;color:var(--ink);text-decoration:none}
+.btn:hover{border-color:var(--gold)}
+.btn.primary{background:var(--crimson);border-color:var(--crimson);color:#fff}
+.btn.primary:hover{background:var(--crimson-dark)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.danger{color:var(--danger)}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+
+.wrap{max-width:1180px;margin:0 auto;padding:22px 24px 80px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--sand-line);margin-bottom:20px;overflow-x:auto}
+.tabs a{padding:10px 16px;text-decoration:none;color:var(--ink-soft);border-bottom:2px solid transparent;white-space:nowrap}
+.tabs a.on{color:var(--crimson);border-color:var(--crimson)}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.head h1{font-family:Italiana,serif;font-size:28px;letter-spacing:.04em}
+.muted{color:var(--ink-soft)}
+.small{font-size:12px}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat{background:var(--white);border:1px solid var(--sand-line);border-radius:12px;padding:14px 16px}
+.stat b{display:block;font-size:24px;font-weight:500}
+.stat span{font-size:12px;color:var(--ink-soft);letter-spacing:.04em}
+
+.card{background:var(--white);border:1px solid var(--sand-line);border-radius:12px;padding:18px}
+.card + .card{margin-top:14px}
+.card h3{font-size:15px;font-weight:500;margin-bottom:12px}
+.filters{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.filters input,.filters select{padding:8px 10px;border:1px solid var(--sand-line);border-radius:8px;background:#fff}
+.filters input{flex:1;min-width:180px}
+
+.tbl-wrap{overflow-x:auto;background:var(--white);border:1px solid var(--sand-line);border-radius:12px}
+table.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:500;text-align:left;padding:11px 14px;border-bottom:1px solid var(--sand-line);background:#fdfbf7}
+.tbl td{padding:11px 14px;border-bottom:1px solid #f0e8da;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tr.click{cursor:pointer}
+.tbl tr.click:hover td{background:#fdf9f3}
+.empty{padding:36px;text-align:center;color:var(--ink-soft)}
+
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:500;background:var(--sand);color:var(--ink-soft);white-space:nowrap}
+.pill.Active,.pill.Signed,.pill.Issued{background:#e3f1e8;color:var(--ok)}
+.pill.Onboarding,.pill.Sent{background:#e6eef6;color:var(--blue)}
+.pill.Notice{background:#fbf0d9;color:var(--amber)}
+.pill.Exited,.pill.Void{background:#f4e4e4;color:var(--danger)}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 14px}
+.grid .full{grid-column:1/-1}
+.grid .two{grid-column:span 2}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--ink-soft)}
+label.f input,label.f select,label.f textarea{padding:9px 10px;border:1px solid var(--sand-line);border-radius:8px;background:#fff;font-size:14px;color:var(--ink)}
+label.f input:focus,label.f select:focus,label.f textarea:focus,.paper:focus{outline:2px solid #f1c9d1;border-color:var(--crimson)}
+label.f input[readonly]{background:var(--sand)}
+.req::after{content:" *";color:var(--crimson)}
+.subtabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.subtabs button{border:1px solid var(--sand-line);background:#fff;border-radius:999px;padding:6px 14px;font-size:13px}
+.subtabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* editor */
+.ed-layout{display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start}
+.toolbar{display:flex;gap:4px;flex-wrap:wrap;padding:6px;background:#fff;border:1px solid var(--sand-line);border-bottom:0;border-radius:10px 10px 0 0;position:sticky;top:57px;z-index:5}
+.toolbar button,.toolbar select{border:1px solid transparent;background:transparent;border-radius:6px;padding:5px 9px;font-size:13px}
+.toolbar button:hover{background:var(--sand)}
+.toolbar select{border-color:var(--sand-line)}
+.paper-wrap{background:#fff;border:1px solid var(--sand-line);border-radius:0 0 10px 10px;padding:36px 44px}
+.paper-wrap.locked{border-radius:10px}
+.lh{display:flex;gap:14px;align-items:center;border-bottom:2px solid var(--crimson);padding-bottom:10px;margin-bottom:12px}
+.lh img{width:52px;height:52px;object-fit:contain}
+.lh .cn{font-family:Italiana,serif;font-size:24px;letter-spacing:.12em;color:var(--crimson)}
+.lh .ad{font-size:11px;color:var(--ink-soft)}
+.metaline{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-soft);margin-bottom:8px}
+.doc-title{font-family:Georgia,serif;font-size:19px;text-align:center;border:0;width:100%;padding:6px;margin:6px 0 10px;background:transparent}
+.doc-title:focus{outline:1px dashed var(--sand-line)}
+.paper{min-height:420px;line-height:1.6;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;padding:2px}
+.paper p{margin:0 0 10px}
+.paper mark{background:#fff1b8;padding:0 2px}
+.paper table{border-collapse:collapse;width:100%}.paper td,.paper th{border:1px solid #d9cdb8;padding:5px 7px}
+.side .card{padding:16px}
+.side .btn{width:100%;justify-content:center;margin-top:8px}
+.audit{list-style:none;margin:0;padding:0;font-size:12px}
+.audit li{padding:7px 0;border-bottom:1px dashed #eadfcd}
+.audit li:last-child{border:0}
+.audit time{display:block;color:var(--ink-soft);font-size:11px}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{border:1px solid var(--sand-line);background:#fdfbf7;border-radius:999px;padding:3px 10px;font-size:11.5px;cursor:pointer}
+.chip:hover{border-color:var(--gold)}
+
+/* templates */
+.tpl-layout{display:grid;grid-template-columns:240px 1fr;gap:18px;align-items:start}
+.tpl-list button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:10px 12px;border-radius:8px;font-size:13.5px}
+.tpl-list button.on{background:var(--sand)}
+.tpl-list button small{display:block;color:var(--ink-soft);font-size:11px}
+
+/* ID card */
+.idcards{display:flex;gap:16px;flex-wrap:wrap}
+.idc{width:216px;height:342px;border-radius:12px;border:1px solid var(--sand-line);overflow:hidden;background:#fff;position:relative;font-family:Poppins,sans-serif;text-align:center;box-shadow:0 2px 10px rgba(36,31,28,.06)}
+.idc .band{background:var(--crimson);color:#fff;padding:12px 8px 34px}
+.idc .band .cn{font-family:Italiana,serif;letter-spacing:.14em;font-size:16px}
+.idc .band small{font-size:8px;letter-spacing:.2em;opacity:.85}
+.idc .ph{width:96px;height:112px;border-radius:8px;border:3px solid #fff;object-fit:cover;margin:-30px auto 8px;display:block;background:var(--sand)}
+.idc .nm{font-size:15px;font-weight:600;padding:0 8px;line-height:1.25}
+.idc .ds{font-size:11px;color:var(--ink-soft);margin-top:2px}
+.idc .eid{display:inline-block;margin-top:10px;font-size:12px;font-weight:600;letter-spacing:.06em;border:1px solid var(--crimson);color:var(--crimson);padding:3px 10px;border-radius:999px}
+.idc .ft{position:absolute;bottom:0;left:0;right:0;background:var(--sand);font-size:8.5px;padding:6px;color:var(--ink-soft)}
+.idc.back{text-align:left;padding:18px 16px;font-size:11px}
+.idc.back dt{color:var(--ink-soft);font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin-top:9px}
+.idc.back dd{margin:2px 0 0;font-weight:500}
+.photo-box{display:flex;gap:14px;align-items:center;margin-bottom:12px}
+.photo-box img{width:72px;height:84px;object-fit:cover;border-radius:8px;background:var(--sand);border:1px solid var(--sand-line)}
+
+/* sig pad */
+.sigpad{border:1px dashed var(--gold);border-radius:8px;background:#fff;width:100%;height:140px;touch-action:none;display:block}
+
+/* login */
+.login{max-width:380px;margin:12vh auto;background:#fff;border:1px solid var(--sand-line);border-radius:14px;padding:30px}
+.login h1{font-family:Italiana,serif;font-size:28px;margin-bottom:6px}
+.login .f{margin-top:14px}
+.login .btn{width:100%;justify-content:center;margin-top:18px;padding:11px}
+.err{color:var(--danger);font-size:13px;margin-top:10px;min-height:18px}
+
+/* modal + toast */
+.modal-bg{position:fixed;inset:0;background:rgba(36,31,28,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;overflow:auto}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:520px;padding:22px;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+.modal.wide{max-width:900px}
+.modal h2{font-family:Italiana,serif;font-size:24px;margin-bottom:12px}
+.modal .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.modal iframe{width:100%;height:70vh;border:1px solid var(--sand-line);border-radius:8px;background:#fff}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+#toast.bad{background:var(--danger)}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;display:inline-block;animation:sp .7s linear infinite}
+.btn:not(.primary) .spin{border-color:var(--sand-line);border-top-color:var(--crimson)}
+@keyframes sp{to{transform:rotate(360deg)}}
+.loading{padding:40px;text-align:center;color:var(--ink-soft)}
+
+@media (max-width:900px){
+  .ed-layout,.tpl-layout{grid-template-columns:1fr}
+  .grid{grid-template-columns:1fr 1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .paper-wrap{padding:22px 18px}
+  .toolbar{top:0;position:static}
+}
+@media (max-width:560px){
+  .top{padding:10px 16px;gap:10px;flex-wrap:wrap}
+  .brand small,.who{display:none}
+  .wrap{padding:16px 16px 60px}
+  .grid{grid-template-columns:1fr}
+  .grid .two{grid-column:auto}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">RITUMBHARA<small>HR ADMIN</small></div>
+  <nav class="topnav" id="topnav" hidden>
+    <a href="admin-onboarding.html">Onboarding</a>
+    <a href="admin-hr.html" class="on">HR</a>
+  </nav>
+  <div class="spacer"></div>
+  <span class="who" id="who"></span>
+  <button class="btn sm" id="logoutBtn" hidden onclick="logout()">Sign out</button>
+</header>
+
+<!-- LOGIN -->
+<section id="vLogin" class="login" hidden>
+  <h1>HR Admin</h1>
+  <div class="muted small">Sign in with your name and the admin key.</div>
+  <label class="f">Your name<input id="loginName" autocomplete="name"></label>
+  <label class="f">Admin key<input id="loginKey" type="password" autocomplete="current-password"></label>
+  <button class="btn primary" id="loginBtn" onclick="login()">Sign in</button>
+  <div class="err" id="loginMsg"></div>
+</section>
+
+<!-- APP -->
+<main id="vApp" class="wrap" hidden>
+  <nav class="tabs" id="tabs">
+    <a href="#employees" data-t="employees">Employees</a>
+    <a href="#documents" data-t="documents">Documents</a>
+    <a href="#templates" data-t="templates">Templates</a>
+    <a href="#settings" data-t="settings">Settings</a>
+  </nav>
+  <div id="view"><div class="loading">Loading…</div></div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+/* ================================================================
+   CONFIG — paste the Apps Script Web app URL here
+   ================================================================ */
+const HR_API_URL = 'https://script.google.com/macros/s/AKfycbz7ueTVl_QQMLRXbIh7HngN8MLZVGgTy790AyR75sz7VgMC0sXmIkCX5XkygJeX95DoiQ/exec';
+
+/* ================================================================ */
+const $ = id => document.getElementById(id);
+const S = { key:'', name:'', emps:[], docs:[], tpls:{}, settings:null, emp:null, empFiles:[], empDocs:[], empPhoto:'', doc:null, dirty:false, empTab:'profile', tplType:'offer' };
+
+const DOC_TYPES = {
+  offer:'Offer letter', appointment:'Appointment letter', internship:'Internship offer',
+  nda:'NDA & confidentiality', noc:'No objection certificate (NOC)', experience:'Experience letter',
+  relieving:'Relieving letter', custom:'Custom document'
+};
+const FILE_KINDS = ['Aadhaar card','PAN card','Passport','Driving licence','Voter ID','Address proof',
+  'Education certificate','Previous employment','Bank proof / cancelled cheque','Resume','Signed offer (offline)','Other'];
+const EMP_STATUS = ['Onboarding','Active','Notice','Exited'];
+const EMP_TYPES = ['Full-time','Part-time','Intern','Contract','Consultant'];
+
+const MERGE_FIELDS = [
+  ['employee_name','Employee name'],['first_name','First name'],['employee_id','Employee ID'],
+  ['designation','Designation'],['department','Department'],['employment_type','Employment type'],
+  ['joining_date','Joining date'],['exit_date','Exit date'],['location','Location'],['reporting_to','Reporting to'],
+  ['ctc_annual','Annual CTC'],['ctc_monthly','Monthly CTC'],['employee_address','Employee address'],
+  ['employee_email','Employee email'],['today','Today'],['acceptance_deadline','Accept by (+7 days)'],
+  ['company_name','Company name'],['legal_name','Legal entity name'],['company_address','Company address'],
+  ['signatory_name','Signatory name'],['signatory_title','Signatory title']
+];
+
+/* ---------- default templates (review with your CA / lawyer before use) ---------- */
+const DEFAULT_TEMPLATES = {
+offer:{title:'Offer Letter',needsSign:true,body:
+`<p>Dear {{first_name}},</p>
+<p>We are pleased to offer you the position of <b>{{designation}}</b> in the {{department}} team at {{company_name}}.</p>
+<h3>Key terms</h3>
+<ul>
+<li>Date of joining: {{joining_date}}</li>
+<li>Location: {{location}}</li>
+<li>Employment type: {{employment_type}}</li>
+<li>Reporting to: {{reporting_to}}</li>
+<li>Annual CTC: INR {{ctc_annual}} (about INR {{ctc_monthly}} per month), as per the salary structure shared with you</li>
+<li>Probation: 6 months. During probation either side may end employment with 15 days' written notice.</li>
+</ul>
+<p>This offer is subject to verification of your documents and references. A detailed appointment letter will be issued when you join.</p>
+<p>Please sign below to accept this offer by <b>{{acceptance_deadline}}</b>, after which it lapses. We look forward to having you on the team.</p>`},
+
+appointment:{title:'Appointment Letter',needsSign:true,body:
+`<p>Dear {{employee_name}},</p>
+<p>Further to your acceptance of our offer, we are pleased to appoint you as <b>{{designation}}</b> with {{legal_name}} with effect from <b>{{joining_date}}</b>, on the terms below.</p>
+<h3>1. Role and place of work</h3>
+<p>You will work in the {{department}} team, reporting to {{reporting_to}}, based at {{location}}. You may be asked to travel or work from other locations as the business needs.</p>
+<h3>2. Compensation</h3>
+<p>Your annual cost to company is INR {{ctc_annual}}, paid monthly after statutory deductions. The break-up is in Annexure A.</p>
+<h3>3. Probation and confirmation</h3>
+<p>You will be on probation for 6 months, which may be extended. Confirmation will be communicated in writing.</p>
+<h3>4. Notice period</h3>
+<p>During probation: 15 days. After confirmation: 30 days, from either side. The company may pay salary in lieu of notice.</p>
+<h3>5. Working hours and leave</h3>
+<p>Working hours, holidays and leave follow company policy as updated from time to time.</p>
+<h3>6. Confidentiality and IP</h3>
+<p>You will keep all company and guest information confidential during and after your employment. All work you create in the course of employment belongs to the company.</p>
+<h3>7. Conduct and termination</h3>
+<p>You will follow company policies. The company may end your employment without notice for misconduct, breach of these terms or false information given at the time of hiring.</p>
+<p>Please sign below to confirm your acceptance.</p>
+<h3>Annexure A — Salary structure</h3>
+<table><tr><th>Component</th><th>Monthly (INR)</th><th>Annual (INR)</th></tr>
+<tr><td>Basic</td><td></td><td></td></tr><tr><td>HRA</td><td></td><td></td></tr>
+<tr><td>Special allowance</td><td></td><td></td></tr><tr><td><b>Total CTC</b></td><td>{{ctc_monthly}}</td><td>{{ctc_annual}}</td></tr></table>`},
+
+internship:{title:'Internship Offer',needsSign:true,body:
+`<p>Dear {{first_name}},</p>
+<p>We are happy to offer you an internship as <b>{{designation}}</b> with {{company_name}}, starting <b>{{joining_date}}</b>.</p>
+<ul>
+<li>Duration: [duration] months</li>
+<li>Mode / location: {{location}}</li>
+<li>Mentor: {{reporting_to}}</li>
+<li>Stipend: INR {{ctc_monthly}} per month</li>
+</ul>
+<p>On successful completion you will receive an internship certificate. Either side may end the internship with 7 days' notice. You agree to keep all company information confidential.</p>
+<p>Please sign below to accept by {{acceptance_deadline}}.</p>`},
+
+nda:{title:'Non-Disclosure & Confidentiality Agreement',needsSign:true,body:
+`<p>This agreement is between <b>{{legal_name}}</b>, {{company_address}} ("Company") and <b>{{employee_name}}</b>, {{employee_address}} ("Employee"), effective {{today}}.</p>
+<h3>1. Confidential information</h3>
+<p>Includes business plans, financials, property and partner details, guest data, pricing, software, designs and any information marked or reasonably understood as confidential.</p>
+<h3>2. Obligations</h3>
+<p>The Employee will use confidential information only for their work, will not disclose it to anyone outside the Company, and will return or delete it when their engagement ends.</p>
+<h3>3. Intellectual property</h3>
+<p>All work created by the Employee in the course of the engagement belongs to the Company. The Employee assigns all rights in such work to the Company.</p>
+<h3>4. Non-solicitation</h3>
+<p>For 12 months after leaving, the Employee will not solicit the Company's employees, partners or clients.</p>
+<h3>5. Duration and law</h3>
+<p>These obligations continue for 3 years after the engagement ends (indefinitely for guest data and trade secrets). This agreement is governed by the laws of India.</p>`},
+
+noc:{title:'No Objection Certificate',needsSign:false,body:
+`<p><b>To whom it may concern</b></p>
+<p>This is to certify that <b>{{employee_name}}</b> (Employee ID {{employee_id}}) is working with {{legal_name}} as {{designation}} since {{joining_date}}.</p>
+<p>The company has no objection to {{first_name}} <mark>[purpose — e.g. applying for a passport / pursuing a part-time course]</mark>.</p>
+<p>This certificate is issued at the employee's request and does not create any liability for the company.</p>`},
+
+experience:{title:'Experience Letter',needsSign:false,body:
+`<p><b>To whom it may concern</b></p>
+<p>This is to certify that <b>{{employee_name}}</b> (Employee ID {{employee_id}}) worked with {{legal_name}} as <b>{{designation}}</b> in the {{department}} team from {{joining_date}} to {{exit_date}}.</p>
+<p>During this period we found {{first_name}} sincere, hardworking and a good team member.</p>
+<p>We wish {{first_name}} the very best for the future.</p>`},
+
+relieving:{title:'Relieving Letter',needsSign:false,body:
+`<p>Dear {{employee_name}},</p>
+<p>This is with reference to your resignation. We confirm that you have been relieved from your duties as {{designation}} at {{legal_name}} at the close of business on <b>{{exit_date}}</b>.</p>
+<p>Your full and final settlement has been completed and you have handed over all company property. Your confidentiality obligations continue after this date.</p>
+<p>We thank you for your contribution and wish you success ahead.</p>`},
+
+custom:{title:'Letter',needsSign:false,body:`<p>Dear {{first_name}},</p><p></p>`}
+};
+
+/* ================================================================
+   UTILITIES
+   ================================================================ */
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function toast(msg,bad){const t=$('toast');t.textContent=msg;t.className='show'+(bad?' bad':'');clearTimeout(t._h);t._h=setTimeout(()=>t.className='',bad?5000:2600)}
+function fmtD(v){if(!v)return'';const d=new Date(v);if(isNaN(d))return String(v);return d.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}
+function fmtDT(v){if(!v)return'';const d=new Date(v);if(isNaN(d))return'';return d.toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'})}
+function inr(n){return Number(n).toLocaleString('en-IN')}
+function addDays(n){const d=new Date();d.setDate(d.getDate()+n);return d}
+function ls(get,k,v){try{return get?localStorage.getItem(k):localStorage.setItem(k,v)}catch(e){return null}}
+function ss(get,k,v){try{return get?sessionStorage.getItem(k):(v===null?sessionStorage.removeItem(k):sessionStorage.setItem(k,v))}catch(e){return null}}
+function pill(s){return `<span class="pill ${esc(s)}">${esc(s==='Sent'?'Awaiting signature':s)}</span>`}
+function busy(btn,on){if(!btn)return;if(on){btn._h=btn.innerHTML;btn.disabled=true;btn.innerHTML='<span class="spin"></span>'}else{btn.disabled=false;if(btn._h!=null)btn.innerHTML=btn._h}}
+async function run(btn,fn){busy(btn,true);try{return await fn()}catch(e){if(e.message!=='unauthorized')toast(e.message||'Something went wrong',true)}finally{busy(btn,false)}}
+
+async function api(body){
+  if(HR_API_URL.indexOf('PASTE')===0) throw new Error('Paste your Apps Script Web app URL into HR_API_URL in admin-hr.html.');
+  const r=await fetch(HR_API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(Object.assign({adminKey:S.key,adminName:S.name},body))});
+  const res=await r.json();
+  if(res.error==='unauthorized'){logout('Your admin key was rejected. Please sign in again.');throw new Error('unauthorized')}
+  if(res.error==='user_error') throw new Error(res.message);
+  if(res.error) throw new Error('The server hit an error. Check the Apps Script executions log.');
+  return res;
+}
+
+function readFile(file){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(file)})}
+function shrinkImage(file,max){return new Promise((ok,no)=>{const img=new Image();img.onload=()=>{const k=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',.86))};img.onerror=no;img.src=URL.createObjectURL(file)})}
+
+function modal(html,wide){
+  closeModal();
+  const bg=document.createElement('div');bg.className='modal-bg';bg.id='modalBg';
+  bg.innerHTML=`<div class="modal${wide?' wide':''}" role="dialog">${html}</div>`;
+  bg.addEventListener('mousedown',e=>{if(e.target===bg)closeModal()});
+  document.body.appendChild(bg);
+  const f=bg.querySelector('input,select,textarea');if(f)setTimeout(()=>f.focus(),30);
+  return bg;
+}
+function closeModal(){const m=$('modalBg');if(m)m.remove()}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+
+/* ---------- signature pad ---------- */
+function sigPad(canvas){
+  const ctx=canvas.getContext('2d');let drawing=false,has=false,last=null;
+  function size(){const r=canvas.getBoundingClientRect(),d=window.devicePixelRatio||1;const img=has?canvas.toDataURL():null;canvas.width=r.width*d;canvas.height=r.height*d;ctx.setTransform(d,0,0,d,0,0);ctx.lineWidth=2.2;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#1d2a5c';if(img){const i=new Image();i.onload=()=>ctx.drawImage(i,0,0,r.width,r.height);i.src=img}}
+  size();
+  const pos=e=>{const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}};
+  canvas.addEventListener('pointerdown',e=>{drawing=true;last=pos(e);canvas.setPointerCapture(e.pointerId)});
+  canvas.addEventListener('pointermove',e=>{if(!drawing)return;const p=pos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;has=true});
+  ['pointerup','pointercancel','pointerleave'].forEach(t=>canvas.addEventListener(t,()=>drawing=false));
+  return{
+    clear(){ctx.clearRect(0,0,canvas.width,canvas.height);has=false},
+    isEmpty(){return!has},
+    load(src){const i=new Image();i.onload=()=>{const r=canvas.getBoundingClientRect();ctx.clearRect(0,0,canvas.width,canvas.height);const k=Math.min(r.width/i.width,r.height/i.height,1);ctx.drawImage(i,(r.width-i.width*k)/2,(r.height-i.height*k)/2,i.width*k,i.height*k);has=true};i.src=src},
+    toPNG(){return trimCanvas(canvas)}
+  };
+}
+function trimCanvas(c){
+  const ctx=c.getContext('2d'),{width:w,height:h}=c,d=ctx.getImageData(0,0,w,h).data;let t=h,l=w,r=0,b=0;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]>8){if(x<l)l=x;if(x>r)r=x;if(y<t)t=y;if(y>b)b=y}
+  if(r<l)return'';const p=8,o=document.createElement('canvas');o.width=r-l+p*2;o.height=b-t+p*2;
+  o.getContext('2d').drawImage(c,l,t,r-l,b-t,p,p,r-l,b-t);return o.toDataURL('image/png');
+}
+
+/* ================================================================
+   AUTH
+   ================================================================ */
+async function login(){
+  const name=$('loginName').value.trim(),key=$('loginKey').value.trim();$('loginMsg').textContent='';
+  if(!name||!key){$('loginMsg').textContent='Enter your name and the admin key.';return}
+  S.name=name;S.key=key;busy($('loginBtn'),true);
+  try{await api({action:'adminPing'});ss(0,'rtb_admin_key',key);ls(0,'rtb_admin_name',name);afterLogin()}
+  catch(e){$('loginMsg').textContent=e.message==='unauthorized'?'That admin key is not correct.':e.message}
+  finally{busy($('loginBtn'),false)}
+}
+function logout(msg){
+  ss(0,'rtb_admin_key',null);S.key='';
+  $('vApp').hidden=true;$('topnav').hidden=true;$('logoutBtn').hidden=true;$('who').textContent='';
+  $('vLogin').hidden=false;$('loginMsg').textContent=msg||'';$('loginName').value=S.name||ls(1,'rtb_admin_name')||'';
+}
+async function afterLogin(){
+  $('vLogin').hidden=true;$('vApp').hidden=false;$('topnav').hidden=false;$('logoutBtn').hidden=false;$('who').textContent=S.name;
+  $('view').innerHTML='<div class="loading">Loading HR data…</div>';
+  try{
+    const [st,tp,em,dc]=await Promise.all([api({action:'hrSettingsGet'}),api({action:'hrTplList'}),api({action:'hrEmpList'}),api({action:'hrDocList'})]);
+    S.settings=st.settings;S.tpls={};tp.templates.forEach(t=>S.tpls[t.type]={title:t.title,needsSign:t.needsSign==='true',body:t.body});
+    S.emps=em.employees;S.docs=dc.docs;route();
+    if(!S.settings.legalName||!S.settings.address) toast('Tip: add your legal entity name and address in Settings — they appear on every letter.');
+  }catch(e){if(e.message!=='unauthorized')$('view').innerHTML=`<div class="card empty">${esc(e.message)}<br><br><button class="btn" onclick="afterLogin()">Retry</button></div>`}
+}
+
+/* ================================================================
+   ROUTER
+   ================================================================ */
+let lastHash=location.hash;
+window.addEventListener('hashchange',()=>{
+  if(S.dirty&&!confirm('You have unsaved changes. Leave without saving?')){history.replaceState(null,'',lastHash);return}
+  S.dirty=false;route();
+});
+window.addEventListener('beforeunload',e=>{if(S.dirty){e.preventDefault();e.returnValue=''}});
+function go(h){location.hash=h}
+function route(){
+  lastHash=location.hash;
+  const [t,id]=(location.hash.slice(1)||'employees').split('/');
+  const tab=({emp:'employees',doc:'documents'})[t]||t;
+  document.querySelectorAll('#tabs a').forEach(a=>a.classList.toggle('on',a.dataset.t===tab));
+  window.scrollTo(0,0);
+  if(t==='emp')return openEmp(decodeURIComponent(id||''));
+  if(t==='doc')return openDoc(decodeURIComponent(id||''));
+  if(t==='documents')return renderDocs();
+  if(t==='templates')return renderTemplates();
+  if(t==='settings')return renderSettings();
+  renderEmps();
+}
+
+/* ================================================================
+   EMPLOYEES
+   ================================================================ */
+function renderEmps(){
+  const c=s=>S.emps.filter(e=>e.status===s).length;
+  $('view').innerHTML=`
+    <div class="head"><h1>Employees</h1><div class="spacer"></div>
+      <button class="btn" onclick="refreshEmps(this)">Refresh</button>
+      <button class="btn primary" onclick="go('emp/new')">+ New employee</button></div>
+    <div class="stats">
+      <div class="stat"><b>${c('Active')}</b><span>Active</span></div>
+      <div class="stat"><b>${c('Onboarding')}</b><span>Onboarding</span></div>
+      <div class="stat"><b>${c('Notice')}</b><span>On notice</span></div>
+      <div class="stat"><b>${c('Exited')}</b><span>Exited</span></div>
+    </div>
+    <div class="filters">
+      <input id="eq" placeholder="Search name, ID, email, designation…" oninput="drawEmpRows()">
+      <select id="es" onchange="drawEmpRows()"><option value="">All statuses</option>${EMP_STATUS.map(s=>`<option>${s}</option>`).join('')}</select>
+    </div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Employee ID</th><th>Name</th><th>Designation</th><th>Joined</th><th>Status</th></tr></thead><tbody id="erows"></tbody></table></div>`;
+  drawEmpRows();
+}
+function drawEmpRows(){
+  const q=($('eq').value||'').toLowerCase(),st=$('es').value;
+  const list=S.emps.filter(e=>(!st||e.status===st)&&(!q||[e.empId,e.name,e.email,e.designation,e.department].join(' ').toLowerCase().includes(q)))
+    .sort((a,b)=>String(b.empId).localeCompare(String(a.empId)));
+  $('erows').innerHTML=list.length?list.map(e=>`<tr class="click" onclick="go('emp/${encodeURIComponent(e.empId)}')">
+    <td><b>${esc(e.empId)}</b></td><td>${esc(e.name)}<div class="muted small">${esc(e.email)}</div></td>
+    <td>${esc(e.designation)}<div class="muted small">${esc(e.department)}</div></td><td>${esc(fmtD(e.joiningDate))}</td><td>${pill(e.status)}</td></tr>`).join('')
+    :`<tr><td colspan="5" class="empty">${S.emps.length?'No employees match.':'No employees yet. Add your first one.'}</td></tr>`;
+}
+async function refreshEmps(btn){await run(btn,async()=>{S.emps=(await api({action:'hrEmpList'})).employees;renderEmps()})}
+
+async function openEmp(id){
+  if(id==='new'){S.emp={_isNew:true,status:'Onboarding',employmentType:'Full-time'};S.empFiles=[];S.empDocs=[];S.empPhoto='';S.empTab='profile';return drawEmp()}
+  $('view').innerHTML='<div class="loading">Loading employee…</div>';
+  try{const r=await api({action:'hrEmpGet',empId:id});S.emp=r.employee;S.empFiles=r.files;S.empDocs=r.docs;S.empPhoto=r.photo;drawEmp()}
+  catch(e){$('view').innerHTML=`<div class="card empty">${esc(e.message)}</div>`}
+}
+function drawEmp(){
+  const e=S.emp,isNew=!!e._isNew;
+  $('view').innerHTML=`
+    <div class="head">
+      <button class="btn ghost" onclick="go('employees')">← Employees</button>
+      <h1>${isNew?'New employee':esc(e.name)}</h1>
+      ${isNew?'':`<span class="muted">${esc(e.empId)}</span> ${pill(e.status)}`}
+      <div class="spacer"></div>
+      ${isNew?'':`<button class="btn primary" onclick="newDocModal('${esc(e.empId)}')">+ New document</button>`}
+    </div>
+    ${isNew?'':`<div class="subtabs">
+      ${[['profile','Profile'],['files','ID card & documents'],['docs','Letters & agreements ('+S.empDocs.length+')']].map(([k,l])=>`<button class="${S.empTab===k?'on':''}" onclick="S.empTab='${k}';drawEmp()">${l}</button>`).join('')}
+    </div>`}
+    <div id="empBody"></div>`;
+  if(isNew||S.empTab==='profile')drawEmpProfile();else if(S.empTab==='files')drawEmpFiles();else drawEmpDocs();
+}
+function fld(id,label,o={}){
+  const v=S.emp[id]==null?'':S.emp[id];const cls=o.cls?` class="${o.cls}"`:'';const req=o.req?' class="req"':'';
+  if(o.opts)return `<label class="f"${cls}><span${req}>${label}</span><select id="e_${id}">${o.opts.map(x=>`<option${x===v?' selected':''}>${x}</option>`).join('')}</select></label>`;
+  if(o.area)return `<label class="f"${cls}><span${req}>${label}</span><textarea id="e_${id}" rows="2">${esc(v)}</textarea></label>`;
+  return `<label class="f"${cls}><span${req}>${label}</span><input id="e_${id}" type="${o.type||'text'}" value="${esc(v)}"${o.ph?` placeholder="${esc(o.ph)}"`:''}${o.ro?' readonly':''}${o.max?` maxlength="${o.max}"`:''}></label>`;
+}
+const EMP_KEYS=['empId','status','name','email','phone','designation','department','employmentType','joiningDate','location','reportingTo','ctcAnnual','dob','gender','bloodGroup','address','emergencyName','emergencyPhone','pan','aadhaarLast4','uan','exitDate','notes'];
+function drawEmpProfile(){
+  const isNew=!!S.emp._isNew;
+  $('empBody').innerHTML=`
+    <div class="card"><h3>Personal</h3><div class="grid">
+      ${fld('name','Full name',{req:1,ph:'As per ID proof'})}${fld('email','Email',{type:'email',ph:'Used for e-signing'})}${fld('phone','Phone',{type:'tel'})}
+      ${fld('dob','Date of birth',{type:'date'})}${fld('gender','Gender',{opts:['','Female','Male','Other','Prefer not to say']})}${fld('bloodGroup','Blood group',{opts:['','A+','A-','B+','B-','AB+','AB-','O+','O-']})}
+      ${fld('address','Residential address',{area:1,cls:'full'})}
+      ${fld('emergencyName','Emergency contact name')}${fld('emergencyPhone','Emergency contact phone',{type:'tel'})}
+    </div></div>
+    <div class="card"><h3>Employment</h3><div class="grid">
+      ${fld('empId','Employee ID',{ro:!isNew,ph:'Auto-generated'})}${fld('status','Status',{opts:EMP_STATUS})}${fld('employmentType','Employment type',{opts:EMP_TYPES})}
+      ${fld('designation','Designation',{ph:'e.g. Property Manager'})}${fld('department','Department',{ph:'e.g. Operations'})}${fld('reportingTo','Reporting to')}
+      ${fld('joiningDate','Date of joining',{type:'date'})}${fld('location','Work location',{ph:'e.g. Alwar, Rajasthan'})}${fld('ctcAnnual','Annual CTC / stipend × 12 (INR)',{type:'number',ph:'e.g. 360000'})}
+      ${fld('exitDate','Exit date',{type:'date'})}
+    </div></div>
+    <div class="card"><h3>Statutory</h3><div class="grid">
+      ${fld('pan','PAN',{max:10})}${fld('aadhaarLast4','Aadhaar (last 4 digits only)',{max:4})}${fld('uan','UAN (PF)')}
+      ${fld('notes','Internal notes',{area:1,cls:'full'})}
+    </div></div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      ${isNew?'<button class="btn" onclick="go(\'employees\')">Cancel</button>':''}
+      <button class="btn primary" id="empSaveBtn" onclick="saveEmp(this)">${isNew?'Create employee':'Save changes'}</button>
+    </div>`;
+  $('empBody').querySelectorAll('input,select,textarea').forEach(i=>i.addEventListener('input',()=>S.dirty=true));
+}
+async function saveEmp(btn){
+  const rec={};EMP_KEYS.forEach(k=>{const el=$('e_'+k);if(el)rec[k]=el.value.trim()});
+  if(!rec.name){toast('Full name is required.',true);$('e_name').focus();return}
+  if(rec.aadhaarLast4&&!/^\d{4}$/.test(rec.aadhaarLast4)){toast('Enter only the last 4 digits of Aadhaar.',true);return}
+  if(rec.pan)rec.pan=rec.pan.toUpperCase();
+  if(S.emp._isNew)rec._isNew=true;else rec.empId=S.emp.empId;
+  await run(btn,async()=>{
+    const r=await api({action:'hrEmpSave',employee:rec});S.dirty=false;
+    const i=S.emps.findIndex(x=>x.empId===r.employee.empId);if(i>-1)S.emps[i]=r.employee;else S.emps.push(r.employee);
+    toast(S.emp._isNew?'Employee created — ID '+r.employee.empId:'Saved');
+    if(S.emp._isNew){go('emp/'+encodeURIComponent(r.employee.empId))}else{S.emp=r.employee;drawEmp()}
+  });
+}
+
+function drawEmpFiles(){
+  const e=S.emp;
+  $('empBody').innerHTML=`
+    <div class="card"><h3>Employee ID card</h3>
+      <div class="photo-box">
+        <img src="${S.empPhoto||''}" alt="" onerror="this.style.visibility='hidden'" ${S.empPhoto?'':'style="visibility:hidden"'}>
+        <div><div class="small muted" style="margin-bottom:6px">Passport-style photo, plain background</div>
+        <label class="btn sm">Upload photo<input type="file" accept="image/*" hidden onchange="uploadPhoto(this)"></label></div>
+      </div>
+      <div class="idcards" id="idcards">${idCardHtml(e,S.empPhoto)}</div>
+      <div class="row" style="margin-top:14px"><button class="btn primary" onclick="printIdCard()">Print ID card</button>
+      <span class="small muted">Prints front and back at card size (54 × 86 mm).</span></div>
+    </div>
+    <div class="card"><h3>ID proofs & documents</h3>
+      <div class="row" style="margin-bottom:12px">
+        <select id="fkind" style="padding:8px;border:1px solid var(--sand-line);border-radius:8px">${FILE_KINDS.map(k=>`<option>${k}</option>`).join('')}</select>
+        <input type="file" id="ffile" accept="image/*,application/pdf">
+        <button class="btn primary" onclick="uploadFile(this)">Upload</button>
+      </div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Type</th><th>File</th><th>Uploaded</th><th></th></tr></thead><tbody>
+      ${S.empFiles.length?S.empFiles.map(f=>`<tr><td>${esc(f.kind)}</td><td><a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.name)}</a></td>
+        <td class="small muted">${esc(fmtDT(f.uploadedAt))} · ${esc(f.uploadedBy)}</td>
+        <td style="text-align:right"><button class="btn sm danger" onclick="removeFile('${esc(f.fileId)}',this)">Remove</button></td></tr>`).join('')
+        :'<tr><td colspan="4" class="empty">No documents uploaded yet.</td></tr>'}
+      </tbody></table></div>
+      <div class="small muted" style="margin-top:8px">Files are stored privately in your "Ritumbhara HR" Google Drive folder.</div>
+    </div>`;
+}
+function idCardHtml(e,photo){
+  const s=S.settings||{};
+  return `<div class="idc"><div class="band"><div class="cn">${esc((s.companyName||'RITUMBHARA').toUpperCase())}</div><small>EMPLOYEE IDENTITY CARD</small></div>
+      ${photo?`<img class="ph" src="${photo}" alt="">`:'<div class="ph"></div>'}
+      <div class="nm">${esc(e.name)}</div><div class="ds">${esc(e.designation||'')}${e.department?' · '+esc(e.department):''}</div>
+      <div class="eid">${esc(e.empId)}</div>
+      <div class="ft">${esc(s.website||'')}</div></div>
+    <div class="idc back"><dl style="margin:0">
+      <dt>Employee ID</dt><dd>${esc(e.empId)}</dd>
+      <dt>Blood group</dt><dd>${esc(e.bloodGroup||'—')}</dd>
+      <dt>Emergency contact</dt><dd>${esc(e.emergencyName||'—')}${e.emergencyPhone?'<br>'+esc(e.emergencyPhone):''}</dd>
+      <dt>Date of joining</dt><dd>${esc(fmtD(e.joiningDate)||'—')}</dd>
+      <dt>If found, please return to</dt><dd style="font-weight:400">${esc(s.legalName||s.companyName||'')}${s.address?'<br>'+esc(s.address):''}</dd>
+    </dl></div>`;
+}
+function printIdCard(){
+  const css=[...document.querySelector('style').sheet.cssRules].map(r=>r.cssText).filter(t=>/^(:root|\.idc)/.test(t)).join('\n');
+  const w=window.open('','_blank');if(!w){toast('Allow pop-ups to print the ID card.',true);return}
+  w.document.write(`<!DOCTYPE html><html><head><title>ID card — ${esc(S.emp.name)}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Italiana&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>${css} body{margin:0;font-family:Poppins,sans-serif} .sheet{display:flex;gap:8mm;padding:10mm}
+    .idc{width:54mm;height:85.6mm;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:9px}
+    .idc .band{padding:3mm 2mm 8mm}.idc .band .cn{font-size:12px}.idc .ph{width:24mm;height:28mm;margin-top:-7mm}
+    .idc .nm{font-size:12px}.idc .ds{font-size:8.5px}.idc .eid{font-size:9.5px}.idc.back{padding:4mm;font-size:8.5px}.idc.back dt{font-size:6.5px}
+    @page{size:A4;margin:0}</style></head><body><div class="sheet">${idCardHtml(S.emp,S.empPhoto)}</div>
+    <script>document.fonts.ready.then(()=>setTimeout(()=>print(),300))<\/script></body></html>`);
+  w.document.close();
+}
+async function uploadPhoto(inp){
+  const f=inp.files[0];if(!f)return;
+  await run(null,async()=>{toast('Uploading photo…');const data=await shrinkImage(f,600);
+    const r=await api({action:'hrFileUpload',empId:S.emp.empId,kind:'Photo',name:'photo.jpg',data});
+    S.empPhoto=r.photo;S.empFiles=r.files;toast('Photo updated');drawEmpFiles()});
+}
+async function uploadFile(btn){
+  const f=$('ffile').files[0];if(!f){toast('Choose a file first.',true);return}
+  if(f.size>12*1024*1024){toast('File is larger than 12 MB.',true);return}
+  await run(btn,async()=>{
+    const data=f.type.startsWith('image/')&&f.size>1.5e6?await shrinkImage(f,2000):await readFile(f);
+    const r=await api({action:'hrFileUpload',empId:S.emp.empId,kind:$('fkind').value,name:f.name,data});
+    S.empFiles=r.files;toast('Uploaded');drawEmpFiles()});
+}
+async function removeFile(id,btn){
+  if(!confirm('Remove this file? It will be moved to Google Drive trash.'))return;
+  await run(btn,async()=>{const r=await api({action:'hrFileRemove',fileId:id});S.empFiles=r.files;drawEmpFiles()});
+}
+function drawEmpDocs(){
+  $('empBody').innerHTML=docTable(S.empDocs,false);
+}
+
+/* ================================================================
+   DOCUMENTS
+   ================================================================ */
+function docTable(list,showEmp){
+  return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Ref</th><th>Document</th>${showEmp?'<th>Employee</th>':''}<th>Status</th><th>Updated</th></tr></thead><tbody>
+    ${list.length?list.map(d=>`<tr class="click" onclick="go('doc/${encodeURIComponent(d.docId)}')">
+      <td class="small"><b>${esc(d.refNo)}</b></td><td>${esc(d.title)}<div class="muted small">${esc(DOC_TYPES[d.type]||'')}</div></td>
+      ${showEmp?`<td>${esc(d.empName)}<div class="muted small">${esc(d.empId)}</div></td>`:''}
+      <td>${pill(d.status)}${d.status==='Sent'&&d.viewedAt?'<div class="small muted">Opened</div>':''}</td>
+      <td class="small muted">${esc(fmtDT(d.signedAt||d.updatedAt))}<br>${esc(d.updatedBy||'')}</td></tr>`).join('')
+    :`<tr><td colspan="${showEmp?5:4}" class="empty">No documents yet.</td></tr>`}</tbody></table></div>`;
+}
+function renderDocs(){
+  const c=s=>S.docs.filter(d=>d.status===s).length;
+  $('view').innerHTML=`
+    <div class="head"><h1>Letters & agreements</h1><div class="spacer"></div>
+      <button class="btn" onclick="refreshDocs(this)">Refresh</button>
+      <button class="btn primary" onclick="newDocModal()">+ New document</button></div>
+    <div class="stats">
+      <div class="stat"><b>${c('Draft')}</b><span>Drafts</span></div>
+      <div class="stat"><b>${c('Sent')}</b><span>Awaiting signature</span></div>
+      <div class="stat"><b>${c('Signed')}</b><span>Signed</span></div>
+      <div class="stat"><b>${c('Issued')}</b><span>Issued</span></div>
+    </div>
+    <div class="filters">
+      <input id="dq" placeholder="Search ref, employee, title…" oninput="drawDocRows()">
+      <select id="dt" onchange="drawDocRows()"><option value="">All types</option>${Object.entries(DOC_TYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
+      <select id="ds" onchange="drawDocRows()"><option value="">All statuses</option><option>Draft</option><option value="Sent">Awaiting signature</option><option>Signed</option><option>Issued</option><option>Void</option></select>
+    </div><div id="drows"></div>`;
+  drawDocRows();
+}
+function drawDocRows(){
+  const q=($('dq').value||'').toLowerCase(),t=$('dt').value,s=$('ds').value;
+  $('drows').innerHTML=docTable(S.docs.filter(d=>(!t||d.type===t)&&(!s||d.status===s)&&(!q||[d.refNo,d.title,d.empName,d.empId].join(' ').toLowerCase().includes(q))),true);
+}
+async function refreshDocs(btn){await run(btn,async()=>{S.docs=(await api({action:'hrDocList'})).docs;renderDocs()})}
+
+function tpl(type){return S.tpls[type]||DEFAULT_TEMPLATES[type]}
+function mergeVals(e){
+  const s=S.settings||{},ctc=Number(String(e.ctcAnnual||'').replace(/[^\d.]/g,''))||0;
+  return{employee_name:e.name,first_name:(e.name||'').trim().split(/\s+/)[0],employee_id:e.empId,designation:e.designation,
+    department:e.department,employment_type:e.employmentType,joining_date:fmtD(e.joiningDate),exit_date:fmtD(e.exitDate),
+    location:e.location,reporting_to:e.reportingTo,ctc_annual:ctc?inr(ctc):'',ctc_monthly:ctc?inr(Math.round(ctc/12)):'',
+    employee_address:e.address,employee_email:e.email,today:fmtD(new Date()),acceptance_deadline:fmtD(addDays(7)),
+    company_name:s.companyName,legal_name:s.legalName||s.companyName,company_address:s.address,
+    signatory_name:s.signatoryName,signatory_title:s.signatoryTitle};
+}
+function mergeBody(body,e){
+  const v=mergeVals(e),lbl=Object.fromEntries(MERGE_FIELDS);
+  return body.replace(/\{\{(\w+)\}\}/g,(m,k)=>v[k]?esc(v[k]):`<mark>[${esc(lbl[k]||k)}]</mark>`)
+             .replace(/(?<!<mark>)\[(duration|purpose[^\]]*)\]/g,'<mark>[$1]</mark>');
+}
+function newDocModal(empId){
+  if(!S.emps.length){toast('Add an employee first.',true);return}
+  const emps=[...S.emps].sort((a,b)=>a.name.localeCompare(b.name));
+  modal(`<h2>New document</h2>
+    <label class="f">Employee<select id="nd_emp">${emps.map(e=>`<option value="${esc(e.empId)}"${e.empId===empId?' selected':''}>${esc(e.name)} — ${esc(e.empId)}</option>`).join('')}</select></label>
+    <label class="f" style="margin-top:12px">Document type<select id="nd_type">${Object.entries(DOC_TYPES).map(([k,v])=>`<option value="${k}">${v}${tpl(k).needsSign?' — needs e-signature':''}</option>`).join('')}</select></label>
+    <div class="small muted" style="margin-top:10px">The template is filled with the employee's details. You can edit everything before sending.</div>
+    <div class="actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="createDoc(this)">Create draft</button></div>`);
+}
+async function createDoc(btn){
+  const e=S.emps.find(x=>x.empId===$('nd_emp').value),type=$('nd_type').value,t=tpl(type);
+  await run(btn,async()=>{
+    const r=await api({action:'hrDocSave',doc:{empId:e.empId,type,title:t.title,needsSign:t.needsSign,body:mergeBody(t.body,e)}});
+    S.docs.unshift(r.doc);closeModal();S.doc=r.doc;go('doc/'+encodeURIComponent(r.doc.docId));
+  });
+}
+
+async function openDoc(id){
+  $('view').innerHTML='<div class="loading">Loading document…</div>';
+  try{S.doc=(await api({action:'hrDocGet',docId:id})).doc;drawDoc()}catch(e){$('view').innerHTML=`<div class="card empty">${esc(e.message)}</div>`}
+}
+function letterheadHtml(d){
+  const s=S.settings||{};
+  return `<div class="lh">${s.logoUrl?`<img src="${esc(s.logoUrl)}" alt="" onerror="this.remove()">`:''}<div><div class="cn">${esc(s.companyName)}</div>
+    ${s.legalName&&s.legalName!==s.companyName?`<div class="ad">${esc(s.legalName)}</div>`:''}<div class="ad">${esc(s.address||'Add company address in Settings')}</div></div></div>
+    <div class="metaline"><span>Ref: ${esc(d.refNo)}</span><span>Date: ${esc(fmtD(d.sentAt||d.createdAt))}</span></div>`;
+}
+function drawDoc(){
+  const d=S.doc,draft=d.status==='Draft';
+  const fieldOpts=MERGE_FIELDS.map(([k,l])=>`<option value="${k}">${l}</option>`).join('');
+  $('view').innerHTML=`
+    <div class="head">
+      <button class="btn ghost" onclick="history.length>1?history.back():go('documents')">← Back</button>
+      <h1 style="font-size:22px">${esc(DOC_TYPES[d.type]||'Document')}</h1>${pill(d.status)}
+      <span class="muted small">for <a href="#emp/${encodeURIComponent(d.empId)}">${esc(d.empName)}</a> · ${esc(d.empEmail||'no email')}</span>
+    </div>
+    <div class="ed-layout">
+      <div>
+        ${draft?`<div class="toolbar">
+          <button title="Bold" onmousedown="event.preventDefault();cmd('bold')"><b>B</b></button>
+          <button title="Italic" onmousedown="event.preventDefault();cmd('italic')"><i>I</i></button>
+          <button title="Underline" onmousedown="event.preventDefault();cmd('underline')"><u>U</u></button>
+          <button title="Heading" onmousedown="event.preventDefault();cmd('formatBlock','h3')">H</button>
+          <button title="Paragraph" onmousedown="event.preventDefault();cmd('formatBlock','p')">¶</button>
+          <button title="Bullets" onmousedown="event.preventDefault();cmd('insertUnorderedList')">• List</button>
+          <button title="Numbered" onmousedown="event.preventDefault();cmd('insertOrderedList')">1. List</button>
+          <button title="Clear formatting" onmousedown="event.preventDefault();cmd('removeFormat')">Clear</button>
+          <select onchange="insertField(this)"><option value="">Insert employee field…</option>${fieldOpts}</select>
+        </div>`:''}
+        <div class="paper-wrap${draft?'':' locked'}">
+          ${letterheadHtml(d)}
+          <input class="doc-title" id="dTitle" value="${esc(d.title)}" ${draft?'':'readonly'}>
+          <div class="paper" id="dBody" ${draft?'contenteditable="true"':''}>${d.body}</div>
+          <div class="small muted" style="margin-top:24px;border-top:1px dashed var(--sand-line);padding-top:10px">
+            Signature block (added automatically): ${esc(S.settings.signatoryName)}, ${esc(S.settings.signatoryTitle)}${d.needsSign?' · employee e-signature':''}</div>
+        </div>
+      </div>
+      <div class="side">${docSide(d)}</div>
+    </div>`;
+  if(draft){
+    const b=$('dBody');let savedRange=null;
+    b.addEventListener('input',()=>S.dirty=true);$('dTitle').addEventListener('input',()=>S.dirty=true);
+    b.addEventListener('paste',e=>{e.preventDefault();const t=(e.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,t)});
+    b.addEventListener('blur',()=>{const s=getSelection();if(s.rangeCount)savedRange=s.getRangeAt(0)});
+    S._restoreSel=()=>{b.focus();if(savedRange){const s=getSelection();s.removeAllRanges();s.addRange(savedRange)}};
+  }
+}
+function docSide(d){
+  const draft=d.status==='Draft';
+  let actions='';
+  if(draft){
+    actions=`<label class="chk"><input type="checkbox" id="dSign" ${d.needsSign?'checked':''} onchange="S.dirty=true;S.doc.needsSign=this.checked;$('sideBox').outerHTML=docSide(S.doc)"> Requires employee e-signature</label>
+      <button class="btn" onclick="saveDoc(this)">Save draft</button>
+      <button class="btn" onclick="previewDoc(this)">Preview PDF layout</button>
+      ${d.needsSign?`<button class="btn primary" onclick="sendModal('sign')">Send for e-signature</button>`:`<button class="btn primary" onclick="sendModal('issue')">Issue document</button>`}
+      <button class="btn ghost danger" onclick="voidDoc(this)">Discard draft</button>`;
+  }else if(d.status==='Sent'){
+    actions=`<div class="small muted">Sent ${esc(fmtDT(d.sentAt))}${d.viewedAt?' · opened '+esc(fmtDT(d.viewedAt)):' · not opened yet'}</div>
+      <button class="btn" onclick="previewDoc(this)">Preview</button>
+      <button class="btn" onclick="copyLink()">Copy signing link</button>
+      <button class="btn" onclick="resendDoc(this)">Resend email</button>
+      <button class="btn ghost danger" onclick="voidDoc(this)">Void (withdraw link)</button>`;
+  }else if(d.status==='Signed'||d.status==='Issued'){
+    actions=`<div class="small muted">${d.status} ${esc(fmtDT(d.signedAt||d.sentAt))}${d.signerName?' by '+esc(d.signerName):''}</div>
+      ${d.pdfUrl?`<a class="btn primary" href="${esc(d.pdfUrl)}" target="_blank" rel="noopener">Open ${d.status==='Signed'?'signed':'issued'} PDF</a>`:''}
+      <button class="btn" onclick="dupDoc(this)">Duplicate as new draft</button>`;
+  }else{
+    actions=`<div class="small muted">This document was voided.</div><button class="btn" onclick="dupDoc(this)">Duplicate as new draft</button>`;
+  }
+  return `<div id="sideBox"><div class="card"><h3>Ref ${esc(d.refNo)}</h3>${actions}</div>
+    <div class="card"><h3>Activity</h3><ul class="audit">${(d.audit||[]).slice().reverse().map(a=>`<li><time>${esc(fmtDT(a.at))}</time>${esc(a.ev)}${a.by&&a.by!=='System'?` <span class="muted">· ${esc(a.by)}</span>`:''}</li>`).join('')||'<li class="muted">No activity yet.</li>'}</ul>
+    ${d.docHash?`<div class="small muted" style="margin-top:8px;word-break:break-all">SHA-256: ${esc(d.docHash)}</div>`:''}</div></div>`;
+}
+function cmd(c,v){document.execCommand(c,false,v||null);S.dirty=true}
+function insertField(sel){
+  const k=sel.value;sel.value='';if(!k)return;
+  const e=S.emps.find(x=>x.empId===S.doc.empId)||{};const v=mergeVals(e)[k];
+  S._restoreSel&&S._restoreSel();
+  document.execCommand('insertHTML',false,v?esc(v):`<mark>[${esc(Object.fromEntries(MERGE_FIELDS)[k])}]</mark>`);S.dirty=true;
+}
+function docPayload(){return{docId:S.doc.docId,title:$('dTitle').value.trim(),body:$('dBody').innerHTML,needsSign:$('dSign')?$('dSign').checked:S.doc.needsSign}}
+async function saveDoc(btn,quiet){
+  return run(btn,async()=>{
+    const r=await api({action:'hrDocSave',doc:docPayload()});S.doc=r.doc;S.dirty=false;
+    const i=S.docs.findIndex(x=>x.docId===r.doc.docId);if(i>-1)S.docs[i]=r.doc;
+    if(!quiet){toast('Draft saved');$('sideBox').outerHTML=docSide(S.doc)}
+    return true;
+  });
+}
+async function previewDoc(btn){
+  await run(btn,async()=>{
+    const r=await api({action:'hrDocPreview',docId:S.doc.docId,doc:S.doc.status==='Draft'?docPayload():undefined});
+    const m=modal(`<h2>Preview</h2><iframe id="pvFrame" sandbox="allow-same-origin allow-modals"></iframe>
+      <div class="actions"><span class="small muted" style="margin-right:auto">Final PDF may differ slightly in spacing.</span>
+      <button class="btn" onclick="$('pvFrame').contentWindow.print()">Print</button><button class="btn primary" onclick="closeModal()">Close</button></div>`,true);
+    $('pvFrame').srcdoc=r.html;
+  });
+}
+function sendModal(mode){
+  const marks=$('dBody').querySelectorAll('mark').length;
+  const e=S.emps.find(x=>x.empId===S.doc.empId)||{};
+  if(mode==='sign'&&!e.email){toast('Add an email address to this employee\'s profile first.',true);return}
+  modal(`<h2>${mode==='sign'?'Send for e-signature':'Issue document'}</h2>
+    ${marks?`<div class="card" style="background:#fff8e1;border-color:#f0dc9a;margin-bottom:12px">${marks} highlighted blank${marks>1?'s':''} still in the document. Fill ${marks>1?'them':'it'} before sending, or remove the highlight.</div>`:''}
+    <p class="muted" style="margin-top:0">${mode==='sign'
+      ?`<b>${esc(e.name)}</b> will get an email at <b>${esc(e.email)}</b> with a private link. They confirm with a one-time code sent to the same email, then sign. You both get the signed PDF.`
+      :`A company-signed PDF will be generated and saved to Drive.`}</p>
+    ${mode==='issue'?`<label class="chk" style="margin-bottom:10px"><input type="checkbox" id="sm_mail" ${e.email?'checked':'disabled'}> Email the PDF to ${esc(e.email||'employee (no email on file)')}</label>`:''}
+    <label class="f">Personal note in the email (optional)<textarea id="sm_note" rows="3" placeholder="e.g. Welcome aboard! Reach out if you have any questions."></textarea></label>
+    <div class="actions"><button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn primary" onclick="sendDoc(this,'${mode}')">${mode==='sign'?'Send':'Issue'}</button></div>`);
+}
+async function sendDoc(btn,mode){
+  const note=$('sm_note').value,mail=$('sm_mail')?$('sm_mail').checked:true;
+  await run(btn,async()=>{
+    const s=await api({action:'hrDocSave',doc:docPayload()});S.doc=s.doc;S.dirty=false;
+    const r=await api({action:'hrDocSend',docId:S.doc.docId,mode,message:note,sendEmail:mail});
+    S.doc=r.doc;const i=S.docs.findIndex(x=>x.docId===r.doc.docId);if(i>-1)S.docs[i]=r.doc;
+    closeModal();toast(mode==='sign'?'Sent for signature':'Document issued');drawDoc();
+  });
+}
+async function resendDoc(btn){await run(btn,async()=>{const r=await api({action:'hrDocResend',docId:S.doc.docId});S.doc=r.doc;toast('Email re-sent');$('sideBox').outerHTML=docSide(S.doc)})}
+async function voidDoc(btn){
+  const draft=S.doc.status==='Draft';
+  const reason=draft?(confirm('Discard this draft?')?'Draft discarded':null):prompt('Void this document? The signing link will stop working.\n\nReason (optional):','');
+  if(reason===null)return;
+  await run(btn,async()=>{const r=await api({action:'hrDocVoid',docId:S.doc.docId,reason});S.dirty=false;S.doc=r.doc;
+    const i=S.docs.findIndex(x=>x.docId===r.doc.docId);if(i>-1)S.docs[i]=r.doc;toast(draft?'Draft discarded':'Voided');drawDoc()});
+}
+async function dupDoc(btn){await run(btn,async()=>{const r=await api({action:'hrDocDuplicate',docId:S.doc.docId});S.docs.unshift(r.doc);go('doc/'+encodeURIComponent(r.doc.docId))})}
+function copyLink(){navigator.clipboard.writeText(S.doc.signLink).then(()=>toast('Signing link copied'),()=>prompt('Copy this link:',S.doc.signLink))}
+
+/* ================================================================
+   TEMPLATES
+   ================================================================ */
+function renderTemplates(){
+  const t=S.tplType,cur=tpl(t);
+  $('view').innerHTML=`
+    <div class="head"><h1>Templates</h1><span class="muted small">Edit once — every new document of that type starts from here.</span></div>
+    <div class="tpl-layout">
+      <div class="card tpl-list" style="padding:8px">${Object.entries(DOC_TYPES).map(([k,v])=>`<button class="${k===t?'on':''}" onclick="if(!S.dirty||confirm('Discard unsaved template changes?')){S.dirty=false;S.tplType='${k}';renderTemplates()}">${v}<small>${S.tpls[k]?'Customised':'Default'} · ${tpl(k).needsSign?'e-sign':'issue only'}</small></button>`).join('')}</div>
+      <div>
+        <div class="card">
+          <div class="grid" style="grid-template-columns:2fr 1fr;margin-bottom:12px">
+            <label class="f">Document title<input id="tTitle" value="${esc(cur.title)}"></label>
+            <label class="chk" style="align-self:end;padding-bottom:10px"><input type="checkbox" id="tSign" ${cur.needsSign?'checked':''}> Requires employee e-signature</label>
+          </div>
+          <div class="small muted" style="margin-bottom:6px">Click a field to insert it at the cursor:</div>
+          <div class="chips">${MERGE_FIELDS.map(([k,l])=>`<span class="chip" onmousedown="event.preventDefault();tplInsert('${k}')">${l}</span>`).join('')}</div>
+          <div class="toolbar">
+            <button onmousedown="event.preventDefault();cmd('bold')"><b>B</b></button><button onmousedown="event.preventDefault();cmd('italic')"><i>I</i></button>
+            <button onmousedown="event.preventDefault();cmd('underline')"><u>U</u></button><button onmousedown="event.preventDefault();cmd('formatBlock','h3')">H</button>
+            <button onmousedown="event.preventDefault();cmd('formatBlock','p')">¶</button><button onmousedown="event.preventDefault();cmd('insertUnorderedList')">• List</button>
+            <button onmousedown="event.preventDefault();cmd('insertOrderedList')">1. List</button><button onmousedown="event.preventDefault();cmd('removeFormat')">Clear</button>
+          </div>
+          <div class="paper-wrap" style="padding:24px 28px"><div class="paper" id="tBody" contenteditable="true">${cur.body}</div></div>
+          <div class="row" style="justify-content:flex-end;margin-top:14px">
+            <button class="btn ghost" onclick="resetTpl(this)">Reset to default</button>
+            <button class="btn primary" onclick="saveTpl(this)">Save template</button>
+          </div>
+        </div>
+        <div class="small muted" style="margin-top:10px">These starter templates are a general draft. Have them checked by your lawyer or CA for your state's labour laws before regular use.</div>
+      </div>
+    </div>`;
+  const b=$('tBody');b.addEventListener('input',()=>S.dirty=true);
+  b.addEventListener('paste',e=>{e.preventDefault();document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text/plain'))});
+}
+function tplInsert(k){const b=$('tBody');if(document.activeElement!==b)b.focus();document.execCommand('insertText',false,'{{'+k+'}}');S.dirty=true}
+async function saveTpl(btn,body,title,sign){
+  await run(btn,async()=>{
+    const t={type:S.tplType,title:title??$('tTitle').value.trim(),needsSign:sign??$('tSign').checked,body:body??$('tBody').innerHTML};
+    const r=await api({action:'hrTplSave',template:t});S.tpls={};r.templates.forEach(x=>S.tpls[x.type]={title:x.title,needsSign:x.needsSign==='true',body:x.body});
+    S.dirty=false;toast('Template saved');renderTemplates();
+  });
+}
+function resetTpl(btn){if(!confirm('Replace this template with the default text?'))return;const d=DEFAULT_TEMPLATES[S.tplType];saveTpl(btn,d.body,d.title,d.needsSign)}
+
+/* ================================================================
+   SETTINGS
+   ================================================================ */
+let sigPadObj=null;
+function renderSettings(){
+  const s=S.settings;
+  const f=(k,l,o={})=>`<label class="f${o.cls?' '+o.cls:''}"><span>${l}</span>${o.area?`<textarea id="s_${k}" rows="2">${esc(s[k])}</textarea>`:`<input id="s_${k}" value="${esc(s[k])}"${o.ph?` placeholder="${esc(o.ph)}"`:''}>`}${o.help?`<span class="small muted">${o.help}</span>`:''}</label>`;
+  $('view').innerHTML=`
+    <div class="head"><h1>Settings</h1></div>
+    <div class="card"><h3>Company (letterhead)</h3><div class="grid">
+      ${f('companyName','Brand name')}${f('legalName','Legal entity name',{ph:'e.g. XYZ Private Limited',help:'Used as the employer on letters'})}${f('website','Website')}
+      ${f('address','Registered address',{area:1,cls:'full'})}
+      ${f('cin','CIN / LLPIN')}${f('gstin','GSTIN')}${f('logoUrl','Logo URL')}
+    </div></div>
+    <div class="card"><h3>Authorised signatory</h3><div class="grid">
+      ${f('signatoryName','Name')}${f('signatoryTitle','Designation')}<div></div>
+      <div class="full"><div class="small muted" style="margin-bottom:6px">Signature (draw below or upload a PNG with transparent background)</div>
+        <canvas id="sigCanvas" class="sigpad" style="max-width:460px"></canvas>
+        <div class="row" style="margin-top:8px"><button class="btn sm" onclick="sigPadObj.clear();S.sigChanged=true">Clear</button>
+        <label class="btn sm">Upload image<input type="file" accept="image/png,image/jpeg" hidden onchange="sigUpload(this)"></label></div></div>
+    </div></div>
+    <div class="card"><h3>Email & numbering</h3><div class="grid">
+      ${f('hrEmail','HR email (reply-to, gets signed copies)')}${f('adminCc','Also notify (comma-separated)')}<div></div>
+      ${f('empIdPrefix','Employee ID prefix',{help:'e.g. RTB-EMP- → RTB-EMP-0001'})}${f('refPrefix','Letter ref prefix',{help:'e.g. RTB → RTB/HR/OFR/2026/0001'})}
+      ${f('signPageUrl','Signing page URL')}
+    </div></div>
+    <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn primary" onclick="saveSettings(this)">Save settings</button></div>`;
+  S.sigChanged=false;
+  sigPadObj=sigPad($('sigCanvas'));
+  if(s.companySigData)sigPadObj.load(s.companySigData);
+  $('sigCanvas').addEventListener('pointerdown',()=>S.sigChanged=true);
+}
+async function sigUpload(inp){const f=inp.files[0];if(!f)return;sigPadObj.load(await readFile(f));S.sigChanged=true}
+async function saveSettings(btn){
+  const out={};Object.keys(S.settings).forEach(k=>{const el=$('s_'+k);if(el)out[k]=el.value.trim()});
+  if(S.sigChanged)out.companySigData=sigPadObj.isEmpty()?'':sigPadObj.toPNG();
+  await run(btn,async()=>{const r=await api({action:'hrSettingsSave',settings:out});S.settings=r.settings;toast('Settings saved');renderSettings()});
+}
+
+/* ================================================================
+   BOOT
+   ================================================================ */
+$('loginKey').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+(function boot(){
+  S.name=ls(1,'rtb_admin_name')||'';S.key=ss(1,'rtb_admin_key')||'';
+  if(S.key&&S.name){api({action:'adminPing'}).then(afterLogin).catch(e=>{if(e.message!=='unauthorized')logout(e.message)})}
+  else logout();
+})();
+</script>
+</body>
+</html>
