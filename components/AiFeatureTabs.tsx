@@ -1,38 +1,37 @@
 "use client";
-import { useState } from "react";
+import { Tabs, TabsList, TabsPanel, TabsTab } from "@ui-sdk/react/tabs";
 
 type Tab = { id: string; label: string; headline: string; points: string[] };
 
+// Every panel stays in the page (keepMounted), so the full feature list is in the HTML for search and AI
+// crawlers, not only the tab that happens to be open.
 export default function AiFeatureTabs({ tabs }: { tabs: Tab[] }) {
-  const [active, setActive] = useState(tabs[0].id);
-  const current = tabs.find((t) => t.id === active) || tabs[0];
   return (
-    <div>
-      <div role="tablist" aria-label="Ritumbhara AI features" className="flex flex-wrap gap-2 mb-8">
+    <Tabs defaultValue={tabs[0].id}>
+      <TabsList aria-label="Ritumbhara AI features" className="flex flex-wrap gap-2 mb-8 border-b-0">
         {tabs.map((t) => (
-          <button
+          <TabsTab
             key={t.id}
-            role="tab"
-            type="button"
-            aria-selected={t.id === active}
-            onClick={() => setActive(t.id)}
-            className={"min-h-[44px] px-5 rounded-full text-sm font-semibold transition-colors duration-200 " + (t.id === active ? "bg-burgundy text-ivory" : "bg-sand text-charcoal hover-fine:bg-sand-deep")}
+            value={t.id}
+            className="h-auto min-h-[44px] px-5 mb-0 rounded-full border-0 text-sm font-semibold bg-sand text-charcoal hover-fine:bg-sand-deep transition-colors duration-200 data-[selected]:bg-burgundy data-[selected]:text-ivory focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-burgundy"
           >
             {t.label}
-          </button>
+          </TabsTab>
         ))}
-      </div>
-      <div role="tabpanel" className="bg-sand/70 rounded-2xl p-6 sm:p-10">
-        <h3 className="font-display text-[1.9rem] leading-tight text-charcoal mb-5">{current.headline}</h3>
-        <ul className="grid sm:grid-cols-2 gap-x-10 gap-y-3">
-          {current.points.map((p) => (
-            <li key={p} className="flex gap-3 text-[15px] text-charcoal-soft leading-relaxed">
-              <span aria-hidden className="text-burgundy mt-0.5">✓</span>
-              <span>{p}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
+      </TabsList>
+      {tabs.map((t) => (
+        <TabsPanel key={t.id} value={t.id} keepMounted className="rb-tab-panel bg-sand/70 rounded-2xl p-6 sm:p-10">
+          <h3 className="font-display text-[1.9rem] leading-tight text-charcoal mb-5">{t.headline}</h3>
+          <ul className="grid sm:grid-cols-2 gap-x-10 gap-y-3">
+            {t.points.map((p) => (
+              <li key={p} className="flex gap-3 text-[15px] text-charcoal-soft leading-relaxed">
+                <span aria-hidden className="text-burgundy mt-0.5">✓</span>
+                <span>{p}</span>
+              </li>
+            ))}
+          </ul>
+        </TabsPanel>
+      ))}
+    </Tabs>
   );
 }

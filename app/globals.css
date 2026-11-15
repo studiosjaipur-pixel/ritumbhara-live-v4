@@ -154,3 +154,38 @@ h2,
 /* Inputs: keep native date pickers readable and stop iOS from zooming into small fields. */
 input[type="date"], input[type="search"], select, textarea { font-size: 16px; }
 @media (min-width: 640px) { input[type="date"], input[type="search"], select, textarea { font-size: 14px; } }
+
+/* ui-sdk: the site is light-only, and web.css otherwise follows the OS theme (dark scrollbars, form controls). */
+:root {
+  color-scheme: light;
+}
+
+/* FAQ accordion: panel height eases open and closed. */
+.rb-acc [data-slot="accordion-panel"] {
+  height: var(--accordion-panel-height);
+  overflow: hidden;
+  transition: height 300ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.rb-acc [data-slot="accordion-panel"]:is([data-starting-style], [data-ending-style]) {
+  height: 0;
+}
+
+/* Tab panels: a short fade-and-lift on entry. Closed panels stay in the HTML but hidden, even when a
+   utility class on the panel sets display. */
+.rb-tab-panel[hidden]:not([hidden="until-found"]) {
+  display: none;
+}
+.rb-tab-panel {
+  transition: opacity 260ms ease-out, transform 260ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.rb-tab-panel[data-starting-style] {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rb-acc [data-slot="accordion-panel"],
+  .rb-tab-panel {
+    transition: none;
+  }
+}

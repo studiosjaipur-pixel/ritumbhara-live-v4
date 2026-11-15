@@ -5,7 +5,7 @@ import { RefObject, useEffect, useRef } from "react";
 // does not scroll, focus moves in on open and returns to whatever opened it on close.
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function useModal(open: boolean, onClose: () => void, containerRef: RefObject<HTMLElement>) {
+export function useModal(open: boolean, onClose: () => void, containerRef: RefObject<HTMLElement | null>) {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
 

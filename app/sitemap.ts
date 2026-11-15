@@ -4,7 +4,9 @@ import { journalPosts } from "@/lib/journal-posts";
 
 export default function sitemap() {
   const base = "https://www.ritumbhara.com";
-  const now = new Date();
+  // A fixed, honest date instead of "now": a timestamp that changes on every build tells crawlers every page
+  // changed every time, which makes them trust lastmod less. Bump this when site content genuinely changes.
+  const now = new Date("2026-11-16");
   return [
     { url: base, lastModified: now, changeFrequency: "weekly", priority: 1 },
     { url: base + "/about", lastModified: now, changeFrequency: "monthly", priority: 0.7 },

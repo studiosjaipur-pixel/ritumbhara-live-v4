@@ -5,7 +5,8 @@ import { destinations } from "@/config/destinations.config";
 import { destinationLocations, propertyLocations } from "@/config/locations.config";
 import { bookingEngine } from "@/config/booking.config";
 import { socialMetadata } from "@/lib/seo";
-import { breadcrumbSchema, faqSchema, pageSchema } from "@/lib/schema";
+import { breadcrumbSchema, faqSchema, itemListSchema, pageSchema } from "@/lib/schema";
+import { properties } from "@/config/properties.config";
 import type { Faq } from "@/lib/schema";
 import JsonLd from "@/components/JsonLd";
 import FaqSection from "@/components/FaqSection";
@@ -73,6 +74,7 @@ export default function DestinationsPage() {
     return React.createElement("main", { className: "max-w-7xl mx-auto px-6 lg:px-10 pt-32 lg:pt-36 pb-24" },
                                    React.createElement(JsonLd, { data: pageSchema("CollectionPage", destinationsTitle, "/destinations", destinationsDescription) }),
                                    React.createElement(JsonLd, { data: breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Destinations", path: "/destinations" }]) }),
+                                   React.createElement(JsonLd, { data: itemListSchema("Ritumbhara stays", properties.map(function (p) { return { name: p.name, path: "/properties/" + p.slug }; })) }),
                                    React.createElement(JsonLd, { data: faqSchema(faqs) }),
                                    React.createElement("h1", { className: "text-[2.6rem] lg:text-[3.5rem] text-charcoal mb-4" }, "Destinations"),
                                    React.createElement("p", { className: "text-charcoal-soft max-w-2xl mb-12 pb-6 border-b border-line leading-relaxed" }, "Studios, serviced apartments and a villa in Jaipur, Alwar and Sariska, Rajasthan, each managed to the Ritumbhara Standard. Agra, Uttar Pradesh, is coming soon."),

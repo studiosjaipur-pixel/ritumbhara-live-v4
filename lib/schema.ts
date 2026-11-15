@@ -38,3 +38,16 @@ export function pageSchema(type: "AboutPage" | "ContactPage" | "CollectionPage" 
     isPartOf: { "@type": "WebSite", name: "Ritumbhara", url: SITE },
   };
 }
+
+// Ordered list of pages (stays, destinations) for hub pages, so a crawler or assistant gets the whole set in one place.
+export function itemListSchema(name: string, items: { name: string; path: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: name,
+    numberOfItems: items.length,
+    itemListElement: items.map(function (it, i) {
+      return { "@type": "ListItem", position: i + 1, name: it.name, url: SITE + it.path };
+    }),
+  };
+}

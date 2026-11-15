@@ -77,7 +77,7 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
       return { "@type": "LocationFeatureSpecification", name: a, value: true };
     }),
     // Verified facts only: the managing company and the property's existing Hotel Spider booking page.
-    parentOrganization: { "@type": "Organization", name: "Ritumbhara", url: "https://www.ritumbhara.com" },
+    parentOrganization: { "@type": "Organization", "@id": "https://www.ritumbhara.com/#organization", name: "Ritumbhara", url: "https://www.ritumbhara.com" },
     potentialAction: property.hotelSpiderBookingUrl ? { "@type": "ReserveAction", target: property.hotelSpiderBookingUrl } : undefined,
   };
 
