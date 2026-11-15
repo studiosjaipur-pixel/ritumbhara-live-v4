@@ -160,7 +160,7 @@ export default async function PropertyPage(props: { params: Promise<{ slug: stri
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(lodgingSchema) } }),
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(breadcrumbSchema) } }),
     React.createElement("div", { className: "relative h-[62vh] min-h-[420px] max-h-[680px] w-full overflow-hidden bg-charcoal" },
-      React.createElement(FallbackImage, { src: property.heroImage, alt: heroAlt, sizes: "100vw", priority: true, scene: placeDestination ? (placeDestination.slug as SceneSlug) : undefined, className: "object-cover" }),
+      React.createElement(FallbackImage, { src: property.heroImage, alt: heroAlt, sizes: "100vw", priority: true, note: false, scene: placeDestination ? (placeDestination.slug as SceneSlug) : undefined, className: "object-cover" }),
       React.createElement("div", { className: "absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/45" }),
       gallery.length > 0 && React.createElement(HeroPhotosButton, { count: gallery.length + 1 }),
       React.createElement("div", { className: "absolute top-[6.5rem] right-4 lg:right-10 z-10" }, React.createElement(SaveStayButton, { slug: property.slug, name: property.name })),

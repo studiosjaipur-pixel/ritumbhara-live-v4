@@ -35,10 +35,10 @@ export default function ImmersiveHero({
             <span aria-hidden className="h-px w-10 bg-gold" />
             India, Thoughtfully Hosted
           </p>
-          <h1 className="text-[2.35rem] sm:text-[3.2rem] xl:text-[3.4rem] leading-[1.06] text-ivory mb-6 max-w-2xl">
+          <h1 className="text-[1.95rem] sm:text-[3.2rem] xl:text-[3.4rem] leading-[1.06] text-ivory mb-6 max-w-2xl">
             {words.map(function (w, i) {
               return (
-                <span key={i} className="inline-block whitespace-nowrap overflow-hidden align-bottom pb-[0.12em] -mb-[0.12em] mr-[0.26em]">
+                <span key={i} className="inline-block sm:whitespace-nowrap overflow-hidden align-bottom pb-[0.12em] -mb-[0.12em] mr-[0.26em]">
                   <span className="rb-word inline-block" style={{ animationDelay: 250 + i * 70 + "ms" }}>{w}</span>
                 </span>
               );
