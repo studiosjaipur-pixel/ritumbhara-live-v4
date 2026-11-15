@@ -25,7 +25,8 @@ export function generateStaticParams() {
   return properties.map(function (p) { return { slug: p.slug }; });
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const property = properties.find(function (p) { return p.slug === params.slug; });
   if (!property) return {};
   const title = property.name;
@@ -51,7 +52,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default function PropertyPage({ params }: { params: { slug: string } }) {
+export default async function PropertyPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const property = properties.find(function (p) { return p.slug === params.slug; });
   if (!property) return notFound();
   const destination = destinations.find(function (d) { return d.slug === property.destinationSlug; });

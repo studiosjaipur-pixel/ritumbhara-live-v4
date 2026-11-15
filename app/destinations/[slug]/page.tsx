@@ -37,7 +37,8 @@ function propertyTypePhrase(slug: string) {
   return types.slice(0, -1).join(", ") + " and " + types[types.length - 1];
 }
 
-export function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const destination = destinations.find(function (d) { return d.slug === params.slug; });
   if (!destination) return {};
   const isOpen = destination.status === "operational";
@@ -56,7 +57,8 @@ export function generateMetadata({ params }: { params: { slug: string } }) {
   };
 }
 
-export default function DestinationPage({ params }: { params: { slug: string } }) {
+export default async function DestinationPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const destination = destinations.find(function (d) { return d.slug === params.slug; });
   if (!destination) return notFound();
   const destinationProperties = properties.filter(function (p) { return p.destinationSlug === destination.slug; });
