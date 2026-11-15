@@ -14,6 +14,7 @@ import { destinations } from "@/config/destinations.config";
 import { isPlacementVerified } from "@/config/locations.config";
 import { journalPosts } from "@/lib/journal-posts";
 import "./globals.css";
+import "@ui-sdk/core/web.css";
 
 // Cormorant Garamond for display headings, Manrope for body and UI text.
 // Self-hosted from app/fonts (latin subset, SIL Open Font License; licences alongside the files), so the
@@ -85,7 +86,9 @@ export const metadata: Metadata = {
 const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": siteUrl + "/#organization",
     name: "Ritumbhara",
+    slogan: "India, Thoughtfully Hosted",
     url: siteUrl,
     logo: siteUrl + "/brand/ritumbhara-logo-square.png",
     description: "Ritumbhara is a hospitality management company operating hotels, studios, villas and serviced apartments across India under one consistent standard of guest experience.",
@@ -100,8 +103,11 @@ const organizationSchema = {
 const websiteSchema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
+    "@id": siteUrl + "/#website",
     name: "Ritumbhara",
     url: siteUrl,
+    inLanguage: "en-IN",
+    publisher: { "@id": siteUrl + "/#organization" },
 };
 
 // Slim, server-built indexes for the quick search and the shortlist, so the browser never downloads the full
@@ -127,7 +133,7 @@ const searchItems: SearchItem[] = [
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-    return React.createElement("html", { lang: "en" },
+    return React.createElement("html", { lang: "en-IN" },
                                    React.createElement("body", { className: display.variable + " " + sans.variable + " font-sans bg-ivory text-charcoal" },
                                                              React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(organizationSchema) } }),
                                                              React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(websiteSchema) } }),
