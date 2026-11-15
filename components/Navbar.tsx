@@ -9,7 +9,7 @@ import { ShortlistButton } from "@/components/ShortlistDrawer";
 // Pages whose top section is a dark hero (burgundy or photo). On these the
 // transparent header needs light text until the visitor scrolls.
 function hasDarkHero(pathname: string) {
-  return pathname.indexOf("/properties/") === 0 || pathname.indexOf("/destinations/") === 0;
+  return pathname === "/" || pathname.indexOf("/properties/") === 0 || pathname.indexOf("/destinations/") === 0;
 }
 
 const navLinks = [

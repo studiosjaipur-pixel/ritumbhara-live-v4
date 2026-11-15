@@ -9,6 +9,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import PropertyBooking from "@/components/PropertyBooking";
 import PropertyGallery from "@/components/PropertyGallery";
+import FallbackImage from "@/components/immersive/FallbackImage";
+import type { SceneSlug } from "@/components/immersive/DestinationScene";
 import HeroPhotosButton from "@/components/HeroPhotosButton";
 import SaveStayButton from "@/components/SaveStayButton";
 
@@ -156,7 +158,7 @@ export default function PropertyPage({ params }: { params: { slug: string } }) {
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(lodgingSchema) } }),
     React.createElement("script", { type: "application/ld+json", dangerouslySetInnerHTML: { __html: JSON.stringify(breadcrumbSchema) } }),
     React.createElement("div", { className: "relative h-[62vh] min-h-[420px] max-h-[680px] w-full overflow-hidden bg-charcoal" },
-      React.createElement(Image, { src: property.heroImage, alt: heroAlt, fill: true, sizes: "100vw", quality: 70, priority: true, className: "object-cover" }),
+      React.createElement(FallbackImage, { src: property.heroImage, alt: heroAlt, sizes: "100vw", priority: true, scene: placeDestination ? (placeDestination.slug as SceneSlug) : undefined, className: "object-cover" }),
       React.createElement("div", { className: "absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/45" }),
       gallery.length > 0 && React.createElement(HeroPhotosButton, { count: gallery.length + 1 }),
       React.createElement("div", { className: "absolute top-[6.5rem] right-4 lg:right-10 z-10" }, React.createElement(SaveStayButton, { slug: property.slug, name: property.name })),
