@@ -22,6 +22,8 @@ button{font:inherit;cursor:pointer}
 input,select,textarea{font:inherit;color:inherit}
 a{color:var(--crimson)}
 [hidden]{display:none!important}
+body:not([data-role="Owner"]) .own{display:none!important}
+body[data-role="HRViewer"] .w{display:none!important}
 
 .top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:18px;padding:12px 24px;background:var(--white);border-bottom:1px solid var(--sand-line)}
 .brand{font-family:Italiana,serif;font-size:22px;letter-spacing:.12em;white-space:nowrap}
@@ -200,10 +202,20 @@ label.f input[readonly]{background:var(--sand)}
 <!-- LOGIN -->
 <section id="vLogin" class="login" hidden>
   <h1>HR Admin</h1>
-  <div class="muted small">Sign in with your name and the admin key.</div>
-  <label class="f">Your name<input id="loginName" autocomplete="name"></label>
-  <label class="f">Admin key<input id="loginKey" type="password" autocomplete="current-password"></label>
-  <button class="btn primary" id="loginBtn" onclick="login()">Sign in</button>
+  <div id="lEmail">
+    <div class="muted small">Sign in with your work email. We'll email you a one-time code — no password needed.</div>
+    <label class="f">Work email<input id="loginEmail" type="email" autocomplete="email"></label>
+    <label class="f" id="lCodeWrap" hidden>6-digit code from your email<input id="loginCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" style="letter-spacing:6px;font-size:18px"></label>
+    <button class="btn primary" id="emailBtn" onclick="emailStep()">Email me a code</button>
+    <button class="btn ghost small" style="margin-top:6px" onclick="loginMode('key')">Owner? Sign in with the admin key</button>
+  </div>
+  <div id="lKey" hidden>
+    <div class="muted small">Owner sign-in with your name and the admin key.</div>
+    <label class="f">Your name<input id="loginName" autocomplete="name"></label>
+    <label class="f">Admin key<input id="loginKey" type="password" autocomplete="current-password"></label>
+    <button class="btn primary" id="loginBtn" onclick="login()">Sign in</button>
+    <button class="btn ghost small" style="margin-top:6px" onclick="loginMode('email')">← Sign in with work email</button>
+  </div>
   <div class="err" id="loginMsg"></div>
 </section>
 
@@ -213,7 +225,8 @@ label.f input[readonly]{background:var(--sand)}
     <a href="#employees" data-t="employees">Employees</a>
     <a href="#documents" data-t="documents">Documents</a>
     <a href="#templates" data-t="templates">Templates</a>
-    <a href="#settings" data-t="settings">Settings</a>
+    <a href="#team" data-t="team" class="own">HR team</a>
+    <a href="#settings" data-t="settings" class="own">Settings</a>
   </nav>
   <div id="view"><div class="loading">Loading…</div></div>
 </main>
@@ -354,9 +367,9 @@ async function run(btn,fn){busy(btn,true);try{return await fn()}catch(e){if(e.me
 async function api(body){
   if(HR_API_URL.indexOf('PASTE')===0) throw new Error('Paste your Apps Script Web app URL into HR_API_URL in admin-hr.html.');
   const r=await fetch(HR_API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify(Object.assign({adminKey:S.key,adminName:S.name},body))});
+    body:JSON.stringify(Object.assign(S.key?{adminKey:S.key,adminName:S.name}:{session:S.session},body))});
   const res=await r.json();
-  if(res.error==='unauthorized'){logout('Your admin key was rejected. Please sign in again.');throw new Error('unauthorized')}
+  if(res.error==='unauthorized'){logout(S.key?'Your admin key was rejected. Please sign in again.':'Your session has ended. Please sign in again.');throw new Error('unauthorized')}
   if(res.error==='user_error') throw new Error(res.message);
   if(res.error) throw new Error('The server hit an error. Check the Apps Script executions log.');
   return res;
@@ -403,27 +416,61 @@ function trimCanvas(c){
 /* ================================================================
    AUTH
    ================================================================ */
+function loginMode(m){$('lEmail').hidden=m!=='email';$('lKey').hidden=m!=='key';$('loginMsg').textContent='';
+  const f=m==='key'?($('loginName').value?$('loginKey'):$('loginName')):$('loginEmail');setTimeout(()=>f.focus(),20)}
+async function emailStep(){
+  const email=$('loginEmail').value.trim().toLowerCase(),msg=$('loginMsg'),btn=$('emailBtn');msg.style.color='';msg.textContent='';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){msg.textContent='Enter your work email.';return}
+  const codeStep=!$('lCodeWrap').hidden;
+  busy(btn,true);
+  try{
+    if(!codeStep){
+      const r=await pub({action:'loginOtp',email});
+      $('lCodeWrap').hidden=false;$('loginEmail').readOnly=true;btn._h='Sign in';
+      msg.style.color='var(--ok)';msg.textContent=r.message;setTimeout(()=>$('loginCode').focus(),20);
+    }else{
+      const otp=$('loginCode').value.replace(/\D/g,'');if(otp.length!==6){msg.textContent='Enter the 6-digit code.';return}
+      const r=await pub({action:'loginVerify',email,otp});
+      S.session=r.session;S.key='';S.name=r.name;
+      ls(0,'rtb_hr_session',JSON.stringify({t:r.session,exp:Date.now()+r.expiresInHours*3600000}));ls(0,'rtb_hr_email',email);
+      afterLogin();
+    }
+  }catch(e){msg.style.color='';msg.textContent=e.message}
+  finally{busy(btn,false)}
+}
+async function pub(body){
+  const r=await fetch(HR_API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
+  const res=await r.json();if(res.error==='user_error')throw new Error(res.message);if(res.error)throw new Error('Something went wrong. Please try again.');return res;
+}
 async function login(){
   const name=$('loginName').value.trim(),key=$('loginKey').value.trim();$('loginMsg').textContent='';
   if(!name||!key){$('loginMsg').textContent='Enter your name and the admin key.';return}
-  S.name=name;S.key=key;busy($('loginBtn'),true);
+  S.name=name;S.key=key;S.session='';busy($('loginBtn'),true);
   try{await api({action:'adminPing'});ss(0,'rtb_admin_key',key);ls(0,'rtb_admin_name',name);afterLogin()}
   catch(e){$('loginMsg').textContent=e.message==='unauthorized'?'That admin key is not correct.':e.message}
   finally{busy($('loginBtn'),false)}
 }
 function logout(msg){
-  ss(0,'rtb_admin_key',null);S.key='';
+  if(S.session&&!msg)pub({action:'hrLogout',session:S.session}).catch(()=>{});
+  ss(0,'rtb_admin_key',null);ls(0,'rtb_hr_session','');S.key='';S.session='';S.role='';
   $('vApp').hidden=true;$('topnav').hidden=true;$('logoutBtn').hidden=true;$('who').textContent='';
-  $('vLogin').hidden=false;$('loginMsg').textContent=msg||'';$('loginName').value=S.name||ls(1,'rtb_admin_name')||'';
+  $('vLogin').hidden=false;$('loginName').value=ls(1,'rtb_admin_name')||'';
+  $('loginEmail').value=ls(1,'rtb_hr_email')||'';$('loginEmail').readOnly=false;$('lCodeWrap').hidden=true;$('loginCode').value='';$('emailBtn').innerHTML='Email me a code';
+  loginMode('email');$('loginMsg').textContent=msg||'';
 }
+function canEdit(){return S.role==='Owner'||S.role==='HR Manager'}
 async function afterLogin(){
-  $('vLogin').hidden=true;$('vApp').hidden=false;$('topnav').hidden=false;$('logoutBtn').hidden=false;$('who').textContent=S.name;
+  $('vLogin').hidden=true;$('vApp').hidden=false;$('logoutBtn').hidden=false;
   $('view').innerHTML='<div class="loading">Loading HR data…</div>';
   try{
+    const me=await api({action:'hrMe'});S.role=me.role;S.name=me.name;
+    document.body.dataset.role=me.role.replace(/\s/g,'');
+    $('who').textContent=me.name+(me.role==='Owner'?'':' · '+me.role);
+    $('topnav').hidden=me.role!=='Owner'; // Onboarding admin link is for the owner only
     const [st,tp,em,dc]=await Promise.all([api({action:'hrSettingsGet'}),api({action:'hrTplList'}),api({action:'hrEmpList'}),api({action:'hrDocList'})]);
     S.settings=st.settings;S.tpls={};tp.templates.forEach(t=>S.tpls[t.type]={title:t.title,needsSign:t.needsSign==='true',body:t.body});
     S.emps=em.employees;S.docs=dc.docs;route();
-    if(!S.settings.legalName||!S.settings.address) toast('Tip: add your legal entity name and address in Settings — they appear on every letter.');
+    if(S.role==='Owner'&&(!S.settings.legalName||!S.settings.address)) toast('Tip: add your legal entity name and address in Settings — they appear on every letter.');
   }catch(e){if(e.message!=='unauthorized')$('view').innerHTML=`<div class="card empty">${esc(e.message)}<br><br><button class="btn" onclick="afterLogin()">Retry</button></div>`}
 }
 
@@ -447,7 +494,8 @@ function route(){
   if(t==='doc')return openDoc(decodeURIComponent(id||''));
   if(t==='documents')return renderDocs();
   if(t==='templates')return renderTemplates();
-  if(t==='settings')return renderSettings();
+  if(t==='settings'&&S.role==='Owner')return renderSettings();
+  if(t==='team'&&S.role==='Owner')return renderTeam();
   renderEmps();
 }
 
@@ -459,7 +507,7 @@ function renderEmps(){
   $('view').innerHTML=`
     <div class="head"><h1>Employees</h1><div class="spacer"></div>
       <button class="btn" onclick="refreshEmps(this)">Refresh</button>
-      <button class="btn primary" onclick="go('emp/new')">+ New employee</button></div>
+      <button class="btn primary w" onclick="go('emp/new')">+ New employee</button></div>
     <div class="stats">
       <div class="stat"><b>${c('Active')}</b><span>Active</span></div>
       <div class="stat"><b>${c('Onboarding')}</b><span>Onboarding</span></div>
@@ -498,7 +546,7 @@ function drawEmp(){
       <h1>${isNew?'New employee':esc(e.name)}</h1>
       ${isNew?'':`<span class="muted">${esc(e.empId)}</span> ${pill(e.status)}`}
       <div class="spacer"></div>
-      ${isNew?'':`<button class="btn primary" onclick="newDocModal('${esc(e.empId)}')">+ New document</button>`}
+      ${isNew?'':`<button class="btn primary w" onclick="newDocModal('${esc(e.empId)}')">+ New document</button>`}
     </div>
     ${isNew?'':`<div class="subtabs">
       ${[['profile','Profile'],['files','ID card & documents'],['docs','Letters & agreements ('+S.empDocs.length+')']].map(([k,l])=>`<button class="${S.empTab===k?'on':''}" onclick="S.empTab='${k}';drawEmp()">${l}</button>`).join('')}
@@ -534,7 +582,7 @@ function drawEmpProfile(){
     </div></div>
     <div class="row" style="margin-top:16px;justify-content:flex-end">
       ${isNew?'<button class="btn" onclick="go(\'employees\')">Cancel</button>':''}
-      <button class="btn primary" id="empSaveBtn" onclick="saveEmp(this)">${isNew?'Create employee':'Save changes'}</button>
+      <button class="btn primary w" id="empSaveBtn" onclick="saveEmp(this)">${isNew?'Create employee':'Save changes'}</button>
     </div>`;
   $('empBody').querySelectorAll('input,select,textarea').forEach(i=>i.addEventListener('input',()=>S.dirty=true));
 }
@@ -559,14 +607,14 @@ function drawEmpFiles(){
       <div class="photo-box">
         <img src="${S.empPhoto||''}" alt="" onerror="this.style.visibility='hidden'" ${S.empPhoto?'':'style="visibility:hidden"'}>
         <div><div class="small muted" style="margin-bottom:6px">Passport-style photo, plain background</div>
-        <label class="btn sm">Upload photo<input type="file" accept="image/*" hidden onchange="uploadPhoto(this)"></label></div>
+        <label class="btn sm w">Upload photo<input type="file" accept="image/*" hidden onchange="uploadPhoto(this)"></label></div>
       </div>
       <div class="idcards" id="idcards">${idCardHtml(e,S.empPhoto)}</div>
       <div class="row" style="margin-top:14px"><button class="btn primary" onclick="printIdCard()">Print ID card</button>
       <span class="small muted">Prints front and back at card size (54 × 86 mm).</span></div>
     </div>
     <div class="card"><h3>ID proofs & documents</h3>
-      <div class="row" style="margin-bottom:12px">
+      <div class="row w" style="margin-bottom:12px">
         <select id="fkind" style="padding:8px;border:1px solid var(--sand-line);border-radius:8px">${FILE_KINDS.map(k=>`<option>${k}</option>`).join('')}</select>
         <input type="file" id="ffile" accept="image/*,application/pdf">
         <button class="btn primary" onclick="uploadFile(this)">Upload</button>
@@ -574,7 +622,7 @@ function drawEmpFiles(){
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Type</th><th>File</th><th>Uploaded</th><th></th></tr></thead><tbody>
       ${S.empFiles.length?S.empFiles.map(f=>`<tr><td>${esc(f.kind)}</td><td><a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.name)}</a></td>
         <td class="small muted">${esc(fmtDT(f.uploadedAt))} · ${esc(f.uploadedBy)}</td>
-        <td style="text-align:right"><button class="btn sm danger" onclick="removeFile('${esc(f.fileId)}',this)">Remove</button></td></tr>`).join('')
+        <td style="text-align:right"><button class="btn sm danger w" onclick="removeFile('${esc(f.fileId)}',this)">Remove</button></td></tr>`).join('')
         :'<tr><td colspan="4" class="empty">No documents uploaded yet.</td></tr>'}
       </tbody></table></div>
       <div class="small muted" style="margin-top:8px">Files are stored privately in your "Ritumbhara HR" Google Drive folder.</div>
@@ -647,7 +695,7 @@ function renderDocs(){
   $('view').innerHTML=`
     <div class="head"><h1>Letters & agreements</h1><div class="spacer"></div>
       <button class="btn" onclick="refreshDocs(this)">Refresh</button>
-      <button class="btn primary" onclick="newDocModal()">+ New document</button></div>
+      <button class="btn primary w" onclick="newDocModal()">+ New document</button></div>
     <div class="stats">
       <div class="stat"><b>${c('Draft')}</b><span>Drafts</span></div>
       <div class="stat"><b>${c('Sent')}</b><span>Awaiting signature</span></div>
@@ -710,7 +758,7 @@ function letterheadHtml(d){
     <div class="metaline"><span>Ref: ${esc(d.refNo)}</span><span>Date: ${esc(fmtD(d.sentAt||d.createdAt))}</span></div>`;
 }
 function drawDoc(){
-  const d=S.doc,draft=d.status==='Draft';
+  const d=S.doc,draft=d.status==='Draft'&&canEdit();
   const fieldOpts=MERGE_FIELDS.map(([k,l])=>`<option value="${k}">${l}</option>`).join('');
   $('view').innerHTML=`
     <div class="head">
@@ -752,6 +800,7 @@ function drawDoc(){
 function docSide(d){
   const draft=d.status==='Draft';
   let actions='';
+  if(!canEdit())return `<div id="sideBox"><div class="card"><h3>Ref ${esc(d.refNo)}</h3><div class="small muted">View-only access.</div>${d.pdfUrl?`<a class="btn primary" href="${esc(d.pdfUrl)}" target="_blank" rel="noopener">Open PDF</a>`:''}<button class="btn" onclick="previewDoc(this)">Preview</button></div></div>`;
   if(draft){
     actions=`<label class="chk"><input type="checkbox" id="dSign" ${d.needsSign?'checked':''} onchange="S.dirty=true;S.doc.needsSign=this.checked;$('sideBox').outerHTML=docSide(S.doc)"> Requires employee e-signature</label>
       <button class="btn" onclick="saveDoc(this)">Save draft</button>
@@ -857,8 +906,8 @@ function renderTemplates(){
             <button onmousedown="event.preventDefault();cmd('formatBlock','p')">¶</button><button onmousedown="event.preventDefault();cmd('insertUnorderedList')">• List</button>
             <button onmousedown="event.preventDefault();cmd('insertOrderedList')">1. List</button><button onmousedown="event.preventDefault();cmd('removeFormat')">Clear</button>
           </div>
-          <div class="paper-wrap" style="padding:24px 28px"><div class="paper" id="tBody" contenteditable="true">${cur.body}</div></div>
-          <div class="row" style="justify-content:flex-end;margin-top:14px">
+          <div class="paper-wrap" style="padding:24px 28px"><div class="paper" id="tBody" contenteditable="${canEdit()}">${cur.body}</div></div>
+          <div class="row w" style="justify-content:flex-end;margin-top:14px">
             <button class="btn ghost" onclick="resetTpl(this)">Reset to default</button>
             <button class="btn primary" onclick="saveTpl(this)">Save template</button>
           </div>
@@ -921,10 +970,59 @@ async function saveSettings(btn){
 /* ================================================================
    BOOT
    ================================================================ */
+/* ================================================================
+   HR TEAM (owner only)
+   ================================================================ */
+async function renderTeam(){
+  $('view').innerHTML='<div class="loading">Loading team…</div>';
+  try{const r=await api({action:'hrUserList'});S.users=r.users;S.roles=r.roles;drawTeam()}catch(e){$('view').innerHTML=`<div class="card empty">${esc(e.message)}</div>`}
+}
+function drawTeam(){
+  const roleOpts=v=>S.roles.map(r=>`<option${r===v?' selected':''}>${r}</option>`).join('');
+  $('view').innerHTML=`
+    <div class="head"><h1>HR team</h1><span class="muted small">People who can sign in to this HR portal with their email.</span></div>
+    <div class="card"><h3>Give someone access</h3>
+      <div class="grid" style="grid-template-columns:1.2fr 1.4fr 1fr auto;align-items:end">
+        <label class="f">Name<input id="u_name" placeholder="e.g. Priya Sharma"></label>
+        <label class="f">Work email<input id="u_email" type="email" placeholder="priya@ritumbhara.com"></label>
+        <label class="f">Access<select id="u_role">${roleOpts('HR Manager')}</select></label>
+        <button class="btn primary" onclick="addUser(this)">Add &amp; email invite</button>
+      </div>
+      <div class="small muted" style="margin-top:10px"><b>HR Manager</b>: add employees, upload IDs, create and send letters, edit templates.
+        <b>HR Viewer</b>: view only. Only you (owner) can change Settings and this team list.</div>
+    </div>
+    <div class="tbl-wrap" style="margin-top:14px"><table class="tbl"><thead><tr><th>Name</th><th>Email</th><th>Access</th><th>Last sign-in</th><th>Status</th><th></th></tr></thead><tbody>
+      ${S.users.length?S.users.map(u=>{const on=u.active==='true';return `<tr>
+        <td><b>${esc(u.name)}</b></td><td>${esc(u.email)}</td>
+        <td><select onchange="saveUser('${esc(u.email)}',{role:this.value},this)" style="padding:6px;border:1px solid var(--sand-line);border-radius:8px">${roleOpts(u.role)}</select></td>
+        <td class="small muted">${esc(fmtDT(u.lastLoginAt)||'Never')}</td>
+        <td>${on?'<span class="pill Active">Active</span>':'<span class="pill Exited">Removed</span>'}</td>
+        <td style="text-align:right"><button class="btn sm ${on?'danger':''}" onclick="saveUser('${esc(u.email)}',{active:${!on}},this)">${on?'Remove access':'Restore access'}</button></td></tr>`}).join('')
+        :'<tr><td colspan="6" class="empty">No team members yet. Add your HR staff above.</td></tr>'}
+    </tbody></table></div>`;
+}
+async function addUser(btn){
+  const user={name:$('u_name').value.trim(),email:$('u_email').value.trim(),role:$('u_role').value};
+  if(!user.name||!user.email){toast('Enter a name and email.',true);return}
+  await run(btn,async()=>{const r=await api({action:'hrUserSave',user});S.users=r.users;toast('Access given — invite emailed to '+user.email);drawTeam()});
+}
+async function saveUser(email,patch,el){
+  const u=S.users.find(x=>x.email===email);
+  if(patch.active===false&&!confirm('Remove HR access for '+u.name+'? They will be signed out right away.'))return;
+  await run(el.tagName==='BUTTON'?el:null,async()=>{const r=await api({action:'hrUserSave',user:Object.assign({email,name:u.name,role:u.role},patch)});S.users=r.users;toast('Updated');drawTeam()});
+}
+
+/* ================================================================
+   BOOT
+   ================================================================ */
 $('loginKey').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+$('loginEmail').addEventListener('keydown',e=>{if(e.key==='Enter')emailStep()});
+$('loginCode').addEventListener('keydown',e=>{if(e.key==='Enter')emailStep()});
 (function boot(){
   S.name=ls(1,'rtb_admin_name')||'';S.key=ss(1,'rtb_admin_key')||'';
-  if(S.key&&S.name){api({action:'adminPing'}).then(afterLogin).catch(e=>{if(e.message!=='unauthorized')logout(e.message)})}
+  let sess=null;try{sess=JSON.parse(ls(1,'rtb_hr_session')||'null')}catch(e){}
+  if(S.key&&S.name){afterLogin()}
+  else if(sess&&sess.t&&sess.exp>Date.now()){S.session=sess.t;afterLogin()}
   else logout();
 })();
 </script>
